@@ -5,7 +5,7 @@ import os
 
 import lasagne
 from lasagne.layers import DenseLayer, InputLayer
-from lasagne.nonlinearities import softmax
+from lasagne.nonlinearities import sigmoid, softmax, tanh, linear
 import numpy as np
 import theano
 import theano.tensor as T
@@ -25,14 +25,32 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
         yield inputs[excerpt].transpose(), targets[excerpt]
 
 
+def onehot_labels(labels, min_val, max_val):
+    output = np.zeros((len(labels), max_val - min_val + 1), dtype="int32")
+    output[np.arange(len(labels)), labels - min_val] = 1
+    return output
+
+
+def print_monitoring(dataset, loss, p_loss, r_loss, acc, num_batches):
+    print("  {} total loss:\t\t{:.6f}".format(dataset, loss / num_batches))
+    print("  {} pred. loss:\t\t{:.6f}".format(dataset, p_loss / num_batches))
+    print("  {} recon. loss:\t\t{:.6f}".format(dataset, r_loss / num_batches))
+    print("  {} accuracy:\t\t{:.2f}%".format(dataset, acc / num_batches * 100))
+
+
 # Main program
 def execute(training, dataset, n_output, num_epochs=500):
     # Load the dataset
     print("Loading data")
     if dataset == 'genomics':
-        #    x_train, y_train, x_valid, \
-        #            y_valid, x_test, y_test = data_genomics.load_data()
-        pass
+        from feature_selection.experiments.common.dorothea import load_data
+        x_train, y_train = load_data('train', 'standard', False, 'numpy')
+        x_valid, y_valid = load_data('valid', 'standard', False, 'numpy')
+
+        # There is a test set but it has no labels. For simplicity, use
+        # the validation set as test set
+        x_test, y_test = x_valid, y_valid
+
     elif dataset == 'debug':
         x_train = np.random.rand(10, 100).astype(np.float32)
         x_valid = np.random.rand(2, 100).astype(np.float32)
@@ -47,34 +65,53 @@ def execute(training, dataset, n_output, num_epochs=500):
 
     n_samples, n_feats = x_train.shape
     n_classes = y_train.max() + 1
-    n_batch = 1
-    save_path = '/data/lisatmp4/romerosa/FeatureSelection/'
+    n_batch = 20
+    save_path = '/data/lisatmp4/carriepl/FeatureSelection/'
 
     # Prepare Theano variables for inputs and targets
     input_var = T.matrix('inputs')
     target_var = T.ivector('targets')
+    lr = theano.shared(np.float32(1e-2), 'learning_rate')
 
     # Build model
     print("Building model")
     network1 = InputLayer((n_feats, n_batch), input_var)
     network1 = DenseLayer(network1, num_units=n_output)
     feat_emb = lasagne.layers.get_output(network1)
+    network3 = DenseLayer(network1, num_units=n_batch, nonlinearity=sigmoid)
 
     network2 = InputLayer((n_batch, n_feats), input_var.transpose())
-    network2 = DenseLayer(network2, num_units=n_output, W=feat_emb)
+    network2 = DenseLayer(network2, num_units=10, W=feat_emb)
     network2 = DenseLayer(network2, num_units=n_classes, nonlinearity=softmax)
 
     # Create a loss expression for training
     print("Building and compiling training functions")
     # Expressions required for training
+
+    reconstruction = lasagne.layers.get_output(network3)
+    reconstruction_loss = lasagne.objectives.binary_crossentropy(reconstruction, input_var).mean()
     prediction = lasagne.layers.get_output(network2)
-    loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
-    loss = loss.mean()
-    params1 = lasagne.layers.get_all_params(network1, trainable=True)
-    params2 = lasagne.layers.get_all_params(network2, trainable=True)
+    prediction_loss = lasagne.objectives.categorical_crossentropy(prediction, target_var).mean()
+
+    params_sup = lasagne.layers.get_all_params(network2, trainable=True)
+    params_unsup = lasagne.layers.get_all_params(network3, trainable=True)
+
+    if training == "supervised":
+        loss = prediction_loss
+        params = params_sup
+    elif training == "semi_supervised":
+        loss = reconstruction_loss + prediction_loss
+        params = params_sup + params_unsup
+    elif training == "unsupervised":
+        loss = reconstruction_loss
+        parama = params_unsup
+
     updates = lasagne.updates.rmsprop(loss,
-                                      params1+params2,
-                                      learning_rate=0.00001)
+                                      params,
+                                      learning_rate=lr)
+    #updates = lasagne.updates.momentum(loss, params,
+    #                                   learning_rate=lr, momentum=0.0)
+    updates[lr] = (lr * 0.99).astype("float32")
 
     # Compile a function performing a training step on a mini-batch (by
     # giving the updates dictionary) and returning the corresponding
@@ -83,66 +120,91 @@ def execute(training, dataset, n_output, num_epochs=500):
                                updates=updates)
 
     # Expressions required for test
+    test_reconstruction = lasagne.layers.get_output(network3, deterministic=True)
+    test_reconstruction_loss = lasagne.objectives.binary_crossentropy(test_reconstruction,
+                                                                      input_var).mean()
     test_prediction = lasagne.layers.get_output(network2, deterministic=True)
-    test_loss = lasagne.objectives.categorical_crossentropy(test_prediction,
-                                                            target_var)
-    test_loss = test_loss.mean()
+    test_predictions_loss = lasagne.objectives.categorical_crossentropy(test_prediction,
+                                                                        target_var).mean()
     test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),
                       dtype=theano.config.floatX)
 
-    val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
+    val_fn = theano.function([input_var, target_var],
+                             [test_predictions_loss, test_reconstruction_loss,
+                              test_acc])
 
     # Finally, launch the training loop.
     print("Starting training...")
     # We iterate over epochs:
     for epoch in range(num_epochs):
-        # In each epoch, we do a full pass over the training data:
-        train_err = 0
-        train_batches = 0
+        # In each epoch, we do a full pass over the training data to updates
+        # the parameters:
         start_time = time.time()
         for batch in iterate_minibatches(x_train, y_train,
                                          n_batch, shuffle=True):
             inputs, targets = batch
-            train_err += train_fn(inputs, targets)
+            train_fn(inputs, targets)
+
+        # A second pass over the training data for monitoring :
+        train_loss = 0
+        train_p_loss = 0
+        train_r_loss = 0
+        train_acc = 0
+        train_batches = 0
+        for batch in iterate_minibatches(x_train, y_train,
+                                         n_batch, shuffle=True):
+            inputs, targets = batch
+            p_loss, r_loss, acc = val_fn(inputs, targets)
+            train_loss += (r_loss + p_loss)
+            train_p_loss += p_loss
+            train_r_loss += r_loss
+            train_acc += acc
             train_batches += 1
 
-        # And a full pass over the validation data:
-        val_err = 0
+        # And a full pass over the validation data for monitoring:
+        val_loss = 0
+        val_p_loss = 0
+        val_r_loss = 0
         val_acc = 0
         val_batches = 0
         for batch in iterate_minibatches(x_valid, y_valid,
                                          n_batch, shuffle=False):
             inputs, targets = batch
-            err, acc = val_fn(inputs, targets)
-            val_err += err
+            p_loss, r_loss, acc = val_fn(inputs, targets)
+            val_loss += (r_loss + p_loss)
+            val_p_loss += p_loss
+            val_r_loss += r_loss
             val_acc += acc
             val_batches += 1
 
         # Then we print the results for this epoch:
         print("Epoch {} of {} took {:.3f}s".format(
             epoch + 1, num_epochs, time.time() - start_time))
-        print("  training loss:\t\t{:.6f}".format(train_err /
-                                                  train_batches))
-        print("  validation loss:\t\t{:.6f}".format(val_err /
-                                                    val_batches))
-        print("  validation accuracy:\t\t{:.2f} %".format(
-            val_acc / val_batches * 100))
+
+        print_monitoring("train", train_loss, train_p_loss, train_r_loss,
+                         train_acc, train_batches)
+        print_monitoring("valid", val_loss, val_p_loss, val_r_loss,
+                         val_acc, val_batches)
 
     # After training, we compute and print the test error:
+    test_p_loss = 0
+    test_r_loss = 0
     test_err = 0
     test_acc = 0
     test_batches = 0
     for batch in iterate_minibatches(x_test, y_test,
                                      n_batch, shuffle=False):
         inputs, targets = batch
-        err, acc = val_fn(inputs, targets)
-        test_err += err
+        p_loss, r_loss, acc = val_fn(inputs, targets)
+        test_p_loss += p_loss
+        test_r_loss += r_loss
         test_acc += acc
         test_batches += 1
 
     # Print metrics
     print("Final results:")
-    print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
+    print("  test pred loss:\t\t\t{:.6f}".format(test_p_loss / test_batches))
+    print("  test recon loss:\t\t\t{:.6f}".format(test_r_loss / test_batches))
     print("  test accuracy:\t\t{:.2f} %".format(
         test_acc / test_batches * 100))
 

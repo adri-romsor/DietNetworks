@@ -13,9 +13,15 @@ def load_data(which, mode='standard', shuffle=False, return_format='fuel'):
     train_x, train_y, valid_x, valid_y, _ = read_files()
     
     if which == 'train':
+        #indices = numpy.concatenate((numpy.argwhere(train_y==0)[:10],
+        #                             numpy.argwhere(train_y==1)[:10]),
+        #                            axis=0)[:,0]
         x = train_x
         y = train_y
     elif which == 'valid':
+        #indices = numpy.concatenate((numpy.argwhere(valid_y==0)[:10],
+        #                             numpy.argwhere(valid_y==1)[:10]),
+        #                            axis=0)[:,0]
         x = valid_x
         y = valid_y
     
