@@ -11,24 +11,61 @@ import theano
 import theano.tensor as T
 
 
-def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
+def iterate_minibatches(inputs, targets, batchsize, axis=0, shuffle=False):
     assert len(inputs) == len(targets)
+    assert axis >= 0 and axis < len(inputs.shape)
     targets = targets.transpose()
+
+    if axis == 1:
+        inputs = inputs.transpose()
+
     if shuffle:
         indices = np.arange(len(inputs))
         np.random.shuffle(indices)
+
     for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
         if shuffle:
             excerpt = indices[start_idx:start_idx + batchsize]
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
-        yield inputs[excerpt].transpose(), targets[excerpt]
+
+        if axis == 0:
+            yield inputs[excerpt].transpose(), targets[excerpt]
+        elif axis == 1:
+            yield inputs[excerpt], targets
 
 
 def onehot_labels(labels, min_val, max_val):
     output = np.zeros((len(labels), max_val - min_val + 1), dtype="int32")
     output[np.arange(len(labels)), labels - min_val] = 1
     return output
+
+
+def monitoring(val_fn, dataset_name, minibatches):
+    global_loss = 0
+    global_p_loss = 0
+    global_r_loss = 0
+    global_acc = 0
+    global_batches = 0
+
+    for batch in minibatches:
+        inputs, targets = batch
+        p_loss, r_loss, acc = val_fn(inputs, targets)
+        global_loss += (r_loss + p_loss)
+        global_p_loss += p_loss
+        global_r_loss += r_loss
+        global_acc += acc
+        global_batches += 1
+
+    global_loss /= global_batches
+    global_p_loss /= global_batches
+    global_r_loss /= global_batches
+    global_acc = global_acc / global_batches * 100
+
+    print("  {} total loss:\t\t{:.6f}".format(dataset_name, global_loss))
+    print("  {} pred. loss:\t\t{:.6f}".format(dataset_name, global_p_loss))
+    print("  {} recon. loss:\t\t{:.6f}".format(dataset_name, global_r_loss))
+    print("  {} accuracy:\t\t{:.2f}%".format(dataset_name, global_acc))
 
 
 def print_monitoring(dataset, loss, p_loss, r_loss, acc, num_batches):
@@ -39,7 +76,7 @@ def print_monitoring(dataset, loss, p_loss, r_loss, acc, num_batches):
 
 
 # Main program
-def execute(training, dataset, n_output, num_epochs=500):
+def execute(training, dataset, n_output, embedding_source, num_epochs=500):
     # Load the dataset
     print("Loading data")
     if dataset == 'genomics':
@@ -75,26 +112,34 @@ def execute(training, dataset, n_output, num_epochs=500):
 
     # Build model
     print("Building model")
-    network1 = InputLayer((n_feats, n_batch), input_var)
-    network1 = DenseLayer(network1, num_units=n_output)
-    feat_emb = lasagne.layers.get_output(network1)
-    network3 = DenseLayer(network1, num_units=n_batch, nonlinearity=sigmoid)
 
-    network2 = InputLayer((n_batch, n_feats), input_var.transpose())
-    network2 = DenseLayer(network2, num_units=10, W=feat_emb)
-    network2 = DenseLayer(network2, num_units=n_classes, nonlinearity=softmax)
+    if embedding_source == "predicted":
+        encoder_net = InputLayer((n_batch, n_samples), input_var)
+        encoder_net = DenseLayer(encoder_net, num_units=n_output)
+        encoder_net = DenseLayer(encoder_net, num_units=n_output)
+        feat_emb = lasagne.layers.get_output(encoder_net)
+    else:
+        feat_emb = theano.shared(np.load(save_path + embedding_source),
+                                 'feat_emb')
+
+    decoder_net = DenseLayer(encoder_net, num_units=n_output)
+    decoder_net = DenseLayer(decoder_net, num_units=n_samples, nonlinearity=sigmoid)
+
+    discrim_net = InputLayer((n_batch, n_feats), input_var.transpose())
+    discrim_net = DenseLayer(discrim_net, num_units=n_output, W=feat_emb)
+    discrim_net = DenseLayer(discrim_net, num_units=n_classes, nonlinearity=softmax)
 
     # Create a loss expression for training
     print("Building and compiling training functions")
     # Expressions required for training
 
-    reconstruction = lasagne.layers.get_output(network3)
+    reconstruction = lasagne.layers.get_output(decoder_net)
     reconstruction_loss = lasagne.objectives.binary_crossentropy(reconstruction, input_var).mean()
-    prediction = lasagne.layers.get_output(network2)
+    prediction = lasagne.layers.get_output(discrim_net)
     prediction_loss = lasagne.objectives.categorical_crossentropy(prediction, target_var).mean()
 
-    params_sup = lasagne.layers.get_all_params(network2, trainable=True)
-    params_unsup = lasagne.layers.get_all_params(network3, trainable=True)
+    params_sup = lasagne.layers.get_all_params(discrim_net, trainable=True)
+    params_unsup = lasagne.layers.get_all_params(decoder_net, trainable=True)
 
     if training == "supervised":
         loss = prediction_loss
@@ -104,7 +149,7 @@ def execute(training, dataset, n_output, num_epochs=500):
         params = params_sup + params_unsup
     elif training == "unsupervised":
         loss = reconstruction_loss
-        parama = params_unsup
+        params = params_unsup
 
     updates = lasagne.updates.rmsprop(loss,
                                       params,
@@ -115,15 +160,19 @@ def execute(training, dataset, n_output, num_epochs=500):
 
     # Compile a function performing a training step on a mini-batch (by
     # giving the updates dictionary) and returning the corresponding
-    # training loss:
+    # training loss.
+    # Warnings about unused inputs are ignored because otherwise Theano might
+    # complain about the targets being a useless input when doing unsupervised
+    # training of the network.
     train_fn = theano.function([input_var, target_var], loss,
-                               updates=updates)
+                               updates=updates,
+                               on_unused_input='ignore')
 
     # Expressions required for test
-    test_reconstruction = lasagne.layers.get_output(network3, deterministic=True)
+    test_reconstruction = lasagne.layers.get_output(decoder_net, deterministic=True)
     test_reconstruction_loss = lasagne.objectives.binary_crossentropy(test_reconstruction,
                                                                       input_var).mean()
-    test_prediction = lasagne.layers.get_output(network2, deterministic=True)
+    test_prediction = lasagne.layers.get_output(discrim_net, deterministic=True)
     test_predictions_loss = lasagne.objectives.categorical_crossentropy(test_prediction,
                                                                         target_var).mean()
     test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),
@@ -133,89 +182,56 @@ def execute(training, dataset, n_output, num_epochs=500):
                              [test_predictions_loss, test_reconstruction_loss,
                               test_acc])
 
+    # Define a function serving only to compute the feature embedding over
+    # some data
+    emb_fn = theano.function([input_var], feat_emb)
+
     # Finally, launch the training loop.
     print("Starting training...")
     # We iterate over epochs:
+    minibatch_axis = int(training == "unsupervised")
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data to updates
         # the parameters:
         start_time = time.time()
-        for batch in iterate_minibatches(x_train, y_train,
-                                         n_batch, shuffle=True):
+        for batch in iterate_minibatches(x_train, y_train, n_batch,
+                                         minibatch_axis, shuffle=True):
             inputs, targets = batch
             train_fn(inputs, targets)
 
-        # A second pass over the training data for monitoring :
-        train_loss = 0
-        train_p_loss = 0
-        train_r_loss = 0
-        train_acc = 0
-        train_batches = 0
-        for batch in iterate_minibatches(x_train, y_train,
-                                         n_batch, shuffle=True):
-            inputs, targets = batch
-            p_loss, r_loss, acc = val_fn(inputs, targets)
-            train_loss += (r_loss + p_loss)
-            train_p_loss += p_loss
-            train_r_loss += r_loss
-            train_acc += acc
-            train_batches += 1
+        # Monitor progress
+        print("Epoch {} of {}".format(epoch + 1, num_epochs))
 
-        # And a full pass over the validation data for monitoring:
-        val_loss = 0
-        val_p_loss = 0
-        val_r_loss = 0
-        val_acc = 0
-        val_batches = 0
-        for batch in iterate_minibatches(x_valid, y_valid,
-                                         n_batch, shuffle=False):
-            inputs, targets = batch
-            p_loss, r_loss, acc = val_fn(inputs, targets)
-            val_loss += (r_loss + p_loss)
-            val_p_loss += p_loss
-            val_r_loss += r_loss
-            val_acc += acc
-            val_batches += 1
+        train_minibatches = iterate_minibatches(x_train, y_train, n_batch,
+                                                minibatch_axis, shuffle=False)
+        monitoring(val_fn, "train", train_minibatches)
 
-        # Then we print the results for this epoch:
-        print("Epoch {} of {} took {:.3f}s".format(
-            epoch + 1, num_epochs, time.time() - start_time))
+        # Only monitor on the validation set if training in a supervised way
+        # otherwise the dimensions will not match.
+        if training == "supervised":
+            valid_minibatches = iterate_minibatches(x_valid, y_valid, n_batch,
+                                                    minibatch_axis,
+                                                    shuffle=False)
+            monitoring(val_fn, "valid", valid_minibatches)
 
-        print_monitoring("train", train_loss, train_p_loss, train_r_loss,
-                         train_acc, train_batches)
-        print_monitoring("valid", val_loss, val_p_loss, val_r_loss,
-                         val_acc, val_batches)
+        print("  total time:\t\t\t{:.3f}s".format(time.time() - start_time))
 
-    # After training, we compute and print the test error:
-    test_p_loss = 0
-    test_r_loss = 0
-    test_err = 0
-    test_acc = 0
-    test_batches = 0
-    for batch in iterate_minibatches(x_test, y_test,
-                                     n_batch, shuffle=False):
-        inputs, targets = batch
-        p_loss, r_loss, acc = val_fn(inputs, targets)
-        test_p_loss += p_loss
-        test_r_loss += r_loss
-        test_acc += acc
-        test_batches += 1
-
-    # Print metrics
-    print("Final results:")
-    print("  test pred loss:\t\t\t{:.6f}".format(test_p_loss / test_batches))
-    print("  test recon loss:\t\t\t{:.6f}".format(test_r_loss / test_batches))
-    print("  test accuracy:\t\t{:.2f} %".format(
-        test_acc / test_batches * 100))
+    # After training, we compute and print the test error (only if doing
+    # supervised training or the dimensions will not match):
+    if training == "supervised":
+        test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
+                                               minibatch_axis, shuffle=False)
+        print("Final results:")
+        monitoring(val_fn, "test", test_minibatches)
 
     # Save network weights to a file
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
     np.savez(save_path+'model1.npz',
-             *lasagne.layers.get_all_param_values(network1))
+             *lasagne.layers.get_all_param_values(decoder_net))
     np.savez(save_path+'model2.npz',
-             *lasagne.layers.get_all_param_values(network2))
+             *lasagne.layers.get_all_param_values(discrim_net))
 
 
     # And load them again later on like this:
@@ -236,17 +252,22 @@ def main():
     parser.add_argument('n_output',
                         default=100,
                         help='Output dimension.')
+    parser.add_argument('embedding_source',
+                        default="predicted",
+                        help='Source for the feature embedding. Either' +
+                             '"predicted" or the name of a file from which' +
+                             'to load a learned embedding')
     parser.add_argument('--num_epochs',
                         '-ne',
                         type=int,
-                        default=500,
+                        default=5,
                         help="""Optional. Int to indicate the max'
                         'number of epochs.""")
 
     args = parser.parse_args()
 
     execute(args.training, args.dataset, int(args.n_output),
-            int(args.num_epochs))
+            args.embedding_source, int(args.num_epochs))
 
 
 if __name__ == '__main__':
