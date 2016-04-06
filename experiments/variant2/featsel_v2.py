@@ -239,6 +239,11 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
     #     param_values = [f['arr_%d' % i] for i in range(len(f.files))]
     # lasagne.layers.set_all_param_values(network, param_values)
 
+    # Save the learnt embedding (over the training set) to a file
+    if training == "unsupervised":
+        np.savez(save_path + "embedding_%i.npz" % n_output,
+                 emb_fn(x_train.transpose()))
+
 
 def main():
     parser = argparse.ArgumentParser(description="""Implementation of the
