@@ -105,7 +105,7 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
         feat_emb = theano.shared(feat_emb_val, 'feat_emb')
         encoder_net = InputLayer((n_batch, n_output), feat_emb.get_value())
 
-    decoder_net = DenseLayer(encoder_net, num_units=n_output)
+    #decoder_net = DenseLayer(decoder_net, num_units=n_output)
     decoder_net = DenseLayer(encoder_net, num_units=n_samples, nonlinearity=sigmoid)
 
     discrim_net = InputLayer((n_batch, n_feats), input_var.transpose())
@@ -147,8 +147,6 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
     # Warnings about unused inputs are ignored because otherwise Theano might
     # complain about the targets being a useless input when doing unsupervised
     # training of the network.
-    #import pdb; pdb.set_trace()
-    updates[feat_emb] = feat_emb
     train_fn = theano.function([input_var, target_var], loss,
                                updates=updates,
                                on_unused_input='ignore')
