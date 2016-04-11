@@ -41,38 +41,20 @@ def onehot_labels(labels, min_val, max_val):
     return output
 
 
-def monitoring(val_fn, dataset_name, minibatches):
-    global_loss = 0
-    global_p_loss = 0
-    global_r_loss = 0
-    global_acc = 0
+def monitoring(val_fn, dataset_name, minibatches, monitoring_labels):
+
+    monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
     global_batches = 0
 
     for batch in minibatches:
         inputs, targets = batch
-        p_loss, r_loss, acc = val_fn(inputs, targets)
-        global_loss += (r_loss + p_loss)
-        global_p_loss += p_loss
-        global_r_loss += r_loss
-        global_acc += acc
+        out = val_fn(inputs, targets)
+        monitoring_values = monitoring_values + out
         global_batches += 1
+    monitoring_values /= global_batches
 
-    global_loss /= global_batches
-    global_p_loss /= global_batches
-    global_r_loss /= global_batches
-    global_acc = global_acc / global_batches * 100
-
-    print("  {} total loss:\t\t{:.6f}".format(dataset_name, global_loss))
-    print("  {} pred. loss:\t\t{:.6f}".format(dataset_name, global_p_loss))
-    print("  {} recon. loss:\t\t{:.6f}".format(dataset_name, global_r_loss))
-    print("  {} accuracy:\t\t{:.2f}%".format(dataset_name, global_acc))
-
-
-def print_monitoring(dataset, loss, p_loss, r_loss, acc, num_batches):
-    print("  {} total loss:\t\t{:.6f}".format(dataset, loss / num_batches))
-    print("  {} pred. loss:\t\t{:.6f}".format(dataset, p_loss / num_batches))
-    print("  {} recon. loss:\t\t{:.6f}".format(dataset, r_loss / num_batches))
-    print("  {} accuracy:\t\t{:.2f}%".format(dataset, acc / num_batches * 100))
+    for (label, val) in zip(monitoring_labels, monitoring_values):
+        print ("  {} {}:\t\t{:.6f}".format(dataset_name, label, val))
 
 
 # Main program
@@ -119,11 +101,12 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
         encoder_net = DenseLayer(encoder_net, num_units=n_output)
         feat_emb = lasagne.layers.get_output(encoder_net)
     else:
-        feat_emb = theano.shared(np.load(save_path + embedding_source),
-                                 'feat_emb')
+        feat_emb_val = np.load(save_path + embedding_source).items()[0][1]
+        feat_emb = theano.shared(feat_emb_val, 'feat_emb')
+        encoder_net = InputLayer((n_batch, n_output), feat_emb.get_value())
 
     decoder_net = DenseLayer(encoder_net, num_units=n_output)
-    decoder_net = DenseLayer(decoder_net, num_units=n_samples, nonlinearity=sigmoid)
+    decoder_net = DenseLayer(encoder_net, num_units=n_samples, nonlinearity=sigmoid)
 
     discrim_net = InputLayer((n_batch, n_feats), input_var.transpose())
     discrim_net = DenseLayer(discrim_net, num_units=n_output, W=feat_emb)
@@ -164,27 +147,32 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
     # Warnings about unused inputs are ignored because otherwise Theano might
     # complain about the targets being a useless input when doing unsupervised
     # training of the network.
+    #import pdb; pdb.set_trace()
+    updates[feat_emb] = feat_emb
     train_fn = theano.function([input_var, target_var], loss,
                                updates=updates,
                                on_unused_input='ignore')
 
     # Expressions required for test
-    test_reconstruction = lasagne.layers.get_output(decoder_net, deterministic=True)
-    test_reconstruction_loss = lasagne.objectives.binary_crossentropy(test_reconstruction,
-                                                                      input_var).mean()
-    test_prediction = lasagne.layers.get_output(discrim_net, deterministic=True)
-    test_predictions_loss = lasagne.objectives.categorical_crossentropy(test_prediction,
-                                                                        target_var).mean()
-    test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),
-                      dtype=theano.config.floatX)
+    if training == "supervised":
+        test_prediction = lasagne.layers.get_output(discrim_net, deterministic=True)
+        test_predictions_loss = lasagne.objectives.categorical_crossentropy(test_prediction,
+                                                                            target_var).mean()
+        test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),
+                          dtype=theano.config.floatX) * 100.
 
-    val_fn = theano.function([input_var, target_var],
-                             [test_predictions_loss, test_reconstruction_loss,
-                              test_acc])
+        val_fn = theano.function([input_var, target_var],
+                                 [test_predictions_loss, test_acc])
+        monitor_labels = ["pred. loss", "accuracy"]
+    elif training == "unsupervised":
+        test_reconstruction = lasagne.layers.get_output(decoder_net, deterministic=True)
+        test_reconstruction_loss = lasagne.objectives.binary_crossentropy(test_reconstruction,
+                                                                          input_var).mean()
 
-    # Define a function serving only to compute the feature embedding over
-    # some data
-    emb_fn = theano.function([input_var], feat_emb)
+        val_fn = theano.function([input_var, target_var],
+                                 [test_reconstruction_loss],
+                                 on_unused_input='ignore')
+        monitor_labels = ["recon. loss"]
 
     # Finally, launch the training loop.
     print("Starting training...")
@@ -204,7 +192,7 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
 
         train_minibatches = iterate_minibatches(x_train, y_train, n_batch,
                                                 minibatch_axis, shuffle=False)
-        monitoring(val_fn, "train", train_minibatches)
+        monitoring(val_fn, "train", train_minibatches, monitor_labels)
 
         # Only monitor on the validation set if training in a supervised way
         # otherwise the dimensions will not match.
@@ -212,7 +200,7 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
             valid_minibatches = iterate_minibatches(x_valid, y_valid, n_batch,
                                                     minibatch_axis,
                                                     shuffle=False)
-            monitoring(val_fn, "valid", valid_minibatches)
+            monitoring(val_fn, "valid", valid_minibatches, monitor_labels)
 
         print("  total time:\t\t\t{:.3f}s".format(time.time() - start_time))
 
@@ -222,7 +210,7 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
         test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
                                                minibatch_axis, shuffle=False)
         print("Final results:")
-        monitoring(val_fn, "test", test_minibatches)
+        monitoring(val_fn, "test", test_minibatches, monitor_labels)
 
     # Save network weights to a file
     if not os.path.exists(save_path):
@@ -241,6 +229,11 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
 
     # Save the learnt embedding (over the training set) to a file
     if training == "unsupervised":
+        # Define a function serving only to compute the feature embedding over
+        # some data
+        emb_fn = theano.function([input_var], feat_emb)
+
+        # Compute the embedding over all the training data and save the result
         np.savez(save_path + "embedding_%i.npz" % n_output,
                  emb_fn(x_train.transpose()))
 
