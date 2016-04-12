@@ -57,6 +57,26 @@ def monitoring(val_fn, dataset_name, minibatches, monitoring_labels):
         print ("  {} {}:\t\t{:.6f}".format(dataset_name, label, val))
 
 
+def compute_BER(pred_fn, minibatches, n_classes):
+
+    confusion = np.zeros((n_classes, n_classes))
+    num_batches = 0
+    BER = 0
+
+    for batch in minibatches:
+        inputs, targets = batch
+        pred = pred_fn(inputs)
+        for i in xrange(len(targets)):
+            confusion[int(targets[i]), int(pred[i])] += 1
+        BER += 0.5 * (confusion[0, 1] / confusion.sum(axis=1)[0] +
+                      confusion[1, 0] / confusion.sum(axis=1)[1])
+        num_batches += 1
+
+    BER /= num_batches
+
+    print ("  test ber:\t\t{:.6f}".format(BER))
+
+
 # Main program
 def execute(training, dataset, n_output, embedding_source, num_epochs=500):
     # Load the dataset
@@ -84,13 +104,13 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
 
     n_samples, n_feats = x_train.shape
     n_classes = y_train.max() + 1
-    n_batch = 20
-    save_path = '/data/lisatmp4/carriepl/FeatureSelection/'
+    n_batch = 100
+    save_path = '/data/lisatmp4/romerosa/FeatureSelection/'
 
     # Prepare Theano variables for inputs and targets
     input_var = T.matrix('inputs')
     target_var = T.ivector('targets')
-    lr = theano.shared(np.float32(1e-2), 'learning_rate')
+    lr = theano.shared(np.float32(1e-3), 'learning_rate')
 
     # Build model
     print("Building model")
@@ -105,8 +125,9 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
         feat_emb = theano.shared(feat_emb_val, 'feat_emb')
         encoder_net = InputLayer((n_batch, n_output), feat_emb.get_value())
 
-    #decoder_net = DenseLayer(decoder_net, num_units=n_output)
-    decoder_net = DenseLayer(encoder_net, num_units=n_samples, nonlinearity=sigmoid)
+    decoder_net = DenseLayer(encoder_net, num_units=n_samples,
+                             nonlinearity=sigmoid)
+    # decoder_net = DenseLayer(encoder_net, num_units=n_samples, nonlinearity=sigmoid)
 
     discrim_net = InputLayer((n_batch, n_feats), input_var.transpose())
     discrim_net = DenseLayer(discrim_net, num_units=n_output, W=feat_emb)
@@ -135,8 +156,11 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
         params = params_unsup
 
     updates = lasagne.updates.rmsprop(loss,
-                                      params,
-                                      learning_rate=lr)
+                                       params,
+                                       learning_rate=lr)
+    # updates = lasagne.updates.sgd(loss,
+    #                              params,
+    #                              learning_rate=lr)
     #updates = lasagne.updates.momentum(loss, params,
     #                                   learning_rate=lr, momentum=0.0)
     updates[lr] = (lr * 0.99).astype("float32")
@@ -156,11 +180,13 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
         test_prediction = lasagne.layers.get_output(discrim_net, deterministic=True)
         test_predictions_loss = lasagne.objectives.categorical_crossentropy(test_prediction,
                                                                             target_var).mean()
+        test_class = T.argmax(test_prediction, axis=1)
         test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),
                           dtype=theano.config.floatX) * 100.
 
         val_fn = theano.function([input_var, target_var],
                                  [test_predictions_loss, test_acc])
+        pred_fn = theano.function([input_var], test_class)
         monitor_labels = ["pred. loss", "accuracy"]
     elif training == "unsupervised":
         test_reconstruction = lasagne.layers.get_output(decoder_net, deterministic=True)
@@ -209,6 +235,10 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
                                                minibatch_axis, shuffle=False)
         print("Final results:")
         monitoring(val_fn, "test", test_minibatches, monitor_labels)
+
+        test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
+                                               minibatch_axis, shuffle=False)
+        compute_BER(pred_fn, test_minibatches, n_classes)
 
     # Save network weights to a file
     if not os.path.exists(save_path):
