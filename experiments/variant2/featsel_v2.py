@@ -42,7 +42,7 @@ def onehot_labels(labels, min_val, max_val):
 
 
 def monitoring(minibatches, dataset_name, val_fn, monitoring_labels,
-                pred_fn, n_classes):
+               pred_fn=None, n_classes=2):
 
     monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
     confusion = np.zeros((n_classes, n_classes))
@@ -57,9 +57,10 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels,
         global_batches += 1
 
         # Update the confusion matrix
-        pred = pred_fn(inputs)
-        for i in xrange(len(targets)):
-            confusion[int(targets[i]), int(pred[i])] += 1
+        if pred_fn is not None:
+            pred = pred_fn(inputs)
+            for i in xrange(len(targets)):
+                confusion[int(targets[i]), int(pred[i])] += 1
 
     # Print monitored values
     monitoring_values /= global_batches
@@ -67,9 +68,10 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels,
         print ("  {} {}:\t\t{:.6f}".format(dataset_name, label, val))
 
     # Print the BER (balanced error rate)
-    ber = 0.5 * (confusion[0, 1] / confusion.sum(axis=1)[0] +
-                 confusion[1, 0] / confusion.sum(axis=1)[1])
-    print ("  {} ber:\t\t\t{:.6f}".format(dataset_name, ber))
+    if pred_fn is not None:
+        ber = 0.5 * (confusion[0, 1] / confusion.sum(axis=1)[0] +
+                    confusion[1, 0] / confusion.sum(axis=1)[1])
+        print ("  {} ber:\t\t\t{:.6f}".format(dataset_name, ber))
 
 
 # Main program
@@ -192,6 +194,7 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
         val_fn = theano.function([input_var, target_var],
                                  [test_reconstruction_loss],
                                  on_unused_input='ignore')
+        pred_fn = None
         monitor_labels = ["recon. loss"]
 
     # Finally, launch the training loop.
