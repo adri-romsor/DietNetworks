@@ -41,40 +41,35 @@ def onehot_labels(labels, min_val, max_val):
     return output
 
 
-def monitoring(val_fn, dataset_name, minibatches, monitoring_labels):
+def monitoring(minibatches, dataset_name, val_fn, monitoring_labels,
+                pred_fn, n_classes):
 
     monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
+    confusion = np.zeros((n_classes, n_classes))
     global_batches = 0
 
     for batch in minibatches:
         inputs, targets = batch
+
+        # Update monitored values
         out = val_fn(inputs, targets)
         monitoring_values = monitoring_values + out
         global_batches += 1
-    monitoring_values /= global_batches
 
-    for (label, val) in zip(monitoring_labels, monitoring_values):
-        print ("  {} {}:\t\t{:.6f}".format(dataset_name, label, val))
-
-
-def compute_BER(pred_fn, minibatches, n_classes):
-
-    confusion = np.zeros((n_classes, n_classes))
-    num_batches = 0
-    BER = 0
-
-    for batch in minibatches:
-        inputs, targets = batch
+        # Update the confusion matrix
         pred = pred_fn(inputs)
         for i in xrange(len(targets)):
             confusion[int(targets[i]), int(pred[i])] += 1
-        BER += 0.5 * (confusion[0, 1] / confusion.sum(axis=1)[0] +
-                      confusion[1, 0] / confusion.sum(axis=1)[1])
-        num_batches += 1
 
-    BER /= num_batches
+    # Print monitored values
+    monitoring_values /= global_batches
+    for (label, val) in zip(monitoring_labels, monitoring_values):
+        print ("  {} {}:\t\t{:.6f}".format(dataset_name, label, val))
 
-    print ("  test ber:\t\t{:.6f}".format(BER))
+    # Print the BER (balanced error rate)
+    ber = 0.5 * (confusion[0, 1] / confusion.sum(axis=1)[0] +
+                 confusion[1, 0] / confusion.sum(axis=1)[1])
+    print ("  {} ber:\t\t\t{:.6f}".format(dataset_name, ber))
 
 
 # Main program
@@ -131,6 +126,7 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
 
     discrim_net = InputLayer((n_batch, n_feats), input_var.transpose())
     discrim_net = DenseLayer(discrim_net, num_units=n_output, W=feat_emb)
+    discrim_net = DenseLayer(discrim_net, num_units=n_output)
     discrim_net = DenseLayer(discrim_net, num_units=n_classes, nonlinearity=softmax)
 
     # Create a loss expression for training
@@ -216,7 +212,8 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
 
         train_minibatches = iterate_minibatches(x_train, y_train, n_batch,
                                                 minibatch_axis, shuffle=False)
-        monitoring(val_fn, "train", train_minibatches, monitor_labels)
+        monitoring(train_minibatches, "train", val_fn,
+                   monitor_labels, pred_fn, n_classes)
 
         # Only monitor on the validation set if training in a supervised way
         # otherwise the dimensions will not match.
@@ -224,7 +221,8 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
             valid_minibatches = iterate_minibatches(x_valid, y_valid, n_batch,
                                                     minibatch_axis,
                                                     shuffle=False)
-            monitoring(val_fn, "valid", valid_minibatches, monitor_labels)
+            monitoring(valid_minibatches, "valid", val_fn,
+                       monitor_labels, pred_fn, n_classes)
 
         print("  total time:\t\t\t{:.3f}s".format(time.time() - start_time))
 
@@ -234,11 +232,8 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
         test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
                                                minibatch_axis, shuffle=False)
         print("Final results:")
-        monitoring(val_fn, "test", test_minibatches, monitor_labels)
-
-        test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
-                                               minibatch_axis, shuffle=False)
-        compute_BER(pred_fn, test_minibatches, n_classes)
+        monitoring(test_minibatches, "test", val_fn,
+                   monitor_labels, pred_fn, n_classes)
 
     # Save network weights to a file
     if not os.path.exists(save_path):
