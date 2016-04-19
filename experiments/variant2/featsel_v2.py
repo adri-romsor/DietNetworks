@@ -5,7 +5,7 @@ import os
 
 import lasagne
 from lasagne.layers import DenseLayer, InputLayer
-from lasagne.nonlinearities import sigmoid, softmax, tanh, linear
+from lasagne.nonlinearities import sigmoid, softmax  # , tanh, linear
 import numpy as np
 import theano
 import theano.tensor as T
@@ -70,7 +70,7 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels,
     # Print the BER (balanced error rate)
     if pred_fn is not None:
         ber = 0.5 * (confusion[0, 1] / confusion.sum(axis=1)[0] +
-                    confusion[1, 0] / confusion.sum(axis=1)[1])
+                     confusion[1, 0] / confusion.sum(axis=1)[1])
         print ("  {} ber:\t\t\t{:.6f}".format(dataset_name, ber))
 
 
@@ -124,21 +124,25 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
 
     decoder_net = DenseLayer(encoder_net, num_units=n_samples,
                              nonlinearity=sigmoid)
-    # decoder_net = DenseLayer(encoder_net, num_units=n_samples, nonlinearity=sigmoid)
+    # decoder_net = DenseLayer(encoder_net, num_units=n_samples,
+    #                          nonlinearity=sigmoid)
 
     discrim_net = InputLayer((n_batch, n_feats), input_var.transpose())
     discrim_net = DenseLayer(discrim_net, num_units=n_output, W=feat_emb)
     discrim_net = DenseLayer(discrim_net, num_units=n_output)
-    discrim_net = DenseLayer(discrim_net, num_units=n_classes, nonlinearity=softmax)
+    discrim_net = DenseLayer(discrim_net, num_units=n_classes,
+                             nonlinearity=softmax)
 
     # Create a loss expression for training
     print("Building and compiling training functions")
     # Expressions required for training
 
     reconstruction = lasagne.layers.get_output(decoder_net)
-    reconstruction_loss = lasagne.objectives.binary_crossentropy(reconstruction, input_var).mean()
+    reconstruction_loss = lasagne.objectives.binary_crossentropy(
+        reconstruction, input_var).mean()
     prediction = lasagne.layers.get_output(discrim_net)
-    prediction_loss = lasagne.objectives.categorical_crossentropy(prediction, target_var).mean()
+    prediction_loss = lasagne.objectives.categorical_crossentropy(
+        prediction, target_var).mean()
 
     params_sup = lasagne.layers.get_all_params(discrim_net, trainable=True)
     params_unsup = lasagne.layers.get_all_params(decoder_net, trainable=True)
@@ -154,13 +158,13 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
         params = params_unsup
 
     updates = lasagne.updates.rmsprop(loss,
-                                       params,
-                                       learning_rate=lr)
+                                      params,
+                                      learning_rate=lr)
     # updates = lasagne.updates.sgd(loss,
     #                              params,
     #                              learning_rate=lr)
-    #updates = lasagne.updates.momentum(loss, params,
-    #                                   learning_rate=lr, momentum=0.0)
+    # updates = lasagne.updates.momentum(loss, params,
+    #                                    learning_rate=lr, momentum=0.0)
     updates[lr] = (lr * 0.99).astype("float32")
 
     # Compile a function performing a training step on a mini-batch (by
@@ -175,9 +179,10 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
 
     # Expressions required for test
     if training == "supervised":
-        test_prediction = lasagne.layers.get_output(discrim_net, deterministic=True)
-        test_predictions_loss = lasagne.objectives.categorical_crossentropy(test_prediction,
-                                                                            target_var).mean()
+        test_prediction = lasagne.layers.get_output(discrim_net,
+                                                    deterministic=True)
+        test_predictions_loss = lasagne.objectives.categorical_crossentropy(
+            test_prediction, target_var).mean()
         test_class = T.argmax(test_prediction, axis=1)
         test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),
                           dtype=theano.config.floatX) * 100.
@@ -187,9 +192,10 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
         pred_fn = theano.function([input_var], test_class)
         monitor_labels = ["pred. loss", "accuracy"]
     elif training == "unsupervised":
-        test_reconstruction = lasagne.layers.get_output(decoder_net, deterministic=True)
-        test_reconstruction_loss = lasagne.objectives.binary_crossentropy(test_reconstruction,
-                                                                          input_var).mean()
+        test_reconstruction = lasagne.layers.get_output(decoder_net,
+                                                        deterministic=True)
+        test_reconstruction_loss = lasagne.objectives.binary_crossentropy(
+            test_reconstruction, input_var).mean()
 
         val_fn = theano.function([input_var, target_var],
                                  [test_reconstruction_loss],
@@ -246,7 +252,6 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
              *lasagne.layers.get_all_param_values(decoder_net))
     np.savez(save_path+'model2.npz',
              *lasagne.layers.get_all_param_values(discrim_net))
-
 
     # And load them again later on like this:
     # with np.load('model.npz') as f:
