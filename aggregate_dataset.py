@@ -106,6 +106,16 @@ def parse_23_and_me_dict(filename, feature_values_dict):
     return d
 
 
+def categorize_features_for_batch(batch):
+    size_batch, n_feat = batch.shape
+    batch_categ = np.zeros((size_batch, 20*n_feat))
+    idx_feat_start = np.arange(n_feat)*20
+    slice_column_idx = np.concatenate(batch+idx_feat_start)
+    slice_row_idx = np.repeat(range(size_batch), n_feat)
+    batch_categ[slice_row_idx, slice_column_idx] = 1
+    return batch_categ
+
+
 if __name__ == "__main__":
     data_dir = "/data/lisatmp4/sylvaint/data/openSNP"
     files = list_files(data_dir)
@@ -173,3 +183,22 @@ if __name__ == "__main__":
 
     # Save the result to disk
     np.save("/data/lisatmp4/carriepl/ma_dataset.npy", arr)
+
+##########################################################################
+# splitting dataset
+# start by filtering data by annotation availability (here label = height)
+
+
+def map_to_float(s):
+    if s == '':
+        return -1.0
+    else:
+        return float(s)
+
+height = np.genfromtxt('height.csv', dtype=None, delimiter="\t")
+height[:, 1] = map(map_to_float, height[:, 1])
+height = height.astype(float)  # from str to float
+# height.astype(int)  # if you prefer int
+# selecting the subset of user without height data
+user_idx_wo_height = height[height[:, 1] == -1, 0]
+user_idx_w_height = height[height[:, 1] != -1, 0]
