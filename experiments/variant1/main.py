@@ -42,6 +42,7 @@ valid_set = dorothea.load_data("valid", "feature_representation", True, "fuel")
 
 nb_examples, nb_features = train_x.shape
 
+
 def main(save_to, num_epochs):
     mlp = MLP([Rectifier(), Rectifier(), Logistic()],
               [nb_examples + 1, 4000, 4000, 1],
@@ -51,33 +52,32 @@ def main(save_to, num_epochs):
 
     x = tensor.matrix('features')          # shape : b * (1 + d)
     y = tensor.vector('targets')          # shape : b
-    
-    
+
     preds = mlp.apply(x)
-    
-    cost = BinaryCrossEntropy().apply(y[:,None], preds)
-    
-    # Compute various error rates for monitoring    
-    error_rate = BinaryMisclassificationRate().apply(y[:,None], preds)
+
+    cost = BinaryCrossEntropy().apply(y[:, None], preds)
+
+    # Compute various error rates for monitoring
+    error_rate = BinaryMisclassificationRate().apply(y[:, None], preds)
     error_rate.name = 'individual_error_rate'
-    
-    #g_preds = preds.reshape([nb_features, -1])
-    #g_y = y.reshape([nb_features, -1])
-    #averaging_error = BinaryMisclassificationRate().apply(g_y[0,:], g_preds.mean(axis=1))
-    #averaging_error.name = 'averaging_error_rate'
-    #voting_error = BinaryMisclassificationRate().apply(g_y[0,:],
+
+    # g_preds = preds.reshape([nb_features, -1])
+    # g_y = y.reshape([nb_features, -1])
+    # averaging_error = BinaryMisclassificationRate().apply(g_y[0,:], g_preds.mean(axis=1))
+    # averaging_error.name = 'averaging_error_rate'
+    # voting_error = BinaryMisclassificationRate().apply(g_y[0,:],
     #                                                   tensor.gt(g_preds, 0.5).mean(axis=1))
-    #voting_error.name = 'voting_error_rate'
-    
+    # voting_error.name = 'voting_error_rate'
+
     averaging_error = BinaryMisclassificationRate().apply(y[0], preds.mean())
     averaging_error.name = 'averaging_error_rate'
-    voting_error = BinaryMisclassificationRate().apply(y[0],
-                                                       tensor.gt(preds, 0.5).mean())
+    voting_error = BinaryMisclassificationRate().apply(
+        y[0], tensor.gt(preds, 0.5).mean())
     voting_error.name = 'voting_error_rate'
 
     cg = ComputationGraph([cost])
-    #W1, W2, W3 = VariableFilter(roles=[WEIGHT])(cg.variables)
-    #cost = (cost + .00005 * (W1 ** 2).sum() +
+    # W1, W2, W3 = VariableFilter(roles=[WEIGHT])(cg.variables)
+    # cost = (cost + .00005 * (W1 ** 2).sum() +
     #               .00005 * (W2 ** 2).sum() +
     #               .00005 * (W3 ** 2).sum())
     cost.name = 'final_cost'
@@ -95,8 +95,8 @@ def main(save_to, num_epochs):
                               valid_set,
                               iteration_scheme=SequentialScheme(
                                   valid_set.num_examples, 100000)),
-                          input_dataset = valid_x,
-                          features_dataset = train_x),
+                          input_dataset=valid_x,
+                          features_dataset=train_x),
                       prefix="test"),
                   TrainingDataMonitoring(
                       [cost, error_rate, averaging_error, voting_error,
@@ -113,8 +113,8 @@ def main(save_to, num_epochs):
                 train_set,
                 iteration_scheme=SequentialScheme(
                     train_set.num_examples, 100000)),
-            input_dataset = train_x,
-            features_dataset = train_x),
+            input_dataset=train_x,
+            features_dataset=train_x),
         model=Model(cost),
         extensions=extensions)
 
@@ -130,6 +130,7 @@ if __name__ == "__main__":
                               "process."))
     args = parser.parse_args()
     main(args.save_to, args.num_epochs)
+
 
 # Build the model
 def construct_model(input_dim, output_dim):
