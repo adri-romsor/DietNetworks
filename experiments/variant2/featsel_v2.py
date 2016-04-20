@@ -41,6 +41,33 @@ def onehot_labels(labels, min_val, max_val):
     return output
 
 
+def generate_test_predictions(minibatches, pred_fn):
+
+    # Obtain the predictions over all the examples
+    all_predictions = np.zeros((0), "int32")
+    all_probabilities = np.zeros((0), "float32")
+    for batch in minibatches:
+        inputs, _ = batch
+
+        probs = pred_fn(inputs)
+        all_probabilities = np.concatenate((all_probabilities, probs[:, 1]),
+                                           axis=0)
+
+        predictions = probs.argmax(axis=1)
+        all_predictions = np.concatenate((all_predictions, predictions),
+                                         axis=0)
+
+    # Write the predictions to a text file
+    filename_pred = "test_preds_" + time.strftime("%Y-%M-%d_%T") + ".txt"
+    with open(filename_pred, "w") as f:
+        f.write(",".join([str(p) for p in all_predictions]))
+
+    # Also write the probabilities of the positive class to a text file
+    filename_prob = "test_probs_" + time.strftime("%Y-%M-%d_%T") + ".txt"
+    with open(filename_prob, "w") as f:
+        f.write(",".join([str(p) for p in all_probabilities])  )
+
+
 def monitoring(minibatches, dataset_name, val_fn, monitoring_labels,
                pred_fn=None, n_classes=2):
 
@@ -103,9 +130,9 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
         x_train, y_train = load_data('train', 'standard', False, 'numpy')
         x_valid, y_valid = load_data('valid', 'standard', False, 'numpy')
 
-        # There is a test set but it has no labels. For simplicity, use
-        # the validation set as test set
-        x_test, y_test = x_valid, y_valid
+        # WARNING : The dorothea dataset has no test labels
+        x_test = load_data('test', 'standard', False, 'numpy')
+        y_test = None
 
     elif dataset == 'debug':
         x_train = np.random.rand(10, 100).astype(np.float32)

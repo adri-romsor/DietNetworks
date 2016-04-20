@@ -6,11 +6,11 @@ from fuel.datasets import Dataset, IndexableDataset
 
 def load_data(which, mode='standard', shuffle=False, return_format='fuel'):
     
-    assert which in ['train', 'valid']
+    assert which in ['train', 'valid', 'test']
     assert mode in ['standard', 'feature_representation']
     assert return_format in ['numpy', 'fuel']
     
-    train_x, train_y, valid_x, valid_y, _ = read_files()
+    train_x, train_y, valid_x, valid_y, test_x = read_files()
     
     if which == 'train':
         #indices = numpy.concatenate((numpy.argwhere(train_y==0)[:10],
@@ -24,6 +24,12 @@ def load_data(which, mode='standard', shuffle=False, return_format='fuel'):
         #                            axis=0)[:,0]
         x = valid_x
         y = valid_y
+    elif which == 'test':
+        x = test_x
+
+        # NOTE : The labels from the training set are used to simplify the
+        # following transformation code but they are NOT returned to the user.
+        y = train_y
     
     # Shuffle x and y together, if needed
     if shuffle:
@@ -41,11 +47,23 @@ def load_data(which, mode='standard', shuffle=False, return_format='fuel'):
     
     # Format x and y into a Fuel Indexable dataset
     if return_format == "numpy":
-        return x, y
+        if which == "test":
+            return x
+        else:
+            return x, y
     elif return_format == "fuel":
-        return IndexableDataset(indexables=OrderedDict([('features', x), ('targets', y)]),
-                                axis_labels={'features' : ('batch', 'length'), 'targets' : ('batch',)},
-                                sources=('features', 'targets'))
+        if which == "test":
+            return IndexableDataset(indexables=OrderedDict([('features', x)]),
+                                    axis_labels={'features': ('batch',
+                                                              'length')},
+                                    sources=('features'))
+        else:
+            return IndexableDataset(indexables=OrderedDict([('features', x),
+                                                            ('targets', y)]),
+                                    axis_labels={'features': ('batch',
+                                                              'length'),
+                                                 'targets': ('batch',)},
+                                    sources=('features', 'targets'))
 
     
 def read_files():
