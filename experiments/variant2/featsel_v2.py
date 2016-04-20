@@ -45,7 +45,8 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels,
                pred_fn=None, n_classes=2):
 
     monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
-    confusion = np.zeros((n_classes, n_classes))
+    all_probs = np.zeros((0, n_classes), "float32")
+    all_targets = np.zeros((0), "float32")
     global_batches = 0
 
     for batch in minibatches:
@@ -56,23 +57,42 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels,
         monitoring_values = monitoring_values + out
         global_batches += 1
 
-        # Update the confusion matrix
+        # Update the prediction / target lists
         if pred_fn is not None:
-            pred = pred_fn(inputs)
-            for i in xrange(len(targets)):
-                confusion[int(targets[i]), int(pred[i])] += 1
+            probs = pred_fn(inputs)
+            all_probs = np.concatenate((all_probs, probs), axis=0)
+            all_targets = np.concatenate((all_targets, targets), axis=0)
 
     # Print monitored values
     monitoring_values /= global_batches
     for (label, val) in zip(monitoring_labels, monitoring_values):
         print ("  {} {}:\t\t{:.6f}".format(dataset_name, label, val))
 
-    # Print the BER (balanced error rate)
+    # Print supervised-specific metrics
     if pred_fn is not None:
+        # Compute the confusion matrix
+        all_predictions = all_probs.argmax(1)
+        confusion = np.zeros((n_classes, n_classes))
+        for i in range(len(all_predictions)):
+            confusion[all_targets[i], all_predictions[i]] += 1
+
+        # Print the BER (balanced error rate)
         ber = 0.5 * (confusion[0, 1] / confusion.sum(axis=1)[0] +
                     confusion[1, 0] / confusion.sum(axis=1)[1])
         print ("  {} ber:\t\t\t{:.6f}".format(dataset_name, ber))
 
+        # Compute and print the AUC (this implementation is inefficient but
+        # simple, it may be sped up if it ever becomes a bottleneck. It comes
+        # from http://www.cs.ru.nl/~tomh/onderwijs/dm/dm_files/roc_auc.pdf)
+        preds_for_neg_examples = all_predictions[np.argwhere(all_targets == 0)]
+        preds_for_pos_examples = all_predictions[np.argwhere(all_targets == 1)]
+        auc = 0.
+        for neg_pred in preds_for_neg_examples:
+            for pos_pred in preds_for_pos_examples:
+                if pos_pred > neg_pred:
+                    auc += 1.
+        auc /= (len(preds_for_neg_examples) * len(preds_for_pos_examples))
+        print ("  {} auc:\t\t\t{:.6f}".format(dataset_name, auc))
 
 # Main program
 def execute(training, dataset, n_output, embedding_source, num_epochs=500):
@@ -177,7 +197,7 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
 
         val_fn = theano.function([input_var, target_var],
                                  [test_predictions_loss, test_acc])
-        pred_fn = theano.function([input_var], test_class)
+        pred_fn = theano.function([input_var], test_prediction)
         monitor_labels = ["pred. loss", "accuracy"]
     elif training == "unsupervised":
         test_reconstruction = lasagne.layers.get_output(decoder_net, deterministic=True)
