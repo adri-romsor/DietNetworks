@@ -133,25 +133,18 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
 
     # Create a loss expression for training
     print("Building and compiling training functions")
+
     # Expressions required for training
-
-    reconstruction = lasagne.layers.get_output(decoder_net)
-    reconstruction_loss = lasagne.objectives.binary_crossentropy(reconstruction, input_var).mean()
-    prediction = lasagne.layers.get_output(discrim_net)
-    prediction_loss = lasagne.objectives.categorical_crossentropy(prediction, target_var).mean()
-
-    params_sup = lasagne.layers.get_all_params(discrim_net, trainable=True)
-    params_unsup = lasagne.layers.get_all_params(decoder_net, trainable=True)
-
     if training == "supervised":
-        loss = prediction_loss
-        params = params_sup
-    elif training == "semi_supervised":
-        loss = reconstruction_loss + prediction_loss
-        params = params_sup + params_unsup
+        prediction = lasagne.layers.get_output(discrim_net)
+        loss = lasagne.objectives.categorical_crossentropy(prediction,
+                                                           target_var).mean()
+        params = lasagne.layers.get_all_params(discrim_net, trainable=True)
     elif training == "unsupervised":
-        loss = reconstruction_loss
-        params = params_unsup
+        reconstruction = lasagne.layers.get_output(decoder_net)
+        loss = lasagne.objectives.binary_crossentropy(reconstruction,
+                                                      input_var).mean()
+        params = lasagne.layers.get_all_params(decoder_net, trainable=True)
 
     updates = lasagne.updates.rmsprop(loss,
                                        params,
