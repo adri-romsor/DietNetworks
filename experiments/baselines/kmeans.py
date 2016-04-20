@@ -1,21 +1,33 @@
+import sys
+sys.path.append('/data/lisatmp4/dejoieti/')
+
 from sklearn.cluster import KMeans
-from experiments.common.dorothea import load_data
+from feature_selection.experiments.common.dorothea import load_data
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 
-def kmeans_dorothea(x, nc=50):
+def kmeans_dorothea(n_cl=50):
+    save_path = '/data/lisatmp4/dejoieti/feature_selection/'
 
-    km = KMeans(verbose=True, n_clusters=nc)
-    km.fit(x)
-
-    return km.transform(x), km
-
-
-if __name__ != '__main__':
     x_train, y_train = load_data('train', return_format='numpy')
-    new_x, kmeans = kmeans_dorothea(x_train, nc=50)
+    x_valid, y_valid = load_data('valid', return_format='numpy')
+    km = KMeans(n_clusters=n_cl)
+    km.fit(x_train)
+    new_x_train = km.transform(x_train)
+    new_x_valid = km.transform(x_valid)
+
+    file_name = save_path + 'kmeans_' + str(n_cl) + '_embedding.npz'
+    np.savez(file_name, x_train=new_x_train, y_train=y_train,
+                        x_valid=new_x_valid, y_valid=y_valid)
+
+    return new_x_train, km
+
+
+if __name__ == '__main__':
+    x_train, y_train = load_data('train', return_format='numpy')
+    new_x, kmeans = kmeans_dorothea(n_cl=50)
 
 
     # The following is testig how accurate are the clusters to guess y
