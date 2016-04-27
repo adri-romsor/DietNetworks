@@ -1,3 +1,14 @@
+"""
+Module for supervised learning.
+
+This module should only be used when already having an embedding for the
+features or an embedding of the data.
+For getting an embedding of the features, see for instance
+featsel_unsupervised.py
+For getting an embedding of the data, see for instance
+benchmark/pca.py or benchmark/kmeans.py
+
+"""
 from __future__ import print_function
 
 import sys
@@ -7,21 +18,17 @@ import os
 
 import lasagne
 from lasagne.layers import DenseLayer, InputLayer
-from lasagne.nonlinearities import sigmoid, softmax  # , tanh, linear
+from lasagne.nonlinearities import softmax  # , tanh, linear
 import numpy as np
 import theano
 import theano.tensor as T
 
 sys.path.append('/data/lisatmp4/dejoieti/feature_selection')
 
-def iterate_minibatches(inputs, targets, batchsize, axis=0, shuffle=False):
+
+def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
+    """Generate the minibatches for learning."""
     assert len(inputs) == len(targets)
-    assert axis >= 0 and axis < len(inputs.shape)
-    targets = targets.transpose()
-
-    if axis == 1:
-        inputs = inputs.transpose()
-
     if shuffle:
         indices = np.arange(len(inputs))
         np.random.shuffle(indices)
@@ -32,10 +39,7 @@ def iterate_minibatches(inputs, targets, batchsize, axis=0, shuffle=False):
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
 
-        if axis == 0:
-            yield inputs[excerpt].transpose(), targets[excerpt]
-        elif axis == 1:
-            yield inputs[excerpt], targets
+        yield inputs[excerpt], targets[excerpt]
 
 
 def onehot_labels(labels, min_val, max_val):
@@ -68,12 +72,12 @@ def generate_test_predictions(minibatches, pred_fn):
     # Also write the probabilities of the positive class to a text file
     filename_prob = "test_probs_" + time.strftime("%Y-%M-%d_%T") + ".txt"
     with open(filename_prob, "w") as f:
-        f.write(",".join([str(p) for p in all_probabilities])  )
+        f.write(",".join([str(p) for p in all_probabilities]))
 
 
 def monitoring(minibatches, dataset_name, val_fn, monitoring_labels,
                pred_fn=None, n_classes=2):
-
+    """Monitor learning information."""
     monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
     all_probs = np.zeros((0, n_classes), "float32")
     all_targets = np.zeros((0), "float32")
@@ -124,9 +128,25 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels,
         auc /= (len(preds_for_neg_examples) * len(preds_for_pos_examples))
         print ("  {} auc:\t\t\t{:.6f}".format(dataset_name, auc))
 
+
 # Main program
 def execute(dataset, feat_embedding_source,
             samp_embedding_source, num_epochs=500):
+    """
+    Execute a supervised learning.
+
+    This function execute a suprevised learning using a embedding
+    of the features or directly an embedding of the data. You must
+    provide either one of them.
+
+    :param dataset: the dataset you want to use. genomics by default
+    :param feat_embedding_source: if you want to choose a feature embedding,
+    you should provide the path of the npz file from save_path
+    ('/data/lisatmp4/dejoieti/feature_selection/')
+    :param sample_embedding_source: if you want to choose directly an embedding
+    of the data, you should provide the path of the npz file from save_path
+    ('/data/lisatmp4/dejoieti/feature_selection/')
+    """
     # Load the dataset
     save_path = '/data/lisatmp4/dejoieti/feature_selection/'
     print("Loading data")
@@ -177,11 +197,11 @@ def execute(dataset, feat_embedding_source,
 
     if feat_embedding_source:
         feat_emb_val = np.load(save_path + feat_embedding_source).items()[0][1]
-        feat_emb = theano.shared(feat_emb_val, 'feat_emb')
+        feat_emb = theano.shared(feat_emb_val.astype('float32'), 'feat_emb')
 
         n_output = feat_emb_val.shape[1]
 
-        discrim_net = InputLayer((n_batch, n_feats), input_var.transpose())
+        discrim_net = InputLayer((n_batch, n_feats), input_var)
         discrim_net = DenseLayer(discrim_net, num_units=n_output, W=feat_emb)
 
     elif samp_embedding_source:
@@ -237,13 +257,12 @@ def execute(dataset, feat_embedding_source,
     # Finally, launch the training loop.
     print("Starting training...")
     # We iterate over epochs:
-    minibatch_axis = 0
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data to updates
         # the parameters:
         start_time = time.time()
         for batch in iterate_minibatches(x_train, y_train, n_batch,
-                                         minibatch_axis, shuffle=True):
+                                         shuffle=True):
             inputs, targets = batch
             train_fn(inputs, targets)
 
@@ -251,14 +270,13 @@ def execute(dataset, feat_embedding_source,
         print("Epoch {} of {}".format(epoch + 1, num_epochs))
 
         train_minibatches = iterate_minibatches(x_train, y_train, n_batch,
-                                                minibatch_axis, shuffle=False)
+                                                shuffle=False)
         monitoring(train_minibatches, "train", val_fn,
                    monitor_labels, pred_fn, n_classes)
 
         # Only monitor on the validation set if training in a supervised way
         # otherwise the dimensions will not match.
         valid_minibatches = iterate_minibatches(x_valid, y_valid, n_batch,
-                                                minibatch_axis,
                                                 shuffle=False)
         monitoring(valid_minibatches, "valid", val_fn,
                    monitor_labels, pred_fn, n_classes)
@@ -268,7 +286,7 @@ def execute(dataset, feat_embedding_source,
     # After training, we compute and print the test error (only if doing
     # supervised training or the dimensions will not match):
     test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
-                                           minibatch_axis, shuffle=False)
+                                           shuffle=False)
     print("Final results:")
     monitoring(test_minibatches, "test", val_fn,
                monitor_labels, pred_fn, n_classes)
@@ -290,6 +308,7 @@ def execute(dataset, feat_embedding_source,
 
 
 def main():
+    """Run execute with the accurate arguments."""
     parser = argparse.ArgumentParser(description="""Implementation of the
                                      feature selection v2""")
     parser.add_argument('-dataset',

@@ -1,3 +1,10 @@
+"""
+Unsupervised learning module.
+
+This module can be used to generate an embeding of thge features.
+This embedding can then be used for supervised learning.
+See featsel_supervised.py
+"""
 from __future__ import print_function
 
 import sys
@@ -7,7 +14,7 @@ import os
 
 import lasagne
 from lasagne.layers import DenseLayer, InputLayer
-from lasagne.nonlinearities import sigmoid, softmax  # , tanh, linear
+from lasagne.nonlinearities import sigmoid  # , tanh, linear
 import numpy as np
 import theano
 import theano.tensor as T
@@ -17,6 +24,7 @@ sys.path.append('/data/lisatmp4/dejoieti/feature_selection')
 
 
 def iterate_minibatches(inputs, targets, batchsize, axis=0, shuffle=False):
+    """Generate minibatches for learning."""
     assert len(inputs) == len(targets)
     assert axis >= 0 and axis < len(inputs.shape)
     targets = targets.transpose()
