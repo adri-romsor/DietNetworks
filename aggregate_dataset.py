@@ -116,7 +116,74 @@ def categorize_features_for_batch(batch):
     return batch_categ
 
 
+def load_data23andme(data_path='/data/lisatmp4/erraqabi', split=[.6, .2, .2],
+                     shuffle=False):
+     '''
+     splitting dataset
+     '''
+    data = np.load(data_path+'/ma_dataset.npy')
+    labels = np.load(data_path+'/height_ma_dataset.npy')
+    n_data = len(labels)
+    end_train = int(split[0]*n_data)
+    end_val = int(split[1]*n_data)
+    users_idx = np.arange(len(labels))
+    if shuffle:
+        np.random.shuffle(users_idx)
+    pos_users_idx = users_idx[labels.squeeze() != -1]
+    # pos_users_idx = users_idx[labels != -1]
+
+    # unsupervised setting #
+    # data
+    unsupervised_train_data = data[:end_train]
+    unsupervised_test_data = data[end_train:]
+    # labels
+    unsupervised_train_labels = labels[:end_train]
+    unsupervised_test_labels = labels[end_train:]
+
+    # selecting positive samples (i.e with labels)
+    pos_users_train = [ind for ind in pos_users_idx if ind < end_train]
+    pos_users_val = [ind for ind in pos_users_idx if ind >= end_train and
+                     ind < end_val]
+    pos_users_test = [ind for ind in pos_users_idx if ind >= end_val]
+
+    # supervised setting #
+    # data
+    supervised_train_data = unsupervised_train_data[pos_users_train]
+    supervised_val_data = unsupervised_test_data[pos_users_val]
+    supervised_test_data = unsupervised_test_data[pos_users_test]
+    # label
+    supervised_train_labels = labels[pos_users_train]
+    supervised_val_labels = labels[pos_users_val]
+    supervised_test_labels = labels[pos_users_test]
+
+return unsupervised_train_data, unsupervised_test_data,
+    unsupervised_train_labels, unsupervised_test_labels,
+    supervised_train_data, supervised_val_data, supervised_test_data,
+    supervised_train_labels, supervised_val_labels, supervised_test_labels
+
+
 if __name__ == "__main__":
+    split = [.6, .2, .2]
+
+    def map_to_float(s):
+        if s == '':
+            return -1.0
+        else:
+            return float(s)
+
+    height = np.genfromtxt('height.csv', dtype=None, delimiter="\t")
+    height = height[1:, :]
+    height[:, 1] = map(map_to_float, height[:, 1])
+    height = height.astype(float)  # from str to float
+    # height.astype(int)  # if you prefer int
+
+    # some users are annotated multiple times,we keep first occurence of each
+    list_users_id, unique_idx = np.unique(height[:, 0], return_index=True)
+    height_by_users_id = height[unique_idx, :]
+    users_id_w_height = list(height[height[:, 1] != -1, 0])
+    # users_id_w_height_str = ['user'+str(el) for el in users_id_w_height]
+
+    # constructing dataset
     data_dir = "/data/lisatmp4/sylvaint/data/openSNP"
     files = list_files(data_dir)
 
@@ -135,7 +202,7 @@ if __name__ == "__main__":
                            'TT': 19, '--': 0}
 
     data23andme = {}
-
+    height_data23andme = {}
     for index, filename in enumerate(files["23_and_me"]):
         print("Processing %i out of %i" % (index, len(files["23_and_me"])))
         input_file = os.path.join(data_dir, filename)
@@ -147,10 +214,15 @@ if __name__ == "__main__":
                 add_dicts_validate(data23andme[user_id], temp_dict)
             else:
                 data23andme[user_id] = temp_dict
-
+                if int(user_id[4:]) in users_id_w_height:
+                    height_data23andme[user_id] = height[int(user_id[5:]), 1]
+                else:
+                    height_data23andme[user_id] = -1
         except:
             print("Skipping user", user_id)
         gc.collect()
+        # if index == 10:
+        #     break
 
     # Convert the result to a numpy array
     #####################################
@@ -168,37 +240,22 @@ if __name__ == "__main__":
     # Step 2 : allocate a numpy array large enough to contain the results
     shape = (len(data23andme.keys()), len(feature_dict.keys()))
     arr = np.zeros(shape, "int32")
-
+    arr_height = np.zeros((shape[0], 1))
     # Step 3 : go over the dict of dicts and insert the data in the allocated
     # array.
-    for user_idx, user_dict in enumerate(data23andme.values()):
+    for user_idx, user_id in enumerate(data23andme.keys()):
+        if user_id in height_data23andme.keys():
+            arr_height[user_idx] = height_data23andme[user_id]
+        else:
+            arr_height[user_idx] = -1
+        user_dict = data23andme[user_id]
         if user_idx % 10 == 0:
             print user_idx
         for feature_id in user_dict.keys():
-
             feature_value = user_dict[feature_id]
             feature_idx = feature_dict[feature_id]
-
             arr[user_idx, feature_idx] = feature_value
-
+    arr_height = arr_height.squeeze()
     # Save the result to disk
-    np.save("/data/lisatmp4/carriepl/ma_dataset.npy", arr)
-
-##########################################################################
-# splitting dataset
-# start by filtering data by annotation availability (here label = height)
-
-
-def map_to_float(s):
-    if s == '':
-        return -1.0
-    else:
-        return float(s)
-
-height = np.genfromtxt('height.csv', dtype=None, delimiter="\t")
-height[:, 1] = map(map_to_float, height[:, 1])
-height = height.astype(float)  # from str to float
-# height.astype(int)  # if you prefer int
-# selecting the subset of user without height data
-user_idx_wo_height = height[height[:, 1] == -1, 0]
-user_idx_w_height = height[height[:, 1] != -1, 0]
+    np.save("/data/lisatmp4/erraqabi/ma_dataset.npy", arr)
+    np.save("/data/lisatmp4/erraqabi/height_ma_dataset.npy", arr_height)
