@@ -117,10 +117,11 @@ def categorize_features_for_batch(batch):
 
 
 def load_data23andme(data_path='/data/lisatmp4/erraqabi', split=[.6, .2, .2],
-                     shuffle=False):
+                     shuffle=False, seed = 32):
      '''
      splitting dataset
      '''
+    np.random.seed(seed)
     data = np.load(data_path+'/ma_dataset.npy')
     labels = np.load(data_path+'/height_ma_dataset.npy')
     n_data = len(labels)
