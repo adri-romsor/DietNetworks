@@ -158,7 +158,6 @@ def load_data23andme(data_path='/data/lisatmp4/erraqabi', split=[.6, .2, .2],
     supervised_test_labels = labels[pos_users_test]
 
 return unsupervised_train_data, unsupervised_test_data,
-    unsupervised_train_labels, unsupervised_test_labels,
     supervised_train_data, supervised_val_data, supervised_test_data,
     supervised_train_labels, supervised_val_labels, supervised_test_labels
 
