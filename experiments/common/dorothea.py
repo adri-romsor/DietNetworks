@@ -6,7 +6,7 @@ from config import path_dorothea
 
 def load_data(which, mode='standard', shuffle=False, return_format='fuel'):
 
-    assert which in ['train', 'valid', 'test']
+    assert which in ['train', 'valid', 'test', 'all']
     assert mode in ['standard', 'feature_representation']
     assert return_format in ['numpy', 'fuel']
 
@@ -31,6 +31,11 @@ def load_data(which, mode='standard', shuffle=False, return_format='fuel'):
         # NOTE : The labels from the training set are used to simplify the
         # following transformation code but they are NOT returned to the user.
         y = train_y
+        
+    elif which == 'all':
+        x = numpy.vstack((train_x, valid_x, test_x))
+        y = numpy.hstack((train_y, valid_y, train_y))
+    
 
     # Shuffle x and y together, if needed
     if shuffle:

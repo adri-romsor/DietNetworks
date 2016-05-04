@@ -120,6 +120,7 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels,
                     auc += 1.
         auc /= (len(preds_for_neg_examples) * len(preds_for_pos_examples))
         print ("  {} auc:\t\t\t{:.6f}".format(dataset_name, auc))
+        return auc
 
 # Main program
 def execute(training, dataset, n_output, embedding_source, num_epochs=500):
@@ -132,6 +133,14 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
 
         # WARNING : The dorothea dataset has no test labels
         x_test = load_data('test', 'standard', False, 'numpy')
+        y_test = None
+        
+    elif dataset == 'genomics_all':
+        from feature_selection.experiments.common.dorothea import load_data
+        x_train, y_train = load_data('all', 'standard', False, 'numpy')
+        x_valid = None
+        y_valid = None
+        x_test = None
         y_test = None
 
     elif dataset == 'debug':
@@ -148,8 +157,8 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
 
     n_samples, n_feats = x_train.shape
     n_classes = y_train.max() + 1
-    n_batch = 100
-    save_path = '/data/lisatmp4/romerosa/FeatureSelection/'
+    n_batch = 100 # ALERT
+    save_path = '/data/lisatmp4/carriepl/FeatureSelection/'
 
     # Prepare Theano variables for inputs and targets
     input_var = T.matrix('inputs')
@@ -171,12 +180,10 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
 
     decoder_net = DenseLayer(encoder_net, num_units=n_samples,
                              nonlinearity=sigmoid)
-    # decoder_net = DenseLayer(encoder_net, num_units=n_samples,
-    #                          nonlinearity=sigmoid)
 
     discrim_net = InputLayer((n_batch, n_feats), input_var.transpose())
     discrim_net = DenseLayer(discrim_net, num_units=n_output, W=feat_emb)
-    discrim_net = DenseLayer(discrim_net, num_units=n_output)
+    discrim_net = DenseLayer(discrim_net, num_units=n_output*2) # ALERT
     discrim_net = DenseLayer(discrim_net, num_units=n_classes,
                              nonlinearity=softmax)
 
@@ -186,8 +193,12 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
     # Expressions required for training
     if training == "supervised":
         prediction = lasagne.layers.get_output(discrim_net)
-        loss = lasagne.objectives.categorical_crossentropy(prediction,
-                                                           target_var).mean()
+        #loss = lasagne.objectives.categorical_crossentropy(prediction,
+        #                                                   target_var).mean()
+        losses = lasagne.objectives.categorical_crossentropy(prediction, target_var)
+        weighted_losses = (0.3 * losses * T.eq(target_var, 0) + 
+                           3.0 * losses * T.eq(target_var, 1)).astype("float32") # ALERT
+        loss = weighted_losses.mean()
         params = lasagne.layers.get_all_params(discrim_net, trainable=True)
     elif training == "unsupervised":
         reconstruction = lasagne.layers.get_output(decoder_net)
@@ -204,6 +215,7 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
     # updates = lasagne.updates.momentum(loss, params,
     #                                    learning_rate=lr, momentum=0.0)
     updates[lr] = (lr * 0.99).astype("float32")
+    updates[feat_emb] = feat_emb ###### WARNING ALERT
 
     # Compile a function performing a training step on a mini-batch (by
     # giving the updates dictionary) and returning the corresponding
@@ -244,6 +256,7 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
     # Finally, launch the training loop.
     print("Starting training...")
     # We iterate over epochs:
+    best_valid_auc = 0.0
     minibatch_axis = int(training == "unsupervised")
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data to updates
@@ -268,33 +281,40 @@ def execute(training, dataset, n_output, embedding_source, num_epochs=500):
             valid_minibatches = iterate_minibatches(x_valid, y_valid, n_batch,
                                                     minibatch_axis,
                                                     shuffle=False)
-            monitoring(valid_minibatches, "valid", val_fn,
-                       monitor_labels, pred_fn, n_classes)
+            valid_auc = monitoring(valid_minibatches, "valid", val_fn,
+                                   monitor_labels, pred_fn, n_classes)
 
+            if valid_auc > best_valid_auc:
+                best_valid_auc = valid_auc
+                
+                # If there are test labels, perform the monitoring. Else, print
+                # the test predictions for external evaluation.
+                if y_test is None:
+                    test_minibatches = iterate_minibatches(x_test, x_test,
+                                                           n_batch,
+                                                           minibatch_axis,
+                                                           shuffle=False)
+                    generate_test_predictions(test_minibatches, pred_fn)
+                else:
+                    test_minibatches = iterate_minibatches(x_test, y_test,
+                                                           n_batch,
+                                                           minibatch_axis,
+                                                           shuffle=False)
+                    monitoring(test_minibatches, "test", val_fn,
+                               monitor_labels, pred_fn, n_classes)
+
+
+                # Save network weights to a file
+                if not os.path.exists(save_path):
+                    os.makedirs(save_path)
+
+                #np.savez(save_path+'model1.npz',
+                #         *lasagne.layers.get_all_param_values(decoder_net))
+                #np.savez(save_path+'model2.npz',
+                #         *lasagne.layers.get_all_param_values(discrim_net))
+                
         print("  total time:\t\t\t{:.3f}s".format(time.time() - start_time))
 
-    # After training, we compute and print the test error (only if doing
-    # supervised training or the dimensions will not match):
-    if training == "supervised":
-        test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
-                                               minibatch_axis, shuffle=False)
-        print("Final results:")
-        monitoring(test_minibatches, "test", val_fn,
-                   monitor_labels, pred_fn, n_classes)
-
-    # Save network weights to a file
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-
-    np.savez(save_path+'model1.npz',
-             *lasagne.layers.get_all_param_values(decoder_net))
-    np.savez(save_path+'model2.npz',
-             *lasagne.layers.get_all_param_values(discrim_net))
-
-    # And load them again later on like this:
-    # with np.load('model.npz') as f:
-    #     param_values = [f['arr_%d' % i] for i in range(len(f.files))]
-    # lasagne.layers.set_all_param_values(network, param_values)
 
     # Save the learnt embedding (over the training set) to a file
     if training == "unsupervised":
