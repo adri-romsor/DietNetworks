@@ -16,10 +16,10 @@ def fcbf_dorothea(n_comp, save_path):
     print "Number of selected indices: {}".format(len(idx))
     print "x_train shape: {}".format(x_train.shape)
 
-    new_x_train = x_train[:,idx[:n_comp]]
-    new_x_valid = x_valid[:,idx[:n_comp]]
+    new_x_train = x_train[:,idx[0:n_comp]]
+    new_x_valid = x_valid[:,idx[0:n_comp]]
 
-    file_name = save_path + 'pca_' + str(n_comp) + '_embedding.npz'
+    file_name = save_path + 'fcbf_' + str(len(idx)) + '_embedding.npz'
     np.savez(file_name, x_train=new_x_train, y_train=y_train,
              x_valid=new_x_valid, y_valid=y_valid)
 
@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-save_path',
                         '-sp',
-                        default='/data/lisatmp4/dejoieti/feature_selection/',
+                        default='/Tmp/sylvaint/',
                         help='save path for the dataset')
 
     args = parser.parse_args()
