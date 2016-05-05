@@ -178,6 +178,7 @@ def load_data23andme_baselines(data_path='/data/lisatmp4/dejoieti',
     if shuffle:
         np.random.shuffle(users_idx)
     pos_users_idx = users_idx[labels.squeeze() != -1]
+    users_idx = users_idx[labels.squeeze() == -1]
 
     x_supervised = data[pos_users_idx]
     y_supervised = labels[pos_users_idx]
