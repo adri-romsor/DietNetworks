@@ -116,11 +116,11 @@ def categorize_features_for_batch(batch):
     return batch_categ
 
 
-def load_data23andme(data_path='/data/lisatmp4/erraqabi', split=[.6, .2, .2],
-                     shuffle=False, seed = 32):
-     '''
-     splitting dataset
-     '''
+def load_data23andme(data_path='/data/lisatmp4/dejoieti', split=[.6, .2, .2],
+                     shuffle=False, seed=32):
+    '''
+    Splitting dataset
+    '''
     np.random.seed(seed)
     data = np.load(data_path+'/ma_dataset.npy')
     labels = np.load(data_path+'/height_ma_dataset.npy')
@@ -138,8 +138,8 @@ def load_data23andme(data_path='/data/lisatmp4/erraqabi', split=[.6, .2, .2],
     unsupervised_train_data = data[:end_train]
     unsupervised_test_data = data[end_train:]
     # labels
-    unsupervised_train_labels = labels[:end_train]
-    unsupervised_test_labels = labels[end_train:]
+    # unsupervised_train_labels = labels[:end_train]
+    # unsupervised_test_labels = labels[end_train:]
 
     # selecting positive samples (i.e with labels)
     pos_users_train = [ind for ind in pos_users_idx if ind < end_train]
@@ -157,10 +157,51 @@ def load_data23andme(data_path='/data/lisatmp4/erraqabi', split=[.6, .2, .2],
     supervised_val_labels = labels[pos_users_val]
     supervised_test_labels = labels[pos_users_test]
 
-return unsupervised_train_data, unsupervised_test_data,
-    supervised_train_data, supervised_val_data, supervised_test_data,
-    supervised_train_labels, supervised_val_labels, supervised_test_labels
+    return unsupervised_train_data, unsupervised_test_data, \
+        supervised_train_data, supervised_val_data, supervised_test_data,\
+        supervised_train_labels, supervised_val_labels, supervised_test_labels
 
+
+def load_data23andme_baselines(data_path='/data/lisatmp4/dejoieti',
+                               shuffle=False, seed=32, split=.75):
+
+    '''
+    Splitting dataset
+    '''
+    # Load data
+    np.random.seed(seed)
+    data = np.load(data_path+'/ma_dataset.npy')
+    labels = np.load(data_path+'/height_ma_dataset.npy')
+
+    # Select supervised samples
+    users_idx = np.arange(len(labels))
+    if shuffle:
+        np.random.shuffle(users_idx)
+    pos_users_idx = users_idx[labels.squeeze() != -1]
+
+    x_supervised = data[pos_users_idx]
+    y_supervised = labels[pos_users_idx]
+
+    # Split supervised data into training and test
+    n_data = x_supervised.shape[0]
+    end_train = int(split*n_data)
+
+    # Supervised data into train and test sets
+    x_train_supervised = x_supervised[:end_train]
+    x_test_supervised = x_supervised[end_train:]
+    y_train_supervised = y_supervised[:end_train]
+    y_test_supervised = y_supervised[end_train:]
+
+    # Unsupervised data
+    unsup_users_idx = np.concatenate([users_idx, pos_users_idx[:end_train]])
+    x_unsupervised = data[unsup_users_idx]
+    # y_unsupervised = labels[pos_users_idx]
+
+    train_supervised = (x_train_supervised, y_train_supervised)
+    test_supervised = (x_test_supervised, y_test_supervised)
+    unsupervised = x_unsupervised
+
+    return train_supervised, test_supervised, unsupervised
 
 if __name__ == "__main__":
     split = [.6, .2, .2]
