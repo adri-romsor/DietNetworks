@@ -120,10 +120,17 @@ def execute(samp_embedding_source, num_epochs=500,
     # Load the dataset
     print("Loading data")
     f = np.load(save_path + samp_embedding_source)
-    x_train = np.array(f['x_train_supervised'], dtype=np.float32)
-    y_train = np.array(f['y_train_supervised'])
-    x_test = np.array(f['x_test_supervised'], dtype=np.float32)
-    y_test = np.array(f['y_test_supervised'])
+
+    print (f.files)
+    #x_train = np.array(f['x_train_supervised'], dtype=np.float32)
+    #y_train = np.array(f['y_train_supervised'])
+    #x_test = np.array(f['x_test_supervised'], dtype=np.float32)
+    #y_test = np.array(f['y_test_supervised'])
+
+    x_train = np.array(f['x_train'], dtype=np.float32)
+    y_train = np.array(f['y_train'])
+    x_test = np.array(f['x_valid'], dtype=np.float32)
+    y_test = np.array(f['y_valid'])
 
     n_data = x_train.shape[0] + x_test.shape[0]
     end_train = int(split_valid*n_data)
@@ -220,8 +227,8 @@ def execute(samp_embedding_source, num_epochs=500,
 
     print("Final results:")
 
-    import pdb
-    pdb.set_trace()
+    #import pdb
+    #pdb.set_trace()
     test_mon = monitoring(test_minibatches, "test", val_fn,
                           monitor_labels)
     valid_mon = monitoring(valid_minibatches, "valid", val_fn,
@@ -229,19 +236,23 @@ def execute(samp_embedding_source, num_epochs=500,
     train_mon = monitoring(train_minibatches, "train", val_fn,
                            monitor_labels)
 
-    import pdb
-    pdb.set_trace()
+    #import pdb
+    #pdb.set_trace()
+    save_path = os.path.join(save_path,"results")
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
 
-    np.savez(save_path+"errors_"+samp_embedding_source,
+    print ("save_path: {}".format(save_path))
+
+    np.savez(save_path+"errors_" + str(lr_value) + "_"+samp_embedding_source,
              test_err=test_mon["pred. loss"],
              valid_err=valid_mon["pred. loss"],
              train_err=train_mon["pred. loss"])
 
     # Save network weights to a file
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
 
-    np.savez(save_path+"regression_"+samp_embedding_source,
+
+    np.savez(save_path+"/regression_" + str(lr_value) + "_" +samp_embedding_source,
              *lasagne.layers.get_all_param_values(regression_net))
     # And load them again later on like this:
     # with np.load('model.npz') as f:
