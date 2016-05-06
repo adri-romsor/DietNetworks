@@ -2,7 +2,9 @@ import numpy
 from collections import OrderedDict
 
 from fuel.datasets import Dataset, IndexableDataset
-from config import path_dorothea
+#from config import path_dorothea
+path_dorothea = '/data/lisa/data/nips03/DOROTHEA/'
+
 
 def load_data(which, mode='standard', shuffle=False, return_format='fuel'):
 
@@ -31,11 +33,11 @@ def load_data(which, mode='standard', shuffle=False, return_format='fuel'):
         # NOTE : The labels from the training set are used to simplify the
         # following transformation code but they are NOT returned to the user.
         y = train_y
-        
+
     elif which == 'all':
         x = numpy.vstack((train_x, valid_x, test_x))
         y = numpy.hstack((train_y, valid_y, train_y))
-    
+
 
     # Shuffle x and y together, if needed
     if shuffle:
