@@ -168,6 +168,7 @@ def load_data23andme_baselines(data_path='/data/lisatmp4/dejoieti',
     '''
     Splitting dataset
     '''
+    
     # Load data
     np.random.seed(seed)
     data = np.load(data_path+'/ma_dataset.npy')
