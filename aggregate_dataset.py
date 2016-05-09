@@ -116,11 +116,11 @@ def categorize_features_for_batch(batch):
     return batch_categ
 
 
-def load_data23andme(data_path='/data/lisatmp4/dejoieti', split=[.6, .2, .2],
+def load_data23andme(data_path='/data/lisatmp4/erraqabi', split=[.6, .2, .2],
                      shuffle=False, seed=32):
     '''
-    Splitting dataset
-    '''
+     splitting dataset
+     '''
     np.random.seed(seed)
     data = np.load(data_path+'/ma_dataset.npy')
     labels = np.load(data_path+'/height_ma_dataset.npy')
@@ -138,14 +138,14 @@ def load_data23andme(data_path='/data/lisatmp4/dejoieti', split=[.6, .2, .2],
     unsupervised_train_data = data[:end_train]
     unsupervised_test_data = data[end_train:]
     # labels
-    # unsupervised_train_labels = labels[:end_train]
-    # unsupervised_test_labels = labels[end_train:]
+    unsupervised_train_labels = labels[:end_train]
+    unsupervised_test_labels = labels[end_train:]
 
     # selecting positive samples (i.e with labels)
     pos_users_train = [ind for ind in pos_users_idx if ind < end_train]
-    pos_users_val = [ind for ind in pos_users_idx if ind >= end_train and
+    pos_users_val = [ind-end_train for ind in pos_users_idx if ind >= end_train and
                      ind < end_val]
-    pos_users_test = [ind for ind in pos_users_idx if ind >= end_val]
+    pos_users_test = [ind-end_train for ind in pos_users_idx if ind >= end_val]
 
     # supervised setting #
     # data
@@ -157,9 +157,8 @@ def load_data23andme(data_path='/data/lisatmp4/dejoieti', split=[.6, .2, .2],
     supervised_val_labels = labels[pos_users_val]
     supervised_test_labels = labels[pos_users_test]
 
-    return unsupervised_train_data, unsupervised_test_data, \
-        supervised_train_data, supervised_val_data, supervised_test_data,\
-        supervised_train_labels, supervised_val_labels, supervised_test_labels
+    return unsupervised_train_data, unsupervised_test_data, supervised_train_data, supervised_val_data, supervised_test_data, supervised_train_labels, supervised_val_labels, supervised_test_labels
+
 
 
 def load_data23andme_baselines(data_path='/data/lisatmp4/dejoieti',
