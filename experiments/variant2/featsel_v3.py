@@ -14,7 +14,7 @@ import theano.tensor as T
 
 
 """
-NOTE : This script should be launched with the following Theano flags : 
+NOTE : This script should be launched with the following Theano flags :
 "device=gpu,floatX=float32,optimizer_excluding=scanOp_pushout_seqs_ops"
 """
 
@@ -60,35 +60,35 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels):
     for (label, val) in zip(monitoring_labels, monitoring_values):
         print ("  {}\t{}:\t\t{:.6f}".format(dataset_name, label, val))
         monitoring_dict[label] = val
-    
-    return monitoring_dict 
+
+    return monitoring_dict
 
 
 def group_softmax(z, group_size):
-    
+
     g_z = z.reshape((-1, group_size))
-    
+
     # The following line makes the softmax computation more numerically stable
     g_z = g_z - theano.gradient.zero_grad(g_z.max(axis=1, keepdims=True))
-    
+
     # Compute the softmax along the group axis
     #g_act = T.nnet.softmax(g_z)
     exp = g_z.exp()
     g_act = exp / exp.sum(1)[:,None]
-    
+
     act = g_act.reshape((z.shape[0], -1))
     return act
-    
+
 
 def group_categorical_crossentropy(y_hat, y, group_size):
-    
+
     g_y_hat = y_hat.reshape((-1, group_size))
     g_y = y.reshape((-1, group_size))
-    
+
     # Compute and return the loss
     target_classes = y.argmax(1)
     nll = -T.mean(T.log(y_hat)[T.arange(y.shape[0]), target_classes])
-    
+
     return nll
 
 
@@ -104,7 +104,7 @@ def execute(dataset, n_output, num_epochs=500):
         # WARNING : The dorothea dataset has no test labels
         x_test = load_data('test', 'standard', False, 'numpy')
         y_test = None
-        
+
     elif dataset == 'genomics_all':
         from feature_selection.experiments.common.dorothea import load_data
         x_train, y_train = load_data('all', 'standard', False, 'numpy')
@@ -120,17 +120,17 @@ def execute(dataset, n_output, num_epochs=500):
         y_train = np.random.randint(0, 2, size=10).astype('int32')
         y_valid = np.random.randint(0, 2, size=2).astype('int32')
         y_test = np.random.randint(0, 2, size=2).astype('int32')
-        
+
     elif dataset == 'debug_snp':
         # Creates a debug dataset meant to look like openSNP so there is
         # something to test this code on until openSNP has been successfully
         # wrapped and integrated
-        
+
         n_train = 10
         n_valid = 500
         n_test = 500
         n_features = 1000000
-        
+
         x_train = np.random.randint(0, 20, size=(n_train,
                                                  n_features)).astype('int8')
         x_valid = np.random.randint(0, 20, size=(n_valid,
@@ -143,7 +143,14 @@ def execute(dataset, n_output, num_epochs=500):
         y_test = np.random.randint(0, 200, size=n_test).astype('int8')
 
     elif dataset == 'opensnp':
-        pass
+        from feature_selection import aggregate_dataset
+
+        data = aggregate_dataset.load_data23andme(
+                                        datapath='/data/lisatmp3/dejoieti',
+                                        split=[.5, .25, .25], shuffle=False,
+                                        seed=32)
+        import pdb; pdb.set_trace()
+
 
     else:
         print("Unknown dataset")
@@ -154,11 +161,11 @@ def execute(dataset, n_output, num_epochs=500):
     n_classes = y_train.max() + 1
     n_batch = 10
     save_path = '/data/lisatmp4/carriepl/FeatureSelection/'
-    
+
     # Prepare Theano variables for inputs and targets
     input_var = T.matrix('inputs')
     target_var = T.ivector('targets')
-    
+
     feature_var = theano.shared(x_train.transpose(), 'feature_var')
     lr = theano.shared(np.float32(1e-6), 'learning_rate')
     
@@ -168,91 +175,98 @@ def execute(dataset, n_output, num_epochs=500):
 
     # Build model
     print("Building model")
-    
+
     # Define a few useful values for building the model
     feat_repr_size = 50
+    h_rep_size = 50
     extended_input_size = input_cardinality * n_feats
-    
+
     # Build the actual network input from the compressed input_var.
     inputs = [T.eq(input_var, float(i)).astype("float32")
               for i in range(input_cardinality)]
     inputs = T.stack(*inputs).dimshuffle(1, 2, 0).flatten(2)
-    
+
     # Build the portion of the model that will predict the feature
-    # representation from the feature activations
-    def step(iteration_idx, dataset):
+    # weights from the feature activations
+    def step(iteration_idx, dataset, inputs):
         # ALERT : It is necessary to launch this script with the proper Theano
-        # flags or this line of instructions will be pushed outside of the
+        # flags or the following instructions will be pushed outside of the
         # Scan, increasing memory usage by a factor of roughly
         # 'input_cardinality'.
         activations = T.eq(dataset.astype("float32"),
                            iteration_idx.astype("float32")).astype("float32")
-        
+
         feature_rep_net = InputLayer((n_feats, n_samples), activations)
         feature_rep_net = DenseLayer(feature_rep_net, num_units=feat_repr_size)
         feature_reps = lasagne.layers.get_output(feature_rep_net)
-        
-        return feature_reps
-        
-    feature_reps, updates = theano.scan(fn=step,
+
+        # Predict the encoder parameters for the features
+        enc_weights_net = DenseLayer(feature_rep_net, num_units=n_output)
+        enc_weights_net = DenseLayer(enc_weights_net, num_units=h_rep_size,
+                                W=lasagne.init.Uniform(), nonlinearity=tanh)
+        encoder_weights = lasagne.layers.get_output(enc_weights_net)
+
+        # Predict the contribution to the encoder's hidden representation
+        # here and only return that because current memory constraints do not
+        # allow us to return both 'encoder_weights' and 'decoder_weights' as
+        # this would take too much memory.
+        import pdb; pdb.set_trace()
+        hidden_contribution = T.dot(inputs[:, iteration_idx::20],
+                                    encoder_weights)
+
+        # Predict the decoder parameters for the features
+        dec_weights_net = DenseLayer(feature_rep_net, num_units=n_output)
+        dec_weights_net = DenseLayer(dec_weights_net, num_units=h_rep_size,
+                                 W=lasagne.init.Uniform(), nonlinearity=tanh)
+        decoder_weights = lasagne.layers.get_output(dec_weights_net).transpose()
+
+        return encoder_weights, decoder_weights
+
+    results, updates = theano.scan(fn=step,
                                         sequences=T.arange(input_cardinality),
-                                        non_sequences=feature_var,
+                                        non_sequences=[feature_var, inputs],
                                         allow_gc=False)
-    feature_reps = feature_reps.dimshuffle(1, 0, 2).reshape((-1, feat_repr_size))
-    feature_reps = InputLayer((extended_input_size, feat_repr_size),
-                              feature_reps)
-    
-    # Build the network that will predict the encoder weights given the
-    # feature representations
-    enc_weights_net = DenseLayer(feature_reps, num_units=n_output)
-    enc_weights_net = DenseLayer(enc_weights_net, num_units=n_output,
-                                 W=lasagne.init.Uniform(), nonlinearity=tanh)
-    encoder_weights = lasagne.layers.get_output(enc_weights_net)
-    
-    # Build the network that will predict the decoder weights given the
-    # feature representations
-    dec_weights_net = DenseLayer(feature_reps, num_units=n_output)
-    dec_weights_net = DenseLayer(dec_weights_net, num_units=n_output,
-                                 W=lasagne.init.Uniform(), nonlinearity=tanh)
-    decoder_weights = lasagne.layers.get_output(dec_weights_net).transpose()
-    
+
+    encoder_weights = results[0].dimshuffle(1, 0, 2).reshape((-1, h_rep_size))
+    decoder_weights = results[1].dimshuffle(1, 2, 0).reshape((h_rep_size, -1))
+
     # Build the encoder
     encoder = InputLayer((n_batch, extended_input_size), inputs)
     encoder = DenseLayer(encoder, num_units=n_output, W=encoder_weights)
     hidden_representation = lasagne.layers.get_output(encoder)
-    
+
     # Build the decoder
     decoder = DenseLayer(encoder, num_units=extended_input_size,
                          W=decoder_weights, nonlinearity=linear)
     reconstruction = lasagne.layers.get_output(decoder)
     reconstruction = group_softmax(reconstruction, input_cardinality)
-    
+
     # Build the supervised network that takes the hidden representation of the
     # encoder as input and tries to predict the targets
     supervised_net = DenseLayer(encoder, num_units=n_output)
     supervised_net = DenseLayer(encoder, num_units=1)
     prediction = lasagne.layers.get_output(supervised_net)[:, 0]
-    
+
 
     # Compute loss expressions
-    print("Defining loss functions")    
-    
+    print("Defining loss functions")
+
     unsup_loss = group_categorical_crossentropy(reconstruction, inputs,
                                                 input_cardinality)
     sup_loss = lasagne.objectives.squared_error(prediction, target_var).mean()
     total_loss = unsup_loss + sup_loss
-    
-    
+
+
     # Define training funtions
     print("Building training functions")
-    
+
     params = (lasagne.layers.get_all_params(supervised_net) +
               lasagne.layers.get_all_params(decoder))
-    
+
     # Do not train 'feature_var'. It's only a shared variable to avoid
     # transfers to/from the gpu
     params = [p for p in params if p is not feature_var]
-    
+
     updates = lasagne.updates.rmsprop(total_loss,
                                       params,
                                       learning_rate=lr)
@@ -265,24 +279,24 @@ def execute(dataset, n_output, num_epochs=500):
 
     train_fn = theano.function([input_var, target_var], total_loss,
                                updates=updates)
-    
-    #theano.printing.pydotprint(train_fn, "fct.png", scan_graphs=True)   
-    
+
+    #theano.printing.pydotprint(train_fn, "fct.png", scan_graphs=True)
+
     # Define monitoring functions
     print("Building monitoring functions")
-    
+
     test_reconstruction = lasagne.layers.get_output(decoder,
                                                     deterministic=True)
     test_reconstruction = group_softmax(test_reconstruction, input_cardinality)
 
     test_unsup_loss = group_categorical_crossentropy(test_reconstruction,
                                                      inputs, input_cardinality)
-    
+
     test_prediction = lasagne.layers.get_output(supervised_net,
                                                 deterministic=True)
     test_sup_loss = lasagne.objectives.squared_error(prediction,
                                                      target_var).mean()
-    
+
     val_fn = theano.function([input_var, target_var],
                              [test_unsup_loss, test_sup_loss])
     monitor_labels = ["reconstruction loss", "prediction loss"]
@@ -290,7 +304,7 @@ def execute(dataset, n_output, num_epochs=500):
 
     # Finally, launch the training loop.
     print("Starting training...")
-    
+
     # We iterate over epochs:
     best_valid_mse = 1e20
     for epoch in range(num_epochs):
@@ -318,7 +332,7 @@ def execute(dataset, n_output, num_epochs=500):
         # Monitor the test set if needed
         if mse < best_valid_mse:
             best_valid_mse = mse
-                
+
             test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
                                                    shuffle=False)
             monitoring(test_minibatches, "test", val_fn, monitor_labels)
@@ -331,7 +345,7 @@ def execute(dataset, n_output, num_epochs=500):
                      *lasagne.layers.get_all_param_values(decoder))
             np.savez(save_path+'v3_sup.npz',
                      *lasagne.layers.get_all_param_values(supervised_net))
-                
+
         print("  total time:\t\t\t{:.3f}s".format(time.time() - start_time))
 
 
