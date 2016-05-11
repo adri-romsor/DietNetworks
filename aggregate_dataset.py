@@ -153,12 +153,14 @@ def load_data23andme(data_path='/data/lisatmp4/erraqabi', split=[.6, .2, .2],
     supervised_val_data = unsupervised_test_data[pos_users_val]
     supervised_test_data = unsupervised_test_data[pos_users_test]
     # label
-    supervised_train_labels = labels[pos_users_train]
-    supervised_val_labels = labels[pos_users_val]
-    supervised_test_labels = labels[pos_users_test]
+    supervised_train_labels = unsupervised_train_labels[pos_users_train]
+    supervised_val_labels = unsupervised_test_labels[pos_users_val]
+    supervised_test_labels = unsupervised_test_labels[pos_users_test]
 
-    return unsupervised_train_data, unsupervised_test_data, supervised_train_data, supervised_val_data, supervised_test_data, supervised_train_labels, supervised_val_labels, supervised_test_labels
-
+    return (unsupervised_train_data, unsupervised_test_data,
+            #unsupervised_train_labels, unsupervised_test_labels,
+            supervised_train_data, supervised_val_data, supervised_test_data,
+            supervised_train_labels, supervised_val_labels, supervised_test_labels)
 
 
 def load_data23andme_baselines(data_path='/data/lisatmp4/dejoieti',
