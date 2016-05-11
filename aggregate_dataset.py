@@ -207,12 +207,13 @@ if __name__ == "__main__":
     split = [.6, .2, .2]
 
     def map_to_float(s):
+        print s
         if s == '':
             return -1.0
         else:
             return float(s)
 
-    height = np.genfromtxt('height.csv', dtype=None, delimiter="\t")
+    height = np.genfromtxt('/data/lisatmp4/dejoieti/height.csv', dtype=None, delimiter="\t")
     height = height[1:, :]
     height[:, 1] = map(map_to_float, height[:, 1])
     height = height.astype(float)  # from str to float

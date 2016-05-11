@@ -122,15 +122,15 @@ def execute(samp_embedding_source, num_epochs=500,
     f = np.load(save_path + samp_embedding_source)
 
     print (f.files)
-    #x_train = np.array(f['x_train_supervised'], dtype=np.float32)
-    #y_train = np.array(f['y_train_supervised'])
-    #x_test = np.array(f['x_test_supervised'], dtype=np.float32)
-    #y_test = np.array(f['y_test_supervised'])
+    x_train = np.array(f['x_train_supervised'], dtype=np.float32)
+    y_train = np.array(f['y_train_supervised'])
+    x_test = np.array(f['x_test_supervised'], dtype=np.float32)
+    y_test = np.array(f['y_test_supervised'])
 
-    x_train = np.array(f['x_train'], dtype=np.float32)
-    y_train = np.array(f['y_train'])
-    x_test = np.array(f['x_valid'], dtype=np.float32)
-    y_test = np.array(f['y_valid'])
+    # x_train = np.array(f['x_train'], dtype=np.float32)
+    # y_train = np.array(f['y_train'])
+    # x_test = np.array(f['x_valid'], dtype=np.float32)
+    # y_test = np.array(f['y_valid'])
 
     n_data = x_train.shape[0] + x_test.shape[0]
     end_train = int(split_valid*n_data)

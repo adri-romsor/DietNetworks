@@ -65,7 +65,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    new_x, kmeans = kmeans("opensnp", [50, 100, 200, 500, 1000,
+    new_x, kmeans = kmeans("opensnp", [1, 2, 5, 10, 20, 50,
+                                       100, 200, 500, 1000,
                                        500, 5000, 10000,
                                        50000, 100000, 500000, 1000000],
                            args.save_path)
