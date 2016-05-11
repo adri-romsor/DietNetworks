@@ -1,11 +1,11 @@
-from sklearn.decomposition import RandomizedPCA
+from sklearn.decomposition import RandomizedPCA, TruncatedSVD
 # from experiments.common.dorothea import load_data
 from aggregate_dataset import load_data23andme_baselines
 
 import argparse
 import os
 import numpy as np
-
+import time
 
 # def pca_dorothea(n_comp, save_path):
 #     x_train, y_train = load_data('train', return_format='numpy')
@@ -22,7 +22,7 @@ import numpy as np
 #     return pca
 
 
-def pca(dataset, n_comp_list, save_path):
+def pca(dataset, n_comp_list, save_path, sparse=True):
     # Load data
     print "Loading data"
     if dataset == "opensnp":
@@ -35,26 +35,44 @@ def pca(dataset, n_comp_list, save_path):
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    print "Applying PCA"
-    # Extract PCA from unsupervised data
-    pca = RandomizedPCA()
-    pca.fit(unsupervised)
-    # Apply PCA to supervised training data
-    new_x_train_supervised = pca.transform(train_supervised[0])
-    new_x_test_supervised = pca.transform(test_supervised[0])
+    if not sparse:
+        print "Applying PCA"
+        # Extract PCA from unsupervised data
+        pca = RandomizedPCA()
+        pca.fit(unsupervised)
+        # Apply PCA to supervised training data
+        new_x_train_supervised = pca.transform(train_supervised[0])
+        new_x_test_supervised = pca.transform(test_supervised[0])
 
-    # Remove items from n_comp_list that are outside the bounds
-    max_n_comp = new_x_train_supervised.shape[1]
-    n_comp_possible = [el for el in n_comp_list if el < max_n_comp]
-    n_comp_list = n_comp_possible + [max_n_comp]
+        # Remove items from n_comp_list that are outside the bounds
+        max_n_comp = new_x_train_supervised.shape[1]
+        n_comp_possible = [el for el in n_comp_list if el < max_n_comp]
+        n_comp_list = n_comp_possible + [max_n_comp]
 
-    print "Saving embeddings"
-    for n_comp in n_comp_list:
-        file_name = save_path + 'pca_' + str(n_comp) + '_embedding.npz'
-        np.savez(file_name, x_train_supervised=new_x_train_supervised[:n_comp],
-                 y_train_supervised=train_supervised[1],
-                 x_test_supervised=new_x_test_supervised[:n_comp],
-                 y_test_supervised=test_supervised[1])
+        print "Saving embeddings"
+        for n_comp in n_comp_list:
+            file_name = save_path + 'rpca_' + str(n_comp) + '_embedding.npz'
+            np.savez(file_name, x_train_supervised=new_x_train_supervised[:n_comp],
+                     y_train_supervised=train_supervised[1],
+                     x_test_supervised=new_x_test_supervised[:n_comp],
+                     y_test_supervised=test_supervised[1])
+    else:
+        # Apply truncated svd (pca) for each nber of clusters
+        for n_cl in n_comp_list:
+            start_time = time.time()
+            print "tsvd %d of out %d" % (n_cl, len(n_comp_list))
+            tsvd = TruncatedSVD(n_components=n_cl)
+            tsvd.fit(unsupervised)
+            new_x_train_supervised = tsvd.transform(train_supervised[0])
+            new_x_test_supervised = tsvd.transform(test_supervised[0])
+
+            # Save embeddings
+            file_name = save_path + 'kmeans_' + str(n_cl) + '_embedding.npz'
+            np.savez(file_name, x_train_supervised=new_x_train_supervised,
+                     y_train_supervised=train_supervised[1],
+                     x_test_supervised=new_x_test_supervised,
+                     y_test_supervised=test_supervised[1])
+            print "... took %f s" % (time.time() - start_time)
 
 
 if __name__ == '__main__':
@@ -71,6 +89,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    pca(args.d, [100, 200, 400, 600, 800, 1000, 1200, 1400, 1600, 2000],
+    pca(args.d, [1, 2, 5, 10, 20, 50,
+                 100, 200, 400, 600, 800,
+                 1000, 1200, 1400, 1600, 2000],
         args.save_path)
     # plt.plot(np.cumsum(pca.explained_variance_ratio_))
