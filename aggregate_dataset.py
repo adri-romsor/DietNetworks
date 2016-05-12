@@ -163,7 +163,8 @@ def load_data23andme(data_path='/data/lisatmp4/erraqabi', split=[.6, .2, .2],
             supervised_train_labels, supervised_val_labels, supervised_test_labels)
 
 
-def load_data23andme_baselines(data_path='/data/lisatmp4/dejoieti',
+def load_data23andme_baselines(data_path='/data/lisatmp4/carriepl',
+                               label_path='/data/lisatmp4/dejoieti',
                                shuffle=False, seed=32, split=.75):
 
     '''
@@ -171,8 +172,8 @@ def load_data23andme_baselines(data_path='/data/lisatmp4/dejoieti',
     '''
     # Load data
     np.random.seed(seed)
-    data = np.load(data_path+'/ma_dataset.npy')
-    labels = np.load(data_path+'/height_ma_dataset.npy')
+    data = np.load(data_path+'/ma_dataset_trimmed.npy')
+    labels = np.load(label_path+'/height_ma_dataset.npy')
 
     # Select supervised samples
     users_idx = np.arange(len(labels))
