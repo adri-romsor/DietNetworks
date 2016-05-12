@@ -99,7 +99,7 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels):
 
 # Main program
 def execute(samp_embedding_source, num_epochs=500,
-            lr_value=1e-5, split_valid=.15,
+            lr_value=1e-5, split_valid=.2,
             save_path='/data/lisatmp4/dejoieti/feature_selection/'):
     """
     Execute a supervised learning.
@@ -133,11 +133,11 @@ def execute(samp_embedding_source, num_epochs=500,
     # y_test = np.array(f['y_valid'])
 
     n_data = x_train.shape[0] + x_test.shape[0]
-    end_train = int(split_valid*n_data)
-    x_valid = x_train[end_train:]
-    y_valid = y_train[end_train:]
-    x_train = x_train[:end_train]
-    y_train = y_train[:end_train]
+    end_train = int(round(split_valid*n_data))
+    x_train = x_train[:-end_train]
+    y_train = y_train[:-end_train]
+    x_valid = x_train[-end_train:]
+    y_valid = y_train[-end_train:]
 
     n_samples, n_feats = x_train.shape
     n_batch = 10
@@ -227,8 +227,6 @@ def execute(samp_embedding_source, num_epochs=500,
 
     print("Final results:")
 
-    #import pdb
-    #pdb.set_trace()
     test_mon = monitoring(test_minibatches, "test", val_fn,
                           monitor_labels)
     valid_mon = monitoring(valid_minibatches, "valid", val_fn,
@@ -236,23 +234,21 @@ def execute(samp_embedding_source, num_epochs=500,
     train_mon = monitoring(train_minibatches, "train", val_fn,
                            monitor_labels)
 
-    #import pdb
-    #pdb.set_trace()
-    save_path = os.path.join(save_path,"results")
+    save_path = os.path.join(save_path, "results")
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
     print ("save_path: {}".format(save_path))
 
-    np.savez(save_path+"errors_" + str(lr_value) + "_"+samp_embedding_source,
+    np.savez(save_path+"errors_" + str(lr_value) + "_" +
+             samp_embedding_source,
              test_err=test_mon["pred. loss"],
              valid_err=valid_mon["pred. loss"],
              train_err=train_mon["pred. loss"])
 
     # Save network weights to a file
-
-
-    np.savez(save_path+"/regression_" + str(lr_value) + "_" +samp_embedding_source,
+    np.savez(save_path+"/regression_" + str(lr_value) + "_" +
+             samp_embedding_source,
              *lasagne.layers.get_all_param_values(regression_net))
     # And load them again later on like this:
     # with np.load('model.npz') as f:
