@@ -163,7 +163,7 @@ def load_data23andme(data_path='/data/lisatmp4/erraqabi', split=[.6, .2, .2],
             supervised_train_labels, supervised_val_labels, supervised_test_labels)
 
 
-def load_data23andme_baselines(data_path='/data/lisatmp4/dejoieti',
+def load_data23andme_baselines(data_path='/data/lisatmp4/carriepl',
                                shuffle=False, seed=32, split=.8):
 
     '''

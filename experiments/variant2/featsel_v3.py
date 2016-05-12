@@ -12,10 +12,10 @@ import theano.tensor as T
 
 #theano.config.compute_test_value = 'warn'
 
-
 """
 NOTE : This script should be launched with the following Theano flags : 
-"device=gpu,floatX=float32,optimizer_excluding=scanOp_pushout_seqs_ops"
+THEANO_FLAGS="floatX=float32,optimizer_excluding=scanOp_pushout_seqs_ops:scanOp_pushout_nonseqs_ops:scanOp_pushout_output" python featsel_v3.py opensnp [...]
+
 """
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
@@ -62,34 +62,6 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels):
         monitoring_dict[label] = val
     
     return monitoring_dict 
-
-
-def group_softmax(z, group_size):
-    
-    g_z = z.reshape((-1, group_size))
-    
-    # The following line makes the softmax computation more numerically stable
-    g_z = g_z - theano.gradient.zero_grad(g_z.max(axis=1, keepdims=True))
-    
-    # Compute the softmax along the group axis
-    #g_act = T.nnet.softmax(g_z)
-    exp = g_z.exp()
-    g_act = exp / exp.sum(1)[:,None]
-    
-    act = g_act.reshape((z.shape[0], -1))
-    return act
-    
-
-def group_categorical_crossentropy(y_hat, y, group_size):
-    
-    g_y_hat = y_hat.reshape((-1, group_size))
-    g_y = y.reshape((-1, group_size))
-    
-    # Compute and return the loss
-    target_classes = y.argmax(1)
-    nll = -T.mean(T.log(y_hat)[T.arange(y.shape[0]), target_classes])
-    
-    return nll
 
 
 def weights(n_in, n_out, name=None):
@@ -154,86 +126,59 @@ def execute(dataset, n_output, num_epochs=500):
 
     elif dataset == 'opensnp':
         from feature_selection import aggregate_dataset
-
-        data = aggregate_dataset.load_data23andme(
-                                        data_path='/data/lisatmp4/dejoieti',
-                                        split=[.5, .75, 1.0], shuffle=False,
-                                        seed=32)
+        """
+        data = aggregate_dataset.load_data23andme(split=[.6, .8, 1.0])
         
-        tmp = []
-        total0 = [0] * 12
-        total1 = [0] * 12
-        sets = [set() for i in range(12)]
-        acceptable_quadriplets = [(0, 2, 3, 7),    # AA-AC-CC
-                                  (0, 2, 4, 14),   # AA-AG-GG
-                                  (0, 2, 5, 19),   # AA-AT-TT
-                                  (0, 7, 8, 14),   # CC-CG-GG
-                                  (0, 7, 9, 19),   # CC-CT-TT
-                                  (0, 14, 15, 19), # GG-GT-TT
-                                  (0, 11, 12, 17)] # DD-DI-II
-        feature_w_quad = [0, 0]
+        x_train = data[4].astype("int8")[:50]
+        x_valid = data[5].astype("int8")[:10]
+        x_test = data[6].astype("int8")[:10]
         
-        for i in range(data[0].shape[1]):
-            if i % 1000 == 0:
-                print(i, data[0].shape[1])
-                
-            uniques = np.unique(data[0][:,i])
-            nb_uniques = len(uniques)
-                
-            tmp.append(nb_uniques)
-
-            if uniques[0] == 0:
-                total0[nb_uniques] += 1
-            else:
-                total1[nb_uniques] += 1
-                
-            mytuple = tuple([i for i in uniques])
-            if mytuple not in sets[nb_uniques]:
-                sets[nb_uniques].add(mytuple)
-                
-            if nb_uniques == 4:
-                if mytuple in acceptable_quadriplets:
-                    feature_w_quad[0] += 1
-                else:
-                    feature_w_quad[1] += 1
-                
-            
-        import pdb; pdb.set_trace()
-        
-        # Trim the features of the dataset
-        features_to_keep = []
-        for i in range(data[0].shape[1]):
-            if i % 1000 == 0:
-                print(i, data[0].shape[1])
-                
-            uniques = np.unique(data[0][:,i])
-            nb_uniques = len(uniques)
-            
-            if nb_uniques > 2:
-                features_to_keep.append(i)
-        
-        
-        
-        x_train = data[4].astype("int8")[:10,features_to_keep][:,::5]
-        x_valid = data[5].astype("int8")[:10,features_to_keep][:,::5]
-        x_test = data[6].astype("int8")[:10,features_to_keep][:,::5]
-        
-        y_train = data[7].astype("float32")[:10]
+        y_train = data[7].astype("float32")[:50]
         y_valid = data[8].astype("float32")[:10]
         y_test = data[9].astype("float32")[:10]
+        """
         
+        # This splits the data into [0.6, 0.2, 0.2] for the supervised examples
+        # and puts half of the unsupervised examples in the training set
+        # (because otherwise it would be way to expensive memory-wise)
+        data = aggregate_dataset.load_data23andme_baselines(split=0.8)
+        (x_sup, x_sup_labels), (x_test, y_test), x_unsup = data
         
+        nb_sup_train = int(x_sup.shape[0] * 0.75)
+        nb_unsup_train = int(x_unsup.shape[0] * 0.5)
+        
+        x_train = np.vstack((x_sup[:nb_sup_train], x_unsup[:nb_unsup_train]))
+        x_valid = x_sup[nb_sup_train:]
+        
+        y_train = np.hstack((x_sup_labels[:nb_sup_train],
+                             -np.ones((nb_unsup_train,))))
+        y_valid = x_sup_labels[nb_sup_train:]
+        
+        # Shuffle x_train and y_train together
+        np.random.seed(0)
+        indices = np.arange(x_train.shape[0])
+        np.random.shuffle(indices)
+
+        x_train = x_train[indices]
+        y_train = y_train[indices]
+        
+        # Standardize the dtype
+        x_train = x_train.astype("float32")
+        x_valid = x_valid.astype("float32")
+        x_test = x_test.astype("float32")
+        y_train = y_train.astype("float32")
+        y_valid = y_valid.astype("float32")
+        y_test = y_test.astype("float32")
+        
+        # Make sure all is well
+        print(x_sup.shape, x_test.shape, x_unsup.shape)
         print(x_train.shape, x_valid.shape, x_test.shape)
-        
-        import pdb; pdb.set_trace()
-        
 
     else:
         print("Unknown dataset")
         return
 
     n_samples, n_feats = x_train.shape
-    input_cardinality = x_train.max() + 1
     n_classes = y_train.max() + 1
     n_batch = 10
     save_path = '/data/lisatmp4/carriepl/FeatureSelection/'
@@ -243,7 +188,7 @@ def execute(dataset, n_output, num_epochs=500):
     target_var = T.fvector('targets')
     
     feature_var = theano.shared(x_train.transpose().astype("float32"), 'feature_var')
-    lr = theano.shared(np.float32(3e-4), 'learning_rate')
+    lr = theano.shared(np.float32(1e-9), 'learning_rate')
     
     #input_var.tag.test_value = x_train[:20]
     #target_var.tag.test_value = y_train[:20]
@@ -253,9 +198,8 @@ def execute(dataset, n_output, num_epochs=500):
     print("Building model")
     
     # Define a few useful values for building the model
-    feat_repr_size = 20
-    h_rep_size = 20
-    extended_input_size = input_cardinality * n_feats
+    feat_repr_size = 80
+    h_rep_size = 80
     
     # Define the network architecture             
     params = {
@@ -285,24 +229,19 @@ def execute(dataset, n_output, num_epochs=500):
             'biases': [biases(n_output, 'sb1'),
                        biases(1, 'sb2')],
             'acts': [rectify, linear]}}
+            
+    #params['supervised'] = {'layers': [1],
+    #                        'weights': [weights(h_rep_size, 1, 'sw1')],
+    #                        'biases': [biases(1, 'sb1')],
+    #                        'acts': [linear]}
     
-    # Build the actual network input from the compressed input_var.
-    inputs = [T.eq(input_var, float(i)).astype("float32")
-              for i in range(input_cardinality)]
-    inputs = T.stack(*inputs).dimshuffle(1, 2, 0).flatten(2)
-    
+
     # Build the portion of the model that will predict the encoder's hidden
     # representation fron the inputs and the feature activations.
-    def step_enc(iteration_idx, dataset, inputs):
-        # ALERT : It is necessary to launch this script with the proper Theano
-        # flags or the following instructions will be pushed outside of the
-        # Scan, increasing memory usage by a factor of roughly
-        # 'input_cardinality'.
-        activations = T.eq(dataset.astype("float32"),
-                           iteration_idx.astype("float32")).astype("float32")
+    def step_enc(dataset, inputs):
 
         # Predict the feature representations 
-        feature_rep_net = InputLayer((n_feats, n_samples), activations)
+        feature_rep_net = InputLayer((n_feats, n_samples), dataset)
         for i in range(len(params['feature']['layers'])):
             feature_rep_net = DenseLayer(feature_rep_net,
                                 num_units=params['feature']['layers'][i],
@@ -321,16 +260,13 @@ def execute(dataset, n_output, num_epochs=500):
         encoder_weights = lasagne.layers.get_output(enc_weights_net)
         
         # Predict the contribution to the encoder's hidden representation.
-        hidden_contribution = T.dot(inputs[:, iteration_idx::20],
-                                    encoder_weights)
-        
-        return hidden_contribution
+        return T.dot(inputs, encoder_weights)
         
     results, updates = theano.scan(fn=step_enc,
-                                   sequences=T.arange(input_cardinality),
-                                   non_sequences=[feature_var, inputs],
-                                   allow_gc=True, name="encoder_w_scan")
-    hidden_contribution = results.sum(0)
+                                   non_sequences=[feature_var, input_var],
+                                   n_steps=1, allow_gc=True,
+                                   name="encoder_w_scan")
+    hidden_contribution = results[0]
     
     # Add a bias vector to the hidden_contribution and apply an activation
     # function to obtain the autoencoder's hidden representation
@@ -338,13 +274,10 @@ def execute(dataset, n_output, num_epochs=500):
     h_rep = T.nnet.relu(hidden_contribution + encoder_b)
     
     # Build the decoder
-    def step_dec(iteration_idx, dataset, h_rep):
-        # Compute the feature representations
-        activations = T.eq(dataset.astype("float32"),
-                           iteration_idx.astype("float32")).astype("float32")
+    def step_dec(dataset, h_rep):
         
         # Predict the feature representations 
-        feature_rep_net = InputLayer((n_feats, n_samples), activations)
+        feature_rep_net = InputLayer((n_feats, n_samples), dataset)
         for i in range(len(params['feature']['layers'])):
             feature_rep_net = DenseLayer(feature_rep_net,
                                 num_units=params['feature']['layers'][i],
@@ -367,11 +300,10 @@ def execute(dataset, n_output, num_epochs=500):
         return recon_contribution
         
     results, updates = theano.scan(fn=step_dec,
-                                   sequences=T.arange(input_cardinality),
                                    non_sequences=[feature_var, h_rep],
-                                   allow_gc=True, name="decoder_w_scan")
-    pre_act_reconstruction = results.dimshuffle(1, 2, 0).flatten(2)
-    reconstruction = group_softmax(pre_act_reconstruction, input_cardinality)
+                                   n_steps=1, allow_gc=True,
+                                   name="decoder_w_scan")
+    reconstruction = results[0]
     
     # Build the supervised network that takes the hidden representation of the
     # encoder as input and tries to predict the targets
@@ -385,11 +317,11 @@ def execute(dataset, n_output, num_epochs=500):
     prediction = lasagne.layers.get_output(supervised_net)[:, 0]
 
     # Compute loss expressions
-    print("Defining loss functions")    
+    print("Defining loss functions")   
     
-    unsup_loss = group_categorical_crossentropy(reconstruction, inputs,
-                                                input_cardinality)
-    
+    unsup_loss = ((input_var - reconstruction) ** 2).mean()
+    #unsup_loss = lasagne.objectives.binary_crossentropy(T.nnet.sigmoid(reconstruction) / 2,
+    #                                                    input_var / 2).mean()
     
     prediction_mse = (target_var - prediction) ** 2
     sup_loss = (prediction_mse * T.neq(target_var, -1)).mean()
@@ -417,14 +349,14 @@ def execute(dataset, n_output, num_epochs=500):
     # transfers to/from the gpu
     params = [p for p in params if p is not feature_var]
     
-    updates = lasagne.updates.rmsprop(total_loss,
-                                      params,
-                                      learning_rate=lr)
+    #updates = lasagne.updates.rmsprop(total_loss,
+    #                                  params,
+    #                                  learning_rate=lr)
     # updates = lasagne.updates.sgd(total_loss,
     #                              params,
     #                              learning_rate=lr)
-    # updates = lasagne.updates.momentum(total_loss, params,
-    #                                    learning_rate=lr, momentum=0.0)
+    updates = lasagne.updates.momentum(total_loss, params,
+                                       learning_rate=lr, momentum=0.9)
     updates[lr] = (lr * 0.99).astype("float32")
 
     train_fn = theano.function([input_var, target_var], total_loss,
@@ -458,8 +390,6 @@ def execute(dataset, n_output, num_epochs=500):
 
         print("Epoch {} of {}".format(epoch + 1, num_epochs))
         
-        print(time.time() - start_time)
-
         # Monitor progress on the training set
         train_minibatches = iterate_minibatches(x_train, y_train, n_batch,
                                                 shuffle=False)
@@ -491,7 +421,7 @@ def execute(dataset, n_output, num_epochs=500):
 
 def main():
     parser = argparse.ArgumentParser(description="""Implementation of the
-                                     feature selection v2""")
+                                     feature selection v3""")
     parser.add_argument('dataset',
                         default='debug',
                         help='Dataset.')
