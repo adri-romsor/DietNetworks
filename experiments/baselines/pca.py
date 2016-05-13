@@ -22,7 +22,7 @@ import time
 #     return pca
 
 
-def pca(dataset, n_comp_list, save_path, method="PCA", split=0.8,
+def pca(dataset, n_comp_list, save_path, method="truncSVD", split=0.8,
         test_sep=False):
 
     # Load data

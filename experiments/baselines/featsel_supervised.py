@@ -135,10 +135,10 @@ def execute(samp_embedding_source, num_epochs=500,
 
     n_data = x_train.shape[0] + x_test.shape[0]
     end_train = int(round(split_valid*n_data))
-    x_train = x_train[:-end_train]
-    y_train = y_train[:-end_train]
     x_valid = x_train[-end_train:]
     y_valid = y_train[-end_train:]
+    x_train = x_train[:-end_train]
+    y_train = y_train[:-end_train]
 
     n_samples, n_feats = x_train.shape
     n_batch = 10
