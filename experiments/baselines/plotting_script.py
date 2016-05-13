@@ -1,5 +1,4 @@
 import os
-import re
 
 import numpy as np
 
@@ -32,14 +31,17 @@ def main(results_path, which_method="pca", n_comps=None):
              best_err=best_res,
              n_comps=n_comps)
 
+    # plt.plot(n_comps, best_res.T)
+    # plt.show()
+
 
 if __name__ == '__main__':
 
     results_path = \
-        "/data/lisatmp4/romerosa/feature_selection/with_test/results/"
+        "/data/lisatmp4/romerosa/feature_selection/results/"
 
     n_comps = [1, 2, 5, 10, 20, 50,
                100, 200, 400, 600, 800,
-               1000, 1200, 1400, 1600, 1885]
+               1000, 1200, 1400, 1600, 2000]
 
-    main(results_path, "pca", n_comps)
+    main(results_path, "kmeans", n_comps)

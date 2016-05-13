@@ -2,6 +2,7 @@ import os
 
 from featsel_supervised import execute
 
+
 def main(embedding_path, which_method="pca"):
 
     print "Starting main loop"
@@ -11,7 +12,11 @@ def main(embedding_path, which_method="pca"):
 
     for directory, _, embeddings in os.walk(embedding_path):
         embedding_methods.extend([emb for emb in embeddings
-                if ".npz" in emb and which_method in emb])
+                                  if ".npz" in emb and which_method in emb])
+
+    if which_method == "kmeans":
+        embedding_methods = [emb for emb in embedding_methods if
+                             "triangle" in emb]
 
     print "Embedding methods: {}".format(embedding_methods)
     mod = 1
@@ -19,8 +24,8 @@ def main(embedding_path, which_method="pca"):
 
     for lr_value in lr_candidates:
         for embedding in embedding_methods:
-            print "Training model %s: model %d out of %d" % \
-                    (embedding, mod, len(embedding_methods))
+            print "Training model %s: lr %d out of %d" % \
+                    (embedding, mod, len(lr_candidates))
             execute(embedding, num_epochs=1000, split_valid=.2,
                     lr_value=lr_value,
                     save_path=embedding_path)
@@ -28,6 +33,6 @@ def main(embedding_path, which_method="pca"):
 
 if __name__ == '__main__':
 
-    embedding_path = "/data/lisatmp4/sylvaint/data/feature_selection/"
-    #embedding_path = "/data/lisatmp4/romerosa/feature_selection/with_test/"
-    main(embedding_path,"pls")
+    # embedding_path = "/data/lisatmp4/sylvaint/data/feature_selection/"
+    embedding_path = "/data/lisatmp4/romerosa/feature_selection/"
+    main(embedding_path, "kmeans")
