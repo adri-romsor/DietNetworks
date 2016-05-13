@@ -100,7 +100,7 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels):
 # Main program
 def execute(samp_embedding_source, num_epochs=500,
             lr_value=1e-5, split_valid=.2,
-            save_path='/data/lisatmp4/dejoieti/feature_selection/'):
+            save_path='/data/lisatmp4/romerosa/feature_selection/'):
     """
     Execute a supervised learning.
 
@@ -240,7 +240,7 @@ def execute(samp_embedding_source, num_epochs=500,
 
     print ("save_path: {}".format(save_path))
 
-    np.savez(save_path+"errors_" + str(lr_value) + "_" +
+    np.savez(save_path+"/errors_" + str(lr_value) + "_" +
              samp_embedding_source,
              test_err=test_mon["pred. loss"],
              valid_err=valid_mon["pred. loss"],
