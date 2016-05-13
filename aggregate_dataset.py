@@ -120,7 +120,8 @@ def load_data23andme(data_path='/data/lisatmp4/erraqabi', split=[.6, .2, .2],
                      shuffle=False, seed=32):
     '''
      splitting dataset
-     '''
+    '''
+
     np.random.seed(seed)
     data = np.load(data_path+'/ma_dataset.npy')
     labels = np.load(data_path+'/height_ma_dataset.npy')
@@ -164,32 +165,36 @@ def load_data23andme(data_path='/data/lisatmp4/erraqabi', split=[.6, .2, .2],
 
 
 def load_data23andme_baselines(data_path='/data/lisatmp4/carriepl',
-                               label_path='/data/lisatmp4/dejoieti',
-                               shuffle=False, seed=32, split=.75):
+                               shuffle=False, seed=32, split=.8):
 
     '''
     Splitting dataset
     '''
     # Load data
     np.random.seed(seed)
-    data = np.load(data_path+'/ma_dataset_trimmed.npy')
-    labels = np.load(label_path+'/height_ma_dataset.npy')
+
+    data = np.load('/data/lisatmp4/carriepl/ma_dataset_trimmed.npy')
+    labels = np.load('/data/lisatmp4/dejoieti/height_ma_dataset.npy')
 
     # Select supervised samples
     users_idx = np.arange(len(labels))
     if shuffle:
         np.random.shuffle(users_idx)
+
+    # Indices of samples with labels
     pos_users_idx = users_idx[labels.squeeze() != -1]
+    # Indices of samples without labels (only for unsupervised training)
     users_idx = users_idx[labels.squeeze() == -1]
 
+    # Extract (x, y) samples with labels
     x_supervised = data[pos_users_idx]
     y_supervised = labels[pos_users_idx]
 
-    # Split supervised data into training and test
+    # Split supervised data into training (training + validation) and
+    # test sets
     n_data = x_supervised.shape[0]
     end_train = int(split*n_data)
 
-    # Supervised data into train and test sets
     x_train_supervised = x_supervised[:end_train]
     x_test_supervised = x_supervised[end_train:]
     y_train_supervised = y_supervised[:end_train]

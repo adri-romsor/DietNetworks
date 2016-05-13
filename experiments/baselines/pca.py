@@ -1,4 +1,4 @@
-from sklearn.decomposition import RandomizedPCA, TruncatedSVD
+from sklearn.decomposition import RandomizedPCA, TruncatedSVD, PCA
 # from experiments.common.dorothea import load_data
 from aggregate_dataset import load_data23andme_baselines
 
@@ -22,12 +22,14 @@ import time
 #     return pca
 
 
-def pca(dataset, n_comp_list, save_path, sparse=True):
+def pca(dataset, n_comp_list, save_path, method="truncSVD", split=0.8,
+        test_sep=False):
+
     # Load data
     print "Loading data"
     if dataset == "opensnp":
         train_supervised, test_supervised, unsupervised = \
-            load_data23andme_baselines()
+            load_data23andme_baselines(split=split)
     else:
         raise ValueError("Unknown dataset")
 
@@ -35,7 +37,36 @@ def pca(dataset, n_comp_list, save_path, sparse=True):
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    if not sparse:
+    if not test_sep:
+        unsupervised = np.concatenate((unsupervised, test_supervised[0]),
+                                      axis=0)
+
+    if method == "PCA":
+        print "Applying PCA"
+        # Extract PCA from unsupervised data
+        pca = PCA()
+        pca.fit(unsupervised)
+        # Apply PCA to supervised training data
+        new_x_train_supervised = pca.transform(train_supervised[0])
+        new_y_train = train_supervised[1]
+        new_x_test_supervised = pca.transform(test_supervised[0])
+        new_y_test = test_supervised[1]
+
+        # Remove items from n_comp_list that are outside the bounds
+        max_n_comp = new_x_train_supervised.shape[1]
+        n_comp_possible = [el for el in n_comp_list if el < max_n_comp]
+        n_comp_list = n_comp_possible + [max_n_comp]
+
+        print "Saving embeddings"
+        for n_comp in n_comp_list:
+            file_name = save_path + 'pca_' + str(n_comp) + '_embedding.npz'
+            np.savez(file_name,
+                     x_train_supervised=new_x_train_supervised[:, :n_comp],
+                     y_train_supervised=new_y_train,
+                     x_test_supervised=new_x_test_supervised[:, :n_comp],
+                     y_test_supervised=new_y_test)
+
+    elif method == "randPCA":
         print "Applying PCA"
         # Extract PCA from unsupervised data
         pca = RandomizedPCA()
@@ -52,11 +83,13 @@ def pca(dataset, n_comp_list, save_path, sparse=True):
         print "Saving embeddings"
         for n_comp in n_comp_list:
             file_name = save_path + 'rpca_' + str(n_comp) + '_embedding.npz'
-            np.savez(file_name, x_train_supervised=new_x_train_supervised[:n_comp],
+            np.savez(file_name,
+                     x_train_supervised=new_x_train_supervised[:, :n_comp],
                      y_train_supervised=train_supervised[1],
-                     x_test_supervised=new_x_test_supervised[:n_comp],
+                     x_test_supervised=new_x_test_supervised[:, :n_comp],
                      y_test_supervised=test_supervised[1])
-    else:
+
+    elif method == "truncSVD":
         # Apply truncated svd (pca) for each nber of clusters
         for n_cl in n_comp_list:
             start_time = time.time()
@@ -84,7 +117,7 @@ if __name__ == '__main__':
                         help='dataset')
     parser.add_argument('-save_path',
                         '-sp',
-                        default='/data/lisatmp4/romerosa/feature_selection/',
+                        default='/data/lisatmp4/romerosa/feature_selection/with_test/',
                         help='number of components for embedding')
 
     args = parser.parse_args()
