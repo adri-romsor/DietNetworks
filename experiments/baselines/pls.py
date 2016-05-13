@@ -19,6 +19,18 @@ def pls(dataset, n_comp, save_path):
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
+    # print "Shapes when running PLS"
+    # print type(train_supervised)
+    # print type(test_supervised)
+    # print type(unsupervised)
+    # print train_supervised
+    # print test_supervised
+    # print unsupervised
+    # print train_supervised[0].shape
+    # print test_supervised.shape
+    # print unsupervised.shape
+
+
     print "Applying PLS"
     # Extract PCA from unsupervised data
     pls = PLSRegression(n_components = n_comp)
@@ -29,9 +41,9 @@ def pls(dataset, n_comp, save_path):
 
     print "Saving embeddings"
     file_name = save_path + 'pls_' + str(n_comp) + '_embedding.npz'
-    np.savez(file_name, x_train_supervised=new_x_train_supervised[:n_comp],
+    np.savez(file_name, x_train_supervised=new_x_train_supervised[:,:n_comp],
              y_train_supervised=train_supervised[1],
-             x_test_supervised=new_x_test_supervised[:n_comp],
+             x_test_supervised=new_x_test_supervised[:,:n_comp],
              y_test_supervised=test_supervised[1])
 
 
