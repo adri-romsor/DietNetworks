@@ -11,7 +11,7 @@ def pls(dataset, n_comp, save_path):
     print "Loading data"
     if dataset == "opensnp":
         train_supervised, test_supervised, unsupervised = \
-            load_data23andme_baselines()
+            load_data23andme_baselines(data_path="/Tmp/sylvaint")
     else:
         raise ValueError("Unknown dataset")
 

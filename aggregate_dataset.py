@@ -120,7 +120,8 @@ def load_data23andme(data_path='/data/lisatmp4/erraqabi', split=[.6, .2, .2],
                      shuffle=False, seed=32):
     '''
      splitting dataset
-     '''
+    '''
+
     np.random.seed(seed)
     data = np.load(data_path+'/ma_dataset.npy')
     labels = np.load(data_path+'/height_ma_dataset.npy')
@@ -171,7 +172,7 @@ def load_data23andme_baselines(data_path='/data/lisatmp4/dejoieti',
     '''
     # Load data
     np.random.seed(seed)
-    data = np.load(data_path+'/ma_dataset.npy')
+    data = np.load(data_path+'/ma_dataset_trimmed.npy')
     labels = np.load(data_path+'/height_ma_dataset.npy')
 
     # Select supervised samples
