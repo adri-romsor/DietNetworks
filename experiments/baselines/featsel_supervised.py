@@ -27,6 +27,7 @@ sys.path.append('/data/lisatmp4/dejoieti/feature_selection')
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
     """Generate the minibatches for learning."""
+
     assert len(inputs) == len(targets)
     if shuffle:
         indices = np.arange(len(inputs))
@@ -194,6 +195,12 @@ def execute(samp_embedding_source, num_epochs=500,
         # In each epoch, we do a full pass over the training data to updates
         # the parameters:
         start_time = time.time()
+        #
+        # print ("shapes")
+        # print (x_train.shape)
+        # print (y_train.shape)
+
+
         for batch in iterate_minibatches(x_train, y_train, n_batch,
                                          shuffle=True):
             inputs, targets = batch
