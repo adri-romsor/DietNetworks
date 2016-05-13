@@ -4,8 +4,9 @@ import time
 import os
 
 import lasagne
-from lasagne.layers import DenseLayer, InputLayer
-from lasagne.nonlinearities import sigmoid, softmax, tanh, linear, rectify
+from lasagne.layers import DenseLayer, InputLayer, BatchNormLayer
+from lasagne.nonlinearities import (sigmoid, softmax, tanh, linear, rectify,
+                                    leaky_rectify, very_leaky_rectify)
 import numpy as np
 import theano
 import theano.tensor as T
@@ -64,8 +65,8 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels):
     return monitoring_dict 
 
 
-def weights(n_in, n_out, name=None):
-    return theano.shared(np.random.uniform(-0.01, 0.01,
+def weights(n_in, n_out, name=None, init=0.01):
+    return theano.shared(np.random.uniform(-init, init,
                                            size=(n_in, n_out)).astype("float32"),
                          name)
     
@@ -126,17 +127,6 @@ def execute(dataset, n_output, num_epochs=500):
 
     elif dataset == 'opensnp':
         from feature_selection import aggregate_dataset
-        """
-        data = aggregate_dataset.load_data23andme(split=[.6, .8, 1.0])
-        
-        x_train = data[4].astype("int8")[:50]
-        x_valid = data[5].astype("int8")[:10]
-        x_test = data[6].astype("int8")[:10]
-        
-        y_train = data[7].astype("float32")[:50]
-        y_valid = data[8].astype("float32")[:10]
-        y_test = data[9].astype("float32")[:10]
-        """
         
         # This splits the data into [0.6, 0.2, 0.2] for the supervised examples
         # and puts half of the unsupervised examples in the training set
@@ -188,7 +178,7 @@ def execute(dataset, n_output, num_epochs=500):
     target_var = T.fvector('targets')
     
     feature_var = theano.shared(x_train.transpose().astype("float32"), 'feature_var')
-    lr = theano.shared(np.float32(1e-9), 'learning_rate')
+    lr = theano.shared(np.float32(1e-4), 'learning_rate')
     
     #input_var.tag.test_value = x_train[:20]
     #target_var.tag.test_value = y_train[:20]
@@ -205,20 +195,20 @@ def execute(dataset, n_output, num_epochs=500):
     params = {
         'feature': {
             'layers': [feat_repr_size],
-            'weights': [weights(n_samples, feat_repr_size, 'fw1')],
+            'weights': [weights(n_samples, feat_repr_size, 'fw1', 0.001)],
             'biases': [biases(feat_repr_size, 'fb1')],
             'acts': [rectify]},
         'encoder_w': {
             'layers': [n_output, h_rep_size],
-            'weights': [weights(feat_repr_size, n_output, 'ew1'),
-                        weights(n_output, h_rep_size, 'ew2')],
+            'weights': [weights(feat_repr_size, n_output, 'ew1', 0.001),
+                        weights(n_output, h_rep_size, 'ew2', 0.001)],
             'biases': [biases(n_output, 'eb1'),
                        biases(h_rep_size, 'eb2')],
             'acts': [rectify, tanh]},
         'decoder_w': {
             'layers': [n_output, h_rep_size],
-            'weights': [weights(feat_repr_size, n_output, 'dw1'),
-                        weights(n_output, h_rep_size, 'dw2')],
+            'weights': [weights(feat_repr_size, n_output, 'dw1', 0.001),
+                        weights(n_output, h_rep_size, 'dw2', 0.001)],
             'biases': [biases(n_output, 'db1'),
                        biases(h_rep_size, 'db2')],
             'acts': [rectify, tanh]},
@@ -228,13 +218,7 @@ def execute(dataset, n_output, num_epochs=500):
                         weights(n_output, 1, 'sw2')],
             'biases': [biases(n_output, 'sb1'),
                        biases(1, 'sb2')],
-            'acts': [rectify, linear]}}
-            
-    #params['supervised'] = {'layers': [1],
-    #                        'weights': [weights(h_rep_size, 1, 'sw1')],
-    #                        'biases': [biases(1, 'sb1')],
-    #                        'acts': [linear]}
-    
+            'acts': [rectify, very_leaky_rectify]}}
 
     # Build the portion of the model that will predict the encoder's hidden
     # representation fron the inputs and the feature activations.
@@ -243,6 +227,8 @@ def execute(dataset, n_output, num_epochs=500):
         # Predict the feature representations 
         feature_rep_net = InputLayer((n_feats, n_samples), dataset)
         for i in range(len(params['feature']['layers'])):
+            if i > 0:
+                feature_rep_net = BatchNormLayer(feature_rep_net)
             feature_rep_net = DenseLayer(feature_rep_net,
                                 num_units=params['feature']['layers'][i],
                                 W=params['feature']['weights'][i],
@@ -252,6 +238,7 @@ def execute(dataset, n_output, num_epochs=500):
         # Predict the encoder parameters for the features
         enc_weights_net = feature_rep_net
         for i in range(len(params['encoder_w']['layers'])):
+            enc_weights_net = BatchNormLayer(enc_weights_net)
             enc_weights_net = DenseLayer(enc_weights_net,
                                 num_units=params['encoder_w']['layers'][i],
                                 W=params['encoder_w']['weights'][i],
@@ -279,6 +266,8 @@ def execute(dataset, n_output, num_epochs=500):
         # Predict the feature representations 
         feature_rep_net = InputLayer((n_feats, n_samples), dataset)
         for i in range(len(params['feature']['layers'])):
+            if i > 0:
+                feature_rep_net = BatchNormLayer(feature_rep_net)
             feature_rep_net = DenseLayer(feature_rep_net,
                                 num_units=params['feature']['layers'][i],
                                 W=params['feature']['weights'][i],
@@ -288,6 +277,7 @@ def execute(dataset, n_output, num_epochs=500):
         # Predict the decoder parameters for the features
         dec_weights_net = feature_rep_net
         for i in range(len(params['decoder_w']['layers'])):
+            dec_weights_net = BatchNormLayer(dec_weights_net)
             dec_weights_net = DenseLayer(dec_weights_net,
                                 num_units=params['decoder_w']['layers'][i],
                                 W=params['decoder_w']['weights'][i],
@@ -309,6 +299,7 @@ def execute(dataset, n_output, num_epochs=500):
     # encoder as input and tries to predict the targets
     supervised_net = InputLayer((n_batch, h_rep_size), h_rep)
     for i in range(len(params['supervised']['layers'])):
+        supervised_net = BatchNormLayer(supervised_net)
         supervised_net = DenseLayer(supervised_net,
                                 num_units=params['supervised']['layers'][i],
                                 W=params['supervised']['weights'][i],
@@ -349,14 +340,14 @@ def execute(dataset, n_output, num_epochs=500):
     # transfers to/from the gpu
     params = [p for p in params if p is not feature_var]
     
-    #updates = lasagne.updates.rmsprop(total_loss,
-    #                                  params,
-    #                                  learning_rate=lr)
+    updates = lasagne.updates.rmsprop(total_loss,
+                                      params,
+                                      learning_rate=lr)
     # updates = lasagne.updates.sgd(total_loss,
     #                              params,
     #                              learning_rate=lr)
-    updates = lasagne.updates.momentum(total_loss, params,
-                                       learning_rate=lr, momentum=0.9)
+    #updates = lasagne.updates.momentum(total_loss, params,
+    #                                   learning_rate=lr, momentum=0.9)
     updates[lr] = (lr * 0.99).astype("float32")
 
     train_fn = theano.function([input_var, target_var], total_loss,
@@ -415,7 +406,8 @@ def execute(dataset, n_output, num_epochs=500):
 
             #np.savez(save_path+'v3_sup.npz',
             #         *lasagne.layers.get_all_param_values(supervised_net))
-                
+         
+        print("  learning rate:\t\t{:.9f}".format(float(lr.get_value())))
         print("  total time:\t\t\t{:.3f}s".format(time.time() - start_time))
 
 
