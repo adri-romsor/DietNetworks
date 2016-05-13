@@ -299,7 +299,7 @@ def execute(dataset, n_output, num_epochs=500):
     # encoder as input and tries to predict the targets
     supervised_net = InputLayer((n_batch, h_rep_size), h_rep)
     for i in range(len(params['supervised']['layers'])):
-        supervised_net = BatchNormLayer(supervised_net)
+        #supervised_net = BatchNormLayer(supervised_net)
         supervised_net = DenseLayer(supervised_net,
                                 num_units=params['supervised']['layers'][i],
                                 W=params['supervised']['weights'][i],
