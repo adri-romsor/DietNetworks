@@ -15,13 +15,12 @@ def main(embedding_path, which_method="pca"):
 
     for lr_value in lr_candidates:
         for embedding in embedding_methods:
-            # embedding = "pca_1_embedding.npz"
             print "Training model %s: model %d out of %d" % \
                     (embedding, mod, len(embedding_methods))
             execute(embedding, num_epochs=1000, split_valid=.2,
                     lr_value=lr_value,
                     save_path=embedding_path)
-            mod += 1
+        mod += 1
 
 if __name__ == '__main__':
     embedding_path = \
