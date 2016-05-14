@@ -12,8 +12,10 @@ def main(embedding_path, which_method="kmeans"):
     embedding_methods = os.listdir(embedding_path)
     embedding_methods = [emb for emb in embedding_methods
                          if ".npz" in emb and which_method in emb]
-    embedding_methods = [emb for emb in embedding_methods
-                         if not ("triangle" in emb) and not
+
+    embedding_methods = [emb for emb in embedding_methods if not
+                         ("triangle" in emb)]
+    embedding_methods = [emb for emb in embedding_methods if not
                          ("hard" in emb)]
 
     print "Embedding methods: {}".format(embedding_methods)
@@ -33,14 +35,17 @@ def main(embedding_path, which_method="kmeans"):
             import pdb
             pdb.set_trace()
 
-        # Encode using triangulation
-        means = x_train.mean(1)
-        new_x_train = np.maximum(means[:, None] - x_train, 0)
-        means = x_test.mean(1)
-        new_x_test = np.maximum(means[:, None] - x_test, 0)
+        new_x_train = np.zeros(x_train.shape)
+        new_x_test = np.zeros(x_test.shape)
+
+        # Hard one hot encoding
+        amin = x_train.argmin(1)
+        new_x_train[range(new_x_train.shape[0]), amin] = 1
+        amin = x_test.argmin(1)
+        new_x_test[range(new_x_test.shape[0]), amin] = 1
 
         # Save new encoding
-        file_name = embedding_path + embedding[:-4] + "_triangle.npz"
+        file_name = embedding_path + embedding[:-4] + "_hard.npz"
         np.savez(file_name,
                  x_train_supervised=new_x_train,
                  y_train_supervised=y_train,

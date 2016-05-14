@@ -18,6 +18,8 @@ def main(results_path, which_method="pca", n_comps=None):
                                  which_method + "_" +
                                  str(n_comps[comp]) + "_" in r])
 
+        comp_results = [r for r in comp_results if not ("hard") in r]
+
         for res in range(len(comp_results)):
             loaded_res = np.load(results_path+comp_results[res])
 
@@ -41,7 +43,6 @@ if __name__ == '__main__':
         "/data/lisatmp4/romerosa/feature_selection/results/"
 
     n_comps = [1, 2, 5, 10, 20, 50,
-               100, 200, 400, 600, 800,
-               1000, 1200, 1400, 1600, 2000]
+               100, 200, 1000]
 
     main(results_path, "kmeans", n_comps)

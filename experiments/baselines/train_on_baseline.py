@@ -10,13 +10,13 @@ def main(embedding_path, which_method="pca"):
 
     print "Method: {}".format(which_method)
 
-    for directory, _, embeddings in os.walk(embedding_path):
-        embedding_methods.extend([emb for emb in embeddings
-                                  if ".npz" in emb and which_method in emb])
+    embedding_methods = os.listdir(embedding_path)
+    embedding_methods = [emb for emb in embedding_methods
+                         if ".npz" in emb and which_method in emb]
 
     if which_method == "kmeans":
         embedding_methods = [emb for emb in embedding_methods if
-                             "triangle" in emb]
+                             "hard" in emb]
 
     print "Embedding methods: {}".format(embedding_methods)
     mod = 1
