@@ -9,9 +9,17 @@ def main(embedding_path, which_method="pca"):
 
     print "Method: {}".format(which_method)
 
-    for directory, _, embeddings in os.walk(embedding_path):
-        embedding_methods.extend([emb for emb in embeddings
-                if ".npz" in emb and which_method in emb])
+    #for directory, _, embeddings in os.walk(embedding_path):
+    for embedding in os.listdir(embedding_path):
+        #print embeddings
+        #print os.path.join(embedding_path, embeddings)
+        #print os.path.isfile(os.path.join(embedding_path, embeddings))
+        if os.path.isfile(os.path.join(embedding_path, embedding)):
+            #embedding_methods.extend([emb for emb in embeddings
+            #        if ".npz" in emb and which_method in emb])
+            #embedding_methods.extend([emb for emb in embeddings
+            #        if ".npz" in emb and which_method in emb])
+            embedding_methods.append(embedding)
 
     print "Embedding methods: {}".format(embedding_methods)
     mod = 1
