@@ -51,7 +51,8 @@ def kmeans(dataset, n_cl_list, save_path):
         np.savez(file_name, x_train_supervised=new_x_train_supervised,
                  y_train_supervised=train_supervised[1],
                  x_test_supervised=new_x_test_supervised,
-                 y_test_supervised=test_supervised[1])
+                 y_test_supervised=test_supervised[1],
+                 kmeans=km)
         print "... took %f s" % (time.time() - start_time)
 
 
