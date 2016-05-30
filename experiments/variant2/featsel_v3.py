@@ -144,6 +144,9 @@ def execute(dataset, n_output, num_epochs=500):
                              -np.ones((nb_unsup_train,))))
         y_valid = x_sup_labels[nb_sup_train:]
         
+        x_train = x_sup[:nb_sup_train]
+        y_train = x_sup_labels[:nb_sup_train]
+        
         # Shuffle x_train and y_train together
         np.random.seed(0)
         indices = np.arange(x_train.shape[0])
@@ -299,7 +302,6 @@ def execute(dataset, n_output, num_epochs=500):
     # encoder as input and tries to predict the targets
     supervised_net = InputLayer((n_batch, h_rep_size), h_rep)
     for i in range(len(params['supervised']['layers'])):
-        #supervised_net = BatchNormLayer(supervised_net)
         supervised_net = DenseLayer(supervised_net,
                                 num_units=params['supervised']['layers'][i],
                                 W=params['supervised']['weights'][i],
@@ -311,11 +313,14 @@ def execute(dataset, n_output, num_epochs=500):
     print("Defining loss functions")   
     
     unsup_loss = ((input_var - reconstruction) ** 2).mean()
+    
     #unsup_loss = lasagne.objectives.binary_crossentropy(T.nnet.sigmoid(reconstruction) / 2,
     #                                                    input_var / 2).mean()
     
-    prediction_mse = (target_var - prediction) ** 2
-    sup_loss = (prediction_mse * T.neq(target_var, -1)).mean()
+    sup_loss = ((target_var - prediction) ** 2 *
+                 T.neq(target_var, -1)).mean()
+    sup_abs_loss = (abs(target_var - prediction) *
+                    T.neq(target_var, -1)).mean()
 
     total_loss = unsup_loss + sup_loss
     
@@ -327,42 +332,45 @@ def execute(dataset, n_output, num_epochs=500):
     # - In the 'params' dictionnary
     # - The encoder biases
     # - The params in the 'supervised_net' network
-    params = (lasagne.layers.get_all_params(supervised_net) +
-              [encoder_b] +
+    all_params = ([encoder_b] +
               params['feature']['weights'] + 
               params['feature']['biases'] + 
               params['encoder_w']['weights'] + 
               params['encoder_w']['biases'] + 
               params['decoder_w']['weights'] + 
-              params['decoder_w']['biases'])
+              params['decoder_w']['biases'] +
+              params['supervised']['weights'] +
+              params['supervised']['biases'])
     
     # Do not train 'feature_var'. It's only a shared variable to avoid
     # transfers to/from the gpu
-    params = [p for p in params if p is not feature_var]
+    all_params = [p for p in all_params if p is not feature_var]
     
     updates = lasagne.updates.rmsprop(total_loss,
-                                      params,
+                                      all_params,
                                       learning_rate=lr)
-    # updates = lasagne.updates.sgd(total_loss,
-    #                              params,
-    #                              learning_rate=lr)
-    #updates = lasagne.updates.momentum(total_loss, params,
-    #                                   learning_rate=lr, momentum=0.9)
-    updates[lr] = (lr * 0.99).astype("float32")
+    #updates = lasagne.updates.adam(total_loss, all_params, learning_rate=lr)
+    updates[lr] = (lr * 0.995).astype("float32")
+    
+    # Reduce lr for parameters of the 'weights' predicting networks
+    for p in (params['feature']['weights'] + params['feature']['biases'] + 
+              params['encoder_w']['weights'] + params['encoder_w']['biases'] + 
+              params['decoder_w']['weights'] + params['decoder_w']['biases']):
+        
+        updates[p] = p + (updates[p] - p) / 4
+        
+    # Train=1084,Valid=694,Test=198.23
 
     train_fn = theano.function([input_var, target_var], total_loss,
                                updates=updates)
-    val_fn = theano.function([input_var, target_var], [unsup_loss, sup_loss])
-    monitor_labels = ["reconstruction loss", "prediction loss"]
-    
-    #theano.printing.pydotprint(train_fn, "fct.png", scan_graphs=True)   
-    
     
     # Define monitoring functions
     print("Building monitoring functions")
     
-    val_fn = theano.function([input_var, target_var], [unsup_loss, sup_loss])
-    monitor_labels = ["reconstruction loss", "prediction loss"]
+    val_fn = theano.function([input_var, target_var],
+                             [unsup_loss, sup_loss, sup_abs_loss])
+    monitor_labels = ["reconstruction loss", "prediction loss",
+                      "prediction loss (MAE)"]
 
 
     # Finally, launch the training loop.
@@ -423,7 +431,7 @@ def main():
     parser.add_argument('--num_epochs',
                         '-ne',
                         type=int,
-                        default=5,
+                        default=50,
                         help="""Optional. Int to indicate the max'
                         'number of epochs.""")
 
