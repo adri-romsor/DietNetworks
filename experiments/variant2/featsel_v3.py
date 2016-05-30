@@ -87,8 +87,12 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
         x_valid, y_valid = load_data('valid', 'standard', False, 'numpy')
 
         # WARNING : The dorothea dataset has no test labels
-        x_test = load_data('test', 'standard', False, 'numpy')
-        y_test = None
+        print ("Warning: using validation as test set in execute, for Dorothea")
+
+        #x_test = load_data('test', 'standard', False, 'numpy')
+        #y_test = None
+
+        x_test,y_test = x_valid,y_valid
 
     elif dataset == 'genomics_all':
         from feature_selection.experiments.common.dorothea import load_data
@@ -405,11 +409,17 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
     # Define monitoring functions
     print("Building monitoring functions")
 
-    val_fn = theano.function([input_var, target_var],
+    if supervised_type == "supervised_regression":
+        val_fn = theano.function([input_var, target_var],
                              [unsup_loss, sup_loss, sup_abs_loss])
-    monitor_labels = ["reconstruction loss", "prediction loss",
+        monitor_labels = ["reconstruction loss", "prediction loss",
                       "prediction loss (MAE)"]
-
+    elif supervised_type == "supervised_classification":
+        val_fn = theano.function([input_var, target_var],
+                            [unsup_loss, sup_loss])
+        monitor_labels = ["reconstruction loss", "prediction loss"]
+    else:
+        raise NotImplementedError()
 
     # Finally, launch the training loop.
     print("Starting training...")
