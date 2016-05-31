@@ -359,7 +359,7 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
 
         prop_0 = T.sum(index_0) / index_0.shape[0]
 
-        sup_loss = (T.log(pred_0) * prop_0 + T.log(1 - pred_1) * (1 - pred_0))\
+        sup_loss = - (T.log(pred_0) * prop_0 + T.log(1 - pred_1) * (1 - pred_0))\
                 .mean()
 
     else:
