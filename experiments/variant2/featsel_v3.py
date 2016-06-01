@@ -14,9 +14,8 @@ import theano.tensor as T
 #theano.config.compute_test_value = 'warn'
 
 """
-NOTE : This script should be launched with the following Theano flags : 
+NOTE : This script should be launched with the following Theano flags :
 THEANO_FLAGS="floatX=float32,optimizer_excluding=scanOp_pushout_seqs_ops:scanOp_pushout_nonseqs_ops:scanOp_pushout_output" python featsel_v3.py opensnp [...]
-
 """
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
@@ -61,20 +60,20 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels):
     for (label, val) in zip(monitoring_labels, monitoring_values):
         print ("  {}\t{}:\t\t{:.6f}".format(dataset_name, label, val))
         monitoring_dict[label] = val
-    
-    return monitoring_dict 
+
+    return monitoring_dict
 
 
 def weights(n_in, n_out, name=None, init=0.01):
     return theano.shared(np.random.uniform(-init, init,
                                            size=(n_in, n_out)).astype("float32"),
                          name)
-    
-    
+
+
 def biases(n_out, name=None):
     return theano.shared(np.zeros((n_out,), "float32"), name)
 
-    
+
 # Main program
 def execute(dataset, n_output, num_epochs=500):
     # Load the dataset
@@ -87,7 +86,7 @@ def execute(dataset, n_output, num_epochs=500):
         # WARNING : The dorothea dataset has no test labels
         x_test = load_data('test', 'standard', False, 'numpy')
         y_test = None
-        
+
     elif dataset == 'genomics_all':
         from feature_selection.experiments.common.dorothea import load_data
         x_train, y_train = load_data('all', 'standard', False, 'numpy')
@@ -103,17 +102,17 @@ def execute(dataset, n_output, num_epochs=500):
         y_train = np.random.randint(0, 2, size=10).astype('int32')
         y_valid = np.random.randint(0, 2, size=2).astype('int32')
         y_test = np.random.randint(0, 2, size=2).astype('int32')
-        
+
     elif dataset == 'debug_snp':
         # Creates a debug dataset meant to look like openSNP so there is
         # something to test this code on until openSNP has been successfully
         # wrapped and integrated
-        
+
         n_train = 1000
         n_valid = 500
         n_test = 500
         n_features = 1000000
-        
+
         x_train = np.random.randint(0, 20, size=(n_train,
                                                  n_features)).astype('int8')
         x_valid = np.random.randint(0, 20, size=(n_valid,
@@ -127,26 +126,26 @@ def execute(dataset, n_output, num_epochs=500):
 
     elif dataset == 'opensnp':
         from feature_selection import aggregate_dataset
-        
+
         # This splits the data into [0.6, 0.2, 0.2] for the supervised examples
         # and puts half of the unsupervised examples in the training set
         # (because otherwise it would be way to expensive memory-wise)
         data = aggregate_dataset.load_data23andme_baselines(split=0.8)
         (x_sup, x_sup_labels), (x_test, y_test), x_unsup = data
-        
+
         nb_sup_train = int(x_sup.shape[0] * 0.75)
         nb_unsup_train = int(x_unsup.shape[0] * 0.5)
-        
+
         x_train = np.vstack((x_sup[:nb_sup_train], x_unsup[:nb_unsup_train]))
         x_valid = x_sup[nb_sup_train:]
-        
+
         y_train = np.hstack((x_sup_labels[:nb_sup_train],
                              -np.ones((nb_unsup_train,))))
         y_valid = x_sup_labels[nb_sup_train:]
-        
+
         x_train = x_sup[:nb_sup_train]
         y_train = x_sup_labels[:nb_sup_train]
-        
+
         # Shuffle x_train and y_train together
         np.random.seed(0)
         indices = np.arange(x_train.shape[0])
@@ -154,7 +153,7 @@ def execute(dataset, n_output, num_epochs=500):
 
         x_train = x_train[indices]
         y_train = y_train[indices]
-        
+
         # Standardize the dtype
         x_train = x_train.astype("float32")
         x_valid = x_valid.astype("float32")
@@ -175,26 +174,28 @@ def execute(dataset, n_output, num_epochs=500):
     n_classes = y_train.max() + 1
     n_batch = 10
     save_path = '/data/lisatmp4/carriepl/FeatureSelection/'
-    
+
     # Prepare Theano variables for inputs and targets
     input_var = T.fmatrix('inputs')
     target_var = T.fvector('targets')
-    
+
     feature_var = theano.shared(x_train.transpose().astype("float32"), 'feature_var')
-    lr = theano.shared(np.float32(1e-4), 'learning_rate')
-    
+    lr = theano.shared(np.float32(1e-0), 'learning_rate')
+
     #input_var.tag.test_value = x_train[:20]
     #target_var.tag.test_value = y_train[:20]
     #feature_var.tag.test_value = x_train.transpose()
 
     # Build model
     print("Building model")
-    
+
     # Define a few useful values for building the model
-    feat_repr_size = 80
-    h_rep_size = 80
-    
-    # Define the network architecture             
+    feat_repr_size = 5
+    h_rep_size = 5
+
+    # Define the network architecture
+    # NOTE : Can scale down the param init from 0.001 to 0.0001 for slightly
+    # better results.
     params = {
         'feature': {
             'layers': [feat_repr_size],
@@ -204,7 +205,7 @@ def execute(dataset, n_output, num_epochs=500):
         'encoder_w': {
             'layers': [n_output, h_rep_size],
             'weights': [weights(feat_repr_size, n_output, 'ew1', 0.001),
-                        weights(n_output, h_rep_size, 'ew2', 0.001)],
+                        weights(n_output, h_rep_size, 'ew2', 0.0001)],
             'biases': [biases(n_output, 'eb1'),
                        biases(h_rep_size, 'eb2')],
             'acts': [rectify, tanh]},
@@ -223,11 +224,33 @@ def execute(dataset, n_output, num_epochs=500):
                        biases(1, 'sb2')],
             'acts': [rectify, very_leaky_rectify]}}
 
+    params = {
+        'feature': {
+            'layers': [feat_repr_size],
+            'weights': [weights(n_samples, feat_repr_size, 'fw1', 0.0001)],
+            'biases': [biases(feat_repr_size, 'fb1')],
+            'acts': [rectify]},
+        'encoder_w': {
+            'layers': [h_rep_size],
+            'weights': [weights(feat_repr_size, h_rep_size, 'ew2', 0.0001)],
+            'biases': [biases(h_rep_size, 'eb2')],
+            'acts': [tanh]},
+        'decoder_w': {
+            'layers': [h_rep_size],
+            'weights': [weights(feat_repr_size, h_rep_size, 'dw2', 0.0001)],
+            'biases': [biases(h_rep_size, 'db2')],
+            'acts': [tanh]},
+        'supervised': {
+            'layers': [1],
+            'weights': [weights(h_rep_size, 1, 'sw3')],
+            'biases': [biases(1, 'sb2')],
+            'acts': [very_leaky_rectify]}}
+
     # Build the portion of the model that will predict the encoder's hidden
     # representation fron the inputs and the feature activations.
     def step_enc(dataset, inputs):
 
-        # Predict the feature representations 
+        # Predict the feature representations
         feature_rep_net = InputLayer((n_feats, n_samples), dataset)
         for i in range(len(params['feature']['layers'])):
             if i > 0:
@@ -237,7 +260,7 @@ def execute(dataset, n_output, num_epochs=500):
                                 W=params['feature']['weights'][i],
                                 b=params['feature']['biases'][i],
                                 nonlinearity=params['feature']['acts'][i])
-        
+
         # Predict the encoder parameters for the features
         enc_weights_net = feature_rep_net
         for i in range(len(params['encoder_w']['layers'])):
@@ -248,25 +271,25 @@ def execute(dataset, n_output, num_epochs=500):
                                 b=params['encoder_w']['biases'][i],
                                 nonlinearity=params['encoder_w']['acts'][i])
         encoder_weights = lasagne.layers.get_output(enc_weights_net)
-        
+
         # Predict the contribution to the encoder's hidden representation.
         return T.dot(inputs, encoder_weights)
-        
+
     results, updates = theano.scan(fn=step_enc,
                                    non_sequences=[feature_var, input_var],
                                    n_steps=1, allow_gc=True,
                                    name="encoder_w_scan")
     hidden_contribution = results[0]
-    
+
     # Add a bias vector to the hidden_contribution and apply an activation
     # function to obtain the autoencoder's hidden representation
     encoder_b = biases(h_rep_size, 'encoder_b')
     h_rep = T.nnet.relu(hidden_contribution + encoder_b)
-    
+
     # Build the decoder
     def step_dec(dataset, h_rep):
-        
-        # Predict the feature representations 
+
+        # Predict the feature representations
         feature_rep_net = InputLayer((n_feats, n_samples), dataset)
         for i in range(len(params['feature']['layers'])):
             if i > 0:
@@ -276,7 +299,7 @@ def execute(dataset, n_output, num_epochs=500):
                                 W=params['feature']['weights'][i],
                                 b=params['feature']['biases'][i],
                                 nonlinearity=params['feature']['acts'][i])
-        
+
         # Predict the decoder parameters for the features
         dec_weights_net = feature_rep_net
         for i in range(len(params['decoder_w']['layers'])):
@@ -287,17 +310,17 @@ def execute(dataset, n_output, num_epochs=500):
                                 b=params['decoder_w']['biases'][i],
                                 nonlinearity=params['decoder_w']['acts'][i])
         decoder_weights = lasagne.layers.get_output(dec_weights_net).transpose()
-        
+
         # Predict the contribution to the decoder's reconstruction
         recon_contribution = T.dot(h_rep, decoder_weights)
         return recon_contribution
-        
+
     results, updates = theano.scan(fn=step_dec,
                                    non_sequences=[feature_var, h_rep],
                                    n_steps=1, allow_gc=True,
                                    name="decoder_w_scan")
     reconstruction = results[0]
-    
+
     # Build the supervised network that takes the hidden representation of the
     # encoder as input and tries to predict the targets
     supervised_net = InputLayer((n_batch, h_rep_size), h_rep)
@@ -310,63 +333,70 @@ def execute(dataset, n_output, num_epochs=500):
     prediction = lasagne.layers.get_output(supervised_net)[:, 0]
 
     # Compute loss expressions
-    print("Defining loss functions")   
-    
+    print("Defining loss functions")
+
     unsup_loss = ((input_var - reconstruction) ** 2).mean()
-    
+
     #unsup_loss = lasagne.objectives.binary_crossentropy(T.nnet.sigmoid(reconstruction) / 2,
     #                                                    input_var / 2).mean()
-    
+
     sup_loss = ((target_var - prediction) ** 2 *
                  T.neq(target_var, -1)).mean()
     sup_abs_loss = (abs(target_var - prediction) *
                     T.neq(target_var, -1)).mean()
 
-    total_loss = unsup_loss + sup_loss
-    
-    
+    total_loss = sup_loss
+
+
     # Define training funtions
     print("Building training functions")
-    
+
     # There are 3 places where the parameters are definer:
     # - In the 'params' dictionnary
     # - The encoder biases
     # - The params in the 'supervised_net' network
     all_params = ([encoder_b] +
-              params['feature']['weights'] + 
-              params['feature']['biases'] + 
-              params['encoder_w']['weights'] + 
-              params['encoder_w']['biases'] + 
-              params['decoder_w']['weights'] + 
+              params['feature']['weights'] +
+              params['feature']['biases'] +
+              params['encoder_w']['weights'] +
+              params['encoder_w']['biases'] +
+              params['decoder_w']['weights'] +
               params['decoder_w']['biases'] +
               params['supervised']['weights'] +
               params['supervised']['biases'])
-    
+
+    all_params = ([encoder_b] +
+              params['feature']['weights'] +
+              params['feature']['biases'] +
+              params['encoder_w']['weights'] +
+              params['encoder_w']['biases'] +
+              params['supervised']['weights'] +
+              params['supervised']['biases'])
+
     # Do not train 'feature_var'. It's only a shared variable to avoid
     # transfers to/from the gpu
     all_params = [p for p in all_params if p is not feature_var]
-    
+
     updates = lasagne.updates.rmsprop(total_loss,
                                       all_params,
                                       learning_rate=lr)
     #updates = lasagne.updates.adam(total_loss, all_params, learning_rate=lr)
-    updates[lr] = (lr * 0.995).astype("float32")
-    
+
     # Reduce lr for parameters of the 'weights' predicting networks
-    for p in (params['feature']['weights'] + params['feature']['biases'] + 
-              params['encoder_w']['weights'] + params['encoder_w']['biases'] + 
-              params['decoder_w']['weights'] + params['decoder_w']['biases']):
-        
-        updates[p] = p + (updates[p] - p) / 4
-        
-    # Train=1084,Valid=694,Test=198.23
+    for p in (params['feature']['weights'] + params['feature']['biases'] +
+              params['encoder_w']['weights'] + params['encoder_w']['biases'] +
+              params['decoder_w']['weights'] + params['decoder_w']['biases'] +
+              params['supervised']['weights']):
+
+        if p in updates:
+            updates[p] = p + (updates[p] - p) / 10000
 
     train_fn = theano.function([input_var, target_var], total_loss,
                                updates=updates)
-    
+
     # Define monitoring functions
     print("Building monitoring functions")
-    
+
     val_fn = theano.function([input_var, target_var],
                              [unsup_loss, sup_loss, sup_abs_loss])
     monitor_labels = ["reconstruction loss", "prediction loss",
@@ -375,9 +405,10 @@ def execute(dataset, n_output, num_epochs=500):
 
     # Finally, launch the training loop.
     print("Starting training...")
-    
+
     # We iterate over epochs:
     best_valid_mse = 1e20
+    best_epoch = 0
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data to updates
         # the parameters:
@@ -388,7 +419,7 @@ def execute(dataset, n_output, num_epochs=500):
             train_fn(inputs, targets)
 
         print("Epoch {} of {}".format(epoch + 1, num_epochs))
-        
+
         # Monitor progress on the training set
         train_minibatches = iterate_minibatches(x_train, y_train, n_batch,
                                                 shuffle=False)
@@ -403,7 +434,8 @@ def execute(dataset, n_output, num_epochs=500):
         # Monitor the test set if needed
         if mse < best_valid_mse:
             best_valid_mse = mse
-                
+            best_epoch = epoch + 1
+
             test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
                                                    shuffle=False)
             monitoring(test_minibatches, "test", val_fn, monitor_labels)
@@ -414,9 +446,13 @@ def execute(dataset, n_output, num_epochs=500):
 
             #np.savez(save_path+'v3_sup.npz',
             #         *lasagne.layers.get_all_param_values(supervised_net))
-         
+
         print("  learning rate:\t\t{:.9f}".format(float(lr.get_value())))
         print("  total time:\t\t\t{:.3f}s".format(time.time() - start_time))
+
+        if epoch + 1 > best_epoch + 10:
+            lr.set_value(lr.get_value() * 0.5)
+            best_epoch = epoch + 1
 
 
 def main():
