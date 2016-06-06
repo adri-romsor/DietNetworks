@@ -386,7 +386,7 @@ def execute(dataset, n_output, num_epochs=500):
     for p in (params['feature']['weights'] + params['feature']['biases'] +
               params['encoder_w']['weights'] + params['encoder_w']['biases'] +
               params['decoder_w']['weights'] + params['decoder_w']['biases'] +
-              params['supervised']['weights']):
+              params['supervised']['weights'] + [encoder_b]):
 
         if p in updates:
             updates[p] = p + (updates[p] - p) / 10000
