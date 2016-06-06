@@ -15,7 +15,9 @@ import theano.tensor as T
 
 """
 NOTE : This script should be launched with the following Theano flags :
-THEANO_FLAGS="floatX=float32,optimizer_excluding=scanOp_pushout_seqs_ops:scanOp_pushout_nonseqs_ops:scanOp_pushout_output" python featsel_v3.py opensnp [...]
+THEANO_FLAGS="floatX=float32,optimizer_excluding=scanOp_pushout_seqs_ops:\
+scanOp_pushout_nonseqs_ops:scanOp_pushout_output" python featsel_v3.py \
+opensnp [...]
 """
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
@@ -75,7 +77,7 @@ def biases(n_out, name=None):
 
 
 # Main program
-def execute(dataset, n_output, num_epochs=500):
+def execute(dataset, n_output, num_epochs=500, save_path=None):
     # Load the dataset
     print("Loading data")
     if dataset == 'genomics':
@@ -84,8 +86,12 @@ def execute(dataset, n_output, num_epochs=500):
         x_valid, y_valid = load_data('valid', 'standard', False, 'numpy')
 
         # WARNING : The dorothea dataset has no test labels
-        x_test = load_data('test', 'standard', False, 'numpy')
-        y_test = None
+        print ("Warning: using validation as test set in execute, for Dorothea")
+
+        #x_test = load_data('test', 'standard', False, 'numpy')
+        #y_test = None
+
+        x_test,y_test = x_valid,y_valid
 
     elif dataset == 'genomics_all':
         from feature_selection.experiments.common.dorothea import load_data
@@ -161,7 +167,7 @@ def execute(dataset, n_output, num_epochs=500):
         y_train = y_train.astype("float32")
         y_valid = y_valid.astype("float32")
         y_test = y_test.astype("float32")
-        
+
         # Make sure all is well
         print(x_sup.shape, x_test.shape, x_unsup.shape)
         print(x_train.shape, x_valid.shape, x_test.shape)
@@ -170,10 +176,19 @@ def execute(dataset, n_output, num_epochs=500):
         print("Unknown dataset")
         return
 
+    # supervised_type refers to the parameters of the network, and
+    # changes the last layer.
+    if dataset in ["opensnp", "debug", "debug_snp"]:
+        supervised_type = "supervised_regression"
+    elif dataset in ["genomics","genomics_all"]:
+        supervised_type = "supervised_classification"
+    else:
+        print (dataset)
+        raise NotImplementedError()
+
     n_samples, n_feats = x_train.shape
     n_classes = y_train.max() + 1
     n_batch = 10
-    save_path = '/data/lisatmp4/carriepl/FeatureSelection/'
 
     # Prepare Theano variables for inputs and targets
     input_var = T.fmatrix('inputs')
@@ -216,13 +231,21 @@ def execute(dataset, n_output, num_epochs=500):
             'biases': [biases(n_output, 'db1'),
                        biases(h_rep_size, 'db2')],
             'acts': [rectify, tanh]},
-        'supervised': {
+        'supervised_regression': {
             'layers': [n_output, 1],
             'weights': [weights(h_rep_size, n_output, 'sw1'),
                         weights(n_output, 1, 'sw2')],
             'biases': [biases(n_output, 'sb1'),
                        biases(1, 'sb2')],
-            'acts': [rectify, very_leaky_rectify]}}
+            'acts': [rectify, very_leaky_rectify]},
+        'supervised_classification': {
+            'layers': [n_output, 1],
+            'weights': [weights(h_rep_size, n_output, 'sw1'),
+                        weights(n_output, 1, 'sw2')],
+            'biases': [biases(n_output, 'sb1'),
+                       biases(1, 'sb2')],
+            'acts': [rectify, sigmoid]}
+            }
 
     params = {
         'feature': {
@@ -240,7 +263,7 @@ def execute(dataset, n_output, num_epochs=500):
             'weights': [weights(feat_repr_size, h_rep_size, 'dw2', 0.0001)],
             'biases': [biases(h_rep_size, 'db2')],
             'acts': [tanh]},
-        'supervised': {
+        'supervised_classification': {
             'layers': [1],
             'weights': [weights(h_rep_size, 1, 'sw3')],
             'biases': [biases(1, 'sb2')],
@@ -324,12 +347,15 @@ def execute(dataset, n_output, num_epochs=500):
     # Build the supervised network that takes the hidden representation of the
     # encoder as input and tries to predict the targets
     supervised_net = InputLayer((n_batch, h_rep_size), h_rep)
-    for i in range(len(params['supervised']['layers'])):
-        supervised_net = DenseLayer(supervised_net,
-                                num_units=params['supervised']['layers'][i],
-                                W=params['supervised']['weights'][i],
-                                b=params['supervised']['biases'][i],
-                                nonlinearity=params['supervised']['acts'][i])
+
+    for i in range(len(params[supervised_type]['layers'])):
+        supervised_net = DenseLayer(
+                supervised_net,
+                num_units=params[supervised_type]['layers'][i],
+                W=params[supervised_type]['weights'][i],
+                b=params[supervised_type]['biases'][i],
+                nonlinearity=params[supervised_type]['acts'][i])
+
     prediction = lasagne.layers.get_output(supervised_net)[:, 0]
 
     # Compute loss expressions
@@ -340,18 +366,34 @@ def execute(dataset, n_output, num_epochs=500):
     #unsup_loss = lasagne.objectives.binary_crossentropy(T.nnet.sigmoid(reconstruction) / 2,
     #                                                    input_var / 2).mean()
 
-    sup_loss = ((target_var - prediction) ** 2 *
-                 T.neq(target_var, -1)).mean()
-    sup_abs_loss = (abs(target_var - prediction) *
-                    T.neq(target_var, -1)).mean()
+    if supervised_type == "supervised_regression":
+        sup_loss = ((target_var - prediction) ** 2 *
+                     T.neq(target_var, -1)).mean()
+        sup_abs_loss = (abs(target_var - prediction) *
+                        T.neq(target_var, -1)).mean()
+
+    elif supervised_type == "supervised_classification":
+        index_0 = T.eq(target_var,0)
+        index_1 = T.eq(target_var,1)
+
+        pred_0 = prediction[index_0]
+        pred_1 = prediction[index_1]
+
+        prop_0 = T.sum(index_0) / index_0.shape[0]
+
+        sup_loss = - (T.log(pred_0) * (1 - prop_0) + T.log(1 - pred_1) * prop_0)\
+                .mean()
+
+    else:
+        raise NotImplementedError()
 
     total_loss = sup_loss
-
 
     # Define training funtions
     print("Building training functions")
 
-    # There are 3 places where the parameters are definer:
+
+    # There are 3 places where the parameters are defined:
     # - In the 'params' dictionnary
     # - The encoder biases
     # - The params in the 'supervised_net' network
@@ -362,16 +404,16 @@ def execute(dataset, n_output, num_epochs=500):
               params['encoder_w']['biases'] +
               params['decoder_w']['weights'] +
               params['decoder_w']['biases'] +
-              params['supervised']['weights'] +
-              params['supervised']['biases'])
-
+              params[supervised_type]['weights'] +
+              params[supervised_type]['biases'])
+    
     all_params = ([encoder_b] +
               params['feature']['weights'] +
               params['feature']['biases'] +
               params['encoder_w']['weights'] +
               params['encoder_w']['biases'] +
-              params['supervised']['weights'] +
-              params['supervised']['biases'])
+              params[supervised_type]['weights'] +
+              params[supervised_type]['biases'])
 
     # Do not train 'feature_var'. It's only a shared variable to avoid
     # transfers to/from the gpu
@@ -386,7 +428,7 @@ def execute(dataset, n_output, num_epochs=500):
     for p in (params['feature']['weights'] + params['feature']['biases'] +
               params['encoder_w']['weights'] + params['encoder_w']['biases'] +
               params['decoder_w']['weights'] + params['decoder_w']['biases'] +
-              params['supervised']['weights'] + [encoder_b]):
+              params[supervised_type]['weights'] + [encoder_b]):
 
         if p in updates:
             updates[p] = p + (updates[p] - p) / 10000
@@ -397,11 +439,17 @@ def execute(dataset, n_output, num_epochs=500):
     # Define monitoring functions
     print("Building monitoring functions")
 
-    val_fn = theano.function([input_var, target_var],
+    if supervised_type == "supervised_regression":
+        val_fn = theano.function([input_var, target_var],
                              [unsup_loss, sup_loss, sup_abs_loss])
-    monitor_labels = ["reconstruction loss", "prediction loss",
+        monitor_labels = ["reconstruction loss", "prediction loss",
                       "prediction loss (MAE)"]
-
+    elif supervised_type == "supervised_classification":
+        val_fn = theano.function([input_var, target_var],
+                            [unsup_loss, sup_loss])
+        monitor_labels = ["reconstruction loss", "prediction loss"]
+    else:
+        raise NotImplementedError()
 
     # Finally, launch the training loop.
     print("Starting training...")
@@ -471,9 +519,20 @@ def main():
                         help="""Optional. Int to indicate the max'
                         'number of epochs.""")
 
+    parser.add_argument('--save_path',
+                        '-sp',
+                        type=str,
+                        default='/data/lisatmp4/carriepl/FeatureSelection/',
+                        help="""Optional. Save path for the model""")
+
     args = parser.parse_args()
 
-    execute(args.dataset, int(args.n_output), int(args.num_epochs))
+    print ("Arguments: {}".format(args))
+    execute(
+        args.dataset,
+        int(args.n_output),
+        int(args.num_epochs),
+        str(args.save_path))
 
 
 
