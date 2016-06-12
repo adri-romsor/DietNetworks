@@ -197,7 +197,8 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
     target_var = T.fvector('targets')
 
     feature_var = theano.shared(x_train.transpose().astype("float32"), 'feature_var')
-    lr = theano.shared(np.float32(1e-4), 'learning_rate')
+    #lr = theano.shared(np.float32(1e-4), 'learning_rate')
+    lr = theano.shared(np.float32(1e-3), 'learning_rate')
 
     #input_var.tag.test_value = x_train[:20]
     #target_var.tag.test_value = y_train[:20]
