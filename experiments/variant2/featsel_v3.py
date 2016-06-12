@@ -3,6 +3,10 @@ import argparse
 import time
 import os
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plot
+
 import lasagne
 from lasagne.layers import DenseLayer, InputLayer, BatchNormLayer
 from lasagne.nonlinearities import (sigmoid, softmax, tanh, linear, rectify,
@@ -18,7 +22,6 @@ NOTE : This script should be launched with the following Theano flags :
 THEANO_FLAGS="floatX=float32,optimizer_excluding=scanOp_pushout_seqs_ops:\
 scanOp_pushout_nonseqs_ops:scanOp_pushout_output" python featsel_v3.py \
 opensnp [...]
-
 """
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
@@ -78,7 +81,8 @@ def biases(n_out, name=None):
 
 
 # Main program
-def execute(dataset, n_output, num_epochs=500, save_path=None):
+def execute(dataset, n_output, num_epochs=500, save_path=None,
+            cross_validation=None):
     # Load the dataset
     print("Loading data")
     if dataset == 'genomics':
@@ -169,6 +173,15 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
         y_valid = y_valid.astype("float32")
         y_test = y_test.astype("float32")
 
+        """
+        # Preprocess the targets by removing the mean of the training labels
+        mean_y = y_train.mean()
+        y_train -= mean_y
+        y_valid -= mean_y
+        y_test -= mean_y
+        print("Labels have been centered by removing %f cm." % mean_y)
+        """
+
         # Make sure all is well
         print(x_sup.shape, x_test.shape, x_unsup.shape)
         print(x_train.shape, x_valid.shape, x_test.shape)
@@ -176,6 +189,33 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
     else:
         print("Unknown dataset")
         return
+
+    # With the dataset loaded, check if cross-validation needs to be applied.
+    if cross_validation is not None:
+
+        no_fold, nb_folds = cross_validation
+
+        assert no_fold >= 1 and no_fold <= nb_folds
+        assert nb_folds >= 2
+
+        full_x = np.vstack((x_train, x_valid))
+        full_y = np.hstack((y_train, y_valid))
+
+        start_idx = ((len(full_y) + nb_folds - 1) / nb_folds) * (no_fold - 1)
+        end_idx = ((len(full_y) + nb_folds - 1) / nb_folds) * (no_fold)
+
+        train_examples = range(0, start_idx) + range(end_idx, len(full_y))
+        valid_examples = range(start_idx, min(end_idx, len(full_y)))
+
+        train_x = full_x[train_examples]
+        train_y = full_y[train_examples]
+        valid_x = full_x[valid_examples]
+        valid_y = full_y[valid_examples]
+
+        print("Altering training and validation datasets to perform k-fold"
+              "crossvalidation for fold %i out of %i." % (no_fold, nb_folds))
+        print("New train shape :", train_x.shape)
+        print("New valid shape :", valid_x.shape)
 
     # supervised_type refers to the parameters of the network, and
     # changes the last layer.
@@ -190,13 +230,13 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
     n_samples, n_feats = x_train.shape
     n_classes = y_train.max() + 1
     n_batch = 10
-    #save_path = '/data/lisatmp4/carriepl/FeatureSelection/'
 
     # Prepare Theano variables for inputs and targets
     input_var = T.fmatrix('inputs')
     target_var = T.fvector('targets')
 
     feature_var = theano.shared(x_train.transpose().astype("float32"), 'feature_var')
+
     #lr = theano.shared(np.float32(1e-4), 'learning_rate')
     lr = theano.shared(np.float32(1e-3), 'learning_rate')
 
@@ -208,10 +248,12 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
     print("Building model")
 
     # Define a few useful values for building the model
-    feat_repr_size = 80
-    h_rep_size = 80
+    feat_repr_size = 5
+    h_rep_size = 5
 
     # Define the network architecture
+    # NOTE : Can scale down the param init from 0.001 to 0.0001 for slightly
+    # better results.
     params = {
         'feature': {
             'layers': [feat_repr_size],
@@ -221,7 +263,7 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
         'encoder_w': {
             'layers': [n_output, h_rep_size],
             'weights': [weights(feat_repr_size, n_output, 'ew1', 0.001),
-                        weights(n_output, h_rep_size, 'ew2', 0.001)],
+                        weights(n_output, h_rep_size, 'ew2', 0.0001)],
             'biases': [biases(n_output, 'eb1'),
                        biases(h_rep_size, 'eb2')],
             'acts': [rectify, tanh]},
@@ -247,6 +289,30 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
                        biases(1, 'sb2')],
             'acts': [rectify, sigmoid]}
             }
+
+
+    params = {
+        'feature': {
+            'layers': [feat_repr_size],
+            'weights': [weights(n_samples, feat_repr_size, 'fw1', 0.0001)],
+            'biases': [biases(feat_repr_size, 'fb1')],
+            'acts': [rectify]},
+        'encoder_w': {
+            'layers': [h_rep_size],
+            'weights': [weights(feat_repr_size, h_rep_size, 'ew2', 0.0001)],
+            'biases': [biases(h_rep_size, 'eb2')],
+            'acts': [tanh]},
+        'decoder_w': {
+            'layers': [h_rep_size],
+            'weights': [weights(feat_repr_size, h_rep_size, 'dw2', 0.0001)],
+            'biases': [biases(h_rep_size, 'db2')],
+            'acts': [tanh]},
+        'supervised_regression': {
+            'layers': [1],
+            'weights': [weights(h_rep_size, 1, 'sw1')],
+            'biases': [biases(1, 'sb1')],
+            'acts': [very_leaky_rectify]}}
+
 
     # Build the portion of the model that will predict the encoder's hidden
     # representation fron the inputs and the feature activations.
@@ -366,10 +432,11 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
     else:
         raise NotImplementedError()
 
-    total_loss = unsup_loss + sup_loss
+    total_loss = sup_loss
 
     # Define training funtions
     print("Building training functions")
+
 
     # There are 3 places where the parameters are defined:
     # - In the 'params' dictionnary
@@ -385,6 +452,14 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
               params[supervised_type]['weights'] +
               params[supervised_type]['biases'])
 
+    all_params = ([encoder_b] +
+              params['feature']['weights'] +
+              params['feature']['biases'] +
+              params['encoder_w']['weights'] +
+              params['encoder_w']['biases'] +
+              params[supervised_type]['weights'] +
+              params[supervised_type]['biases'])
+
     # Do not train 'feature_var'. It's only a shared variable to avoid
     # transfers to/from the gpu
     all_params = [p for p in all_params if p is not feature_var]
@@ -393,16 +468,15 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
                                       all_params,
                                       learning_rate=lr)
     #updates = lasagne.updates.adam(total_loss, all_params, learning_rate=lr)
-    updates[lr] = (lr * 0.995).astype("float32")
 
     # Reduce lr for parameters of the 'weights' predicting networks
     for p in (params['feature']['weights'] + params['feature']['biases'] +
               params['encoder_w']['weights'] + params['encoder_w']['biases'] +
-              params['decoder_w']['weights'] + params['decoder_w']['biases']):
+              params['decoder_w']['weights'] + params['decoder_w']['biases'] +
+              params[supervised_type]['weights'] + [encoder_b]):
 
-        updates[p] = p + (updates[p] - p) / 4
-
-    # Train=1084,Valid=694,Test=198.23
+        if p in updates:
+            updates[p] = p + (updates[p] - p) / 10000
 
     train_fn = theano.function([input_var, target_var], total_loss,
                                updates=updates)
@@ -427,6 +501,12 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
 
     # We iterate over epochs:
     best_valid_mse = 1e20
+    best_epoch = 0
+    train_MSEs = []
+    valid_MSEs = []
+    test_MSE_epochs = []
+    test_MSEs = []
+
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data to updates
         # the parameters:
@@ -441,21 +521,29 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
         # Monitor progress on the training set
         train_minibatches = iterate_minibatches(x_train, y_train, n_batch,
                                                 shuffle=False)
-        monitoring(train_minibatches, "train", val_fn, monitor_labels)
+        t_mse = monitoring(train_minibatches, "train",
+                           val_fn, monitor_labels)['prediction loss']
+        train_MSEs.append(t_mse)
 
         # Monitor progress on the validation set
         valid_minibatches = iterate_minibatches(x_valid, y_valid, n_batch,
                                                 shuffle=False)
-        mse = monitoring(valid_minibatches, "valid",
-                         val_fn, monitor_labels)['prediction loss']
+        v_mse = monitoring(valid_minibatches, "valid",
+                           val_fn, monitor_labels)['prediction loss']
+        valid_MSEs.append(v_mse)
 
         # Monitor the test set if needed
-        if mse < best_valid_mse:
-            best_valid_mse = mse
+        if v_mse < best_valid_mse:
+            best_valid_mse = v_mse
+            best_epoch = epoch + 1
 
             test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
                                                    shuffle=False)
-            monitoring(test_minibatches, "test", val_fn, monitor_labels)
+            t_mse = monitoring(test_minibatches, "test", val_fn,
+                               monitor_labels)['prediction loss']
+
+            test_MSE_epochs.append(best_epoch)
+            test_MSEs.append(t_mse)
 
             # Save network weights to a file
             if not os.path.exists(save_path):
@@ -466,6 +554,28 @@ def execute(dataset, n_output, num_epochs=500, save_path=None):
 
         print("  learning rate:\t\t{:.9f}".format(float(lr.get_value())))
         print("  total time:\t\t\t{:.3f}s".format(time.time() - start_time))
+
+        if epoch + 1 > best_epoch + 10:
+            lr.set_value(lr.get_value() * 0.5)
+            best_epoch = epoch + 1
+
+        plot.clf()
+        plot.plot(range(1, epoch+2), train_MSEs, label="train")
+        plot.plot(range(1, epoch+2), valid_MSEs, label="valid")
+        plot.plot(test_MSE_epochs, test_MSEs, 'ro', label="test")
+        plot.axis([1, epoch+2, 0, 200])
+        plot.legend()
+        plot.savefig("training_curves.png")
+
+    # Print summary of training
+    best_epoch = test_MSE_epochs[-1]
+    print("---------------")
+    print("Best epoch : ", best_epoch)
+    print("Training loss : ", train_MSEs[best_epoch-1])
+    print("Validation loss : ", valid_MSEs[best_epoch-1])
+    print("Test loss : ", test_MSEs[-1])
+
+
 
 
 def main():
@@ -490,14 +600,29 @@ def main():
                         default='/data/lisatmp4/carriepl/FeatureSelection/',
                         help="""Optional. Save path for the model""")
 
+    parser.add_argument('--kfold',
+                        '-kf',
+                        type=str,
+                        default=None,
+                        help='Optional. Params for k-fold validation. ' +
+                             'Format : "no_fold/nb_folds"')
+
     args = parser.parse_args()
+
+    if args.kfold is None:
+        cross_validation = None
+    else:
+        no_folds = int(args.kfold.split("/")[0])
+        nb_folds = int(args.kfold.split("/")[1])
+        cross_validation = (no_folds, nb_folds)
 
     print ("Arguments: {}".format(args))
     execute(
         args.dataset,
         int(args.n_output),
         int(args.num_epochs),
-        str(args.save_path))
+        str(args.save_path),
+        cross_validation)
 
 
 
