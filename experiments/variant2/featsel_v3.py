@@ -290,7 +290,7 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
             'acts': [rectify, sigmoid]}
             }
 
-
+    """
     params = {
         'feature': {
             'layers': [feat_repr_size],
@@ -312,7 +312,7 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
             'weights': [weights(h_rep_size, 1, 'sw1')],
             'biases': [biases(1, 'sb1')],
             'acts': [very_leaky_rectify]}}
-
+    """
 
     # Build the portion of the model that will predict the encoder's hidden
     # representation fron the inputs and the feature activations.
@@ -417,6 +417,38 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
         sup_abs_loss = (abs(target_var - prediction) *
                         T.neq(target_var, -1)).mean()
 
+        print (sup_abs_loss.shape)
+
+        # Explained variance score
+        print ("Explained variance score")
+        target_diff_avg = (target_var-prediction).mean()
+        print (target_var.ndim)
+        print (prediction.ndim)
+        print (target_diff_avg.ndim)
+
+
+        numerator = ((target_var-prediction-target_diff_avg) ** 2 *
+                T.neq(target_var, -1)).mean()
+
+        true_avg = target_var.mean()
+        denominator = ((target_var - true_avg) ** 2 *
+                T.neq(target_var, -1)).mean()
+
+        #nonzero_numerator = T.neq(numerator,0)
+        #nonzero_denominator = T.neq(denominator,0)
+        #valid_score = nonzero_numerator & nonzero_denominator
+        #explained_variance = T.ones_like(target_var)
+        #print ("debug_ explained_variance shape: {}".
+        #        format(explained_variance.shape))
+        #print (explained_variance.ndim)
+        #print (numerator.ndim)
+        #print (denominator.ndim)
+
+        explained_variance = 1 - (numerator / denominator)
+        #explained_variance[nonzero_numerator & ~nonzero_denominator] = 0.
+
+
+
     elif supervised_type == "supervised_classification":
         index_0 = T.eq(target_var,0)
         index_1 = T.eq(target_var,1)
@@ -486,9 +518,10 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
 
     if supervised_type == "supervised_regression":
         val_fn = theano.function([input_var, target_var],
-                             [unsup_loss, sup_loss, sup_abs_loss])
+                             [unsup_loss, sup_loss, sup_abs_loss,
+                             explained_variance])
         monitor_labels = ["reconstruction loss", "prediction loss",
-                      "prediction loss (MAE)"]
+                      "prediction loss (MAE)", "explained variance"]
     elif supervised_type == "supervised_classification":
         val_fn = theano.function([input_var, target_var],
                             [unsup_loss, sup_loss])
