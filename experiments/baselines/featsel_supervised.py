@@ -101,8 +101,7 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels):
 # Main program
 def execute(samp_embedding_source, num_epochs=500,
             lr_value=1e-5, split_valid=.2,
-            save_path='/data/lisatmp4/romerosa/feature_selection/',
-            max_patience=100):
+            save_path='/data/lisatmp4/dejoieti/feature_selection/'):
     """
     Execute a supervised learning.
 
@@ -136,8 +135,10 @@ def execute(samp_embedding_source, num_epochs=500,
 
     n_data = x_train.shape[0] + x_test.shape[0]
     end_train = int(round(split_valid*n_data))
+
     x_valid = x_train[-end_train:]
     y_valid = y_train[-end_train:]
+
     x_train = x_train[:-end_train]
     y_train = y_train[:-end_train]
 
@@ -219,22 +220,10 @@ def execute(samp_embedding_source, num_epochs=500,
         # otherwise the dimensions will not match.
         valid_minibatches = iterate_minibatches(x_valid, y_valid, n_batch,
                                                 shuffle=False)
-        valid_mon = monitoring(valid_minibatches, "valid", val_fn,
-                               monitor_labels)
-
-        if epoch == 0:
-            best_error = valid_mon["pred. loss"]
-            patience = 0
-        elif valid_mon["pred. loss"] < best_error:
-            patience = 0
-            best_error = valid_mon["pred. loss"]
-        else:
-            patience += 1
+        monitoring(valid_minibatches, "valid", val_fn,
+                   monitor_labels)
 
         print("  total time:\t\t\t{:.3f}s".format(time.time() - start_time))
-
-        if patience == max_patience:
-            break
 
     # After training, we compute and print the test error (only if doing
     # supervised training or the dimensions will not match):
