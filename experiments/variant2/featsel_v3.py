@@ -93,7 +93,7 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
         x_valid, y_valid = load_data('valid', 'standard', False, 'numpy')
 
         # WARNING : The dorothea dataset has no test labels
-        print ("Warning: using validation as test set in execute for Dorothea")
+        print ("Warning: using validation as test set in execute, for Dorothea")
 
         # x_test = load_data('test', 'standard', False, 'numpy')
         # y_test = None
@@ -472,9 +472,28 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
 
     total_loss = sup_loss
 
+
+    elif supervised_type == "supervised_classification":
+        index_0 = T.eq(target_var,0)
+        index_1 = T.eq(target_var,1)
+
+        pred_0 = prediction[index_0]
+        pred_1 = prediction[index_1]
+
+        prop_0 = T.sum(index_0) / index_0.shape[0]
+
+        sup_loss = - (T.log(pred_0) * (1 - prop_0) + T.log(1 - pred_1) * prop_0)\
+                .mean()
+
+    else:
+        raise NotImplementedError()
+
+    total_loss = sup_loss
+
     # Define training funtions
     print("Building training functions")
 
+    # There are 3 places where the parameters are defined:
     # There are 3 places where the parameters are defined:
     # - In the 'params' dictionnary
     # - The encoder biases
@@ -540,6 +559,7 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
     # We iterate over epochs:
     best_valid_mse = 1e20
     max_patience = 100
+    best_epoch = 0
     train_MSEs = []
     valid_MSEs = []
     test_MSE_epochs = []
@@ -643,7 +663,7 @@ def main():
     parser.add_argument('--save_path',
                         '-sp',
                         type=str,
-                        default='/data/lisatmp4/romerosa/FeatureSelection/',
+                        default='/data/lisatmp4/carriepl/FeatureSelection/',
                         help="""Optional. Save path for the model""")
 
     parser.add_argument('--kfold',
@@ -661,6 +681,14 @@ def main():
         no_folds = int(args.kfold.split("/")[0])
         nb_folds = int(args.kfold.split("/")[1])
         cross_validation = (no_folds, nb_folds)
+
+    print ("Arguments: {}".format(args))
+    execute(
+        args.dataset,
+        int(args.n_output),
+        int(args.num_epochs),
+        str(args.save_path),
+        cross_validation)
 
     print ("Arguments: {}".format(args))
     execute(
