@@ -436,7 +436,7 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
     if decode:
         unsup_loss = ((input_var - reconstruction) ** 2).mean()
     if epls:
-    # unsup_loss = lasagne.objectives.binary_crossentropy(
+        unsup_loss = ((hidden_unsup - target) ** 2).mean()
     #     T.nnet.sigmoid(reconstruction) / 2,
     #     input_var / 2).mean()
 
