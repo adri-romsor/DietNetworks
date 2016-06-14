@@ -95,7 +95,7 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
         x_valid, y_valid = load_data('valid', 'standard', False, 'numpy')
 
         # WARNING : The dorothea dataset has no test labels
-        print ("Warning: using validation as test set in execute, for Dorothea")
+        print ("Warning: using validation as test set in execute for Dorothea")
 
         # x_test = load_data('test', 'standard', False, 'numpy')
         # y_test = None
@@ -295,7 +295,6 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
             'acts': [rectify, sigmoid]}
             }
 
-
     params = {
         'feature': {
             'layers': [feat_repr_size],
@@ -317,7 +316,6 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
             'weights': [weights(h_rep_size, 1, 'sw1')],
             'biases': [biases(1, 'sb1')],
             'acts': [very_leaky_rectify]}}
-
 
     # Build the portion of the model that will predict the encoder's hidden
     # representation fron the inputs and the feature activations.
@@ -361,8 +359,8 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
     encoder_b = biases(h_rep_size, 'encoder_b')
     h_rep = hidden_contribution + encoder_b
 
-    if decode:
     # Build the decoder
+    if decode:
         def step_dec(dataset, h_rep):
 
             # Predict the feature representations
@@ -387,8 +385,8 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
                 W=params['decoder_w']['weights'][i],
                 b=params['decoder_w']['biases'][i],
                 nonlinearity=params['decoder_w']['acts'][i])
-        decoder_weights = \
-            lasagne.layers.get_output(dec_weights_net).transpose()
+            decoder_weights = \
+                lasagne.layers.get_output(dec_weights_net).transpose()
 
             # Predict the contribution to the decoder's reconstruction
             recon_contribution = T.dot(h_rep, decoder_weights)
@@ -405,14 +403,13 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
         activation = theano.shared(np.zeros(n_cluster, dtype='float32'))
         nb_activation = 1
 
-        ## /!\ if non linearity not sigmoid, map output values to function image
+        # /!\ if non linearity not sigmoid, map output values to function image
         hidden_unsup = T.nnet.sigmoid(h_rep)
 
         target, new_act = tensor_fun_EPLS(hidden_unsup, activation,
                                           n_samples, nb_activation)
 
         h_rep = T.largest(0, h_rep - T.mean(h_rep))
-
 
     # Build the supervised network that takes the hidden representation of the
     # encoder as input and tries to predict the targets
@@ -486,24 +483,6 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
 
         sup_loss = - (T.log(pred_0) * (1 - prop_0) +
                       T.log(1 - pred_1) * prop_0).mean()
-
-    else:
-        raise NotImplementedError()
-
-    total_loss = sup_loss
-
-
-    elif supervised_type == "supervised_classification":
-        index_0 = T.eq(target_var,0)
-        index_1 = T.eq(target_var,1)
-
-        pred_0 = prediction[index_0]
-        pred_1 = prediction[index_1]
-
-        prop_0 = T.sum(index_0) / index_0.shape[0]
-
-        sup_loss = - (T.log(pred_0) * (1 - prop_0) + T.log(1 - pred_1) * prop_0)\
-                .mean()
 
     else:
         raise NotImplementedError()
