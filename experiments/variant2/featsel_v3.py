@@ -472,24 +472,6 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
 
     total_loss = sup_loss
 
-
-    elif supervised_type == "supervised_classification":
-        index_0 = T.eq(target_var,0)
-        index_1 = T.eq(target_var,1)
-
-        pred_0 = prediction[index_0]
-        pred_1 = prediction[index_1]
-
-        prop_0 = T.sum(index_0) / index_0.shape[0]
-
-        sup_loss = - (T.log(pred_0) * (1 - prop_0) + T.log(1 - pred_1) * prop_0)\
-                .mean()
-
-    else:
-        raise NotImplementedError()
-
-    total_loss = sup_loss
-
     # Define training funtions
     print("Building training functions")
 
