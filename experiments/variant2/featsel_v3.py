@@ -354,22 +354,23 @@ def execute(dataset, n_output, num_epochs=500):
                                updates=updates)
     val_fn = theano.function([input_var, target_var], [unsup_loss, sup_loss])
     monitor_labels = ["reconstruction loss", "prediction loss"]
-    
-    #theano.printing.pydotprint(train_fn, "fct.png", scan_graphs=True)   
-    
-    
+
+    #theano.printing.pydotprint(train_fn, "fct.png", scan_graphs=True)
+
+
     # Define monitoring functions
     print("Building monitoring functions")
-    
+
     val_fn = theano.function([input_var, target_var], [unsup_loss, sup_loss])
     monitor_labels = ["reconstruction loss", "prediction loss"]
 
 
     # Finally, launch the training loop.
     print("Starting training...")
-    
+
     # We iterate over epochs:
     best_valid_mse = 1e20
+    max_patience = 100
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data to updates
         # the parameters:
@@ -380,11 +381,11 @@ def execute(dataset, n_output, num_epochs=500):
             train_fn(inputs, targets)
 
         print("Epoch {} of {}".format(epoch + 1, num_epochs))
-        
+
         # Monitor progress on the training set
         train_minibatches = iterate_minibatches(x_train, y_train, n_batch,
                                                 shuffle=False)
-        monitoring(train_minibatches, "train", val_fn, monitor_labels)
+        train_mon = monitoring(train_minibatches, "train", val_fn, monitor_labels)
 
         # Monitor progress on the validation set
         valid_minibatches = iterate_minibatches(x_valid, y_valid, n_batch,
@@ -394,11 +395,16 @@ def execute(dataset, n_output, num_epochs=500):
 
         # Monitor the test set if needed
         if mse < best_valid_mse:
+            patience = 0
             best_valid_mse = mse
-                
+
             test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
                                                    shuffle=False)
-            monitoring(test_minibatches, "test", val_fn, monitor_labels)
+            test_mon = monitoring(test_minibatches, "test", val_fn, monitor_labels)
+
+            best_val_mon = mse
+            best_train_mon = train_mon['prediction loss']
+            best_test_mon = test_mon['prediction loss']
 
             # Save network weights to a file
             if not os.path.exists(save_path):
@@ -406,9 +412,17 @@ def execute(dataset, n_output, num_epochs=500):
 
             #np.savez(save_path+'v3_sup.npz',
             #         *lasagne.layers.get_all_param_values(supervised_net))
-         
+        else:
+            patience += 1
+
         print("  learning rate:\t\t{:.9f}".format(float(lr.get_value())))
         print("  total time:\t\t\t{:.3f}s".format(time.time() - start_time))
+
+        if patience >= max_patience:
+            print ("  Train pred. loss:\t\t{:.6f}".format(best_train_mon))
+            print ("  Valid pred. loss:\t\t{:.6f}".format(best_val_mon))
+            print ("  Test  pred. loss:\t\t{:.6f}".format(best_test_mon))
+            return
 
 
 def main():
@@ -423,7 +437,7 @@ def main():
     parser.add_argument('--num_epochs',
                         '-ne',
                         type=int,
-                        default=5,
+                        default=500,
                         help="""Optional. Int to indicate the max'
                         'number of epochs.""")
 
