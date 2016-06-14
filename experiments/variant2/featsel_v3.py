@@ -295,6 +295,7 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
             'acts': [rectify, sigmoid]}
             }
 
+
     params = {
         'feature': {
             'layers': [feat_repr_size],
@@ -359,6 +360,7 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
     encoder_b = biases(h_rep_size, 'encoder_b')
     h_rep = hidden_contribution + encoder_b
 
+    if decode:
     # Build the decoder
     if decode:
         def step_dec(dataset, h_rep):
@@ -410,6 +412,7 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
                                           n_samples, nb_activation)
 
         h_rep = T.largest(0, h_rep - T.mean(h_rep))
+
 
     # Build the supervised network that takes the hidden representation of the
     # encoder as input and tries to predict the targets
