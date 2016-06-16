@@ -582,7 +582,7 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
             test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
                                                    shuffle=False)
             t_mse = monitoring(test_minibatches, "test", val_fn,
-                               monitor_labels)
+                               monitor_labels)['prediction loss']
 
             test_MSE_epochs.append(best_epoch)
             test_MSEs.append(t_mse)
