@@ -15,7 +15,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 
-from experiments.variant2.epls import EPLS, tensor_fun_EPLS
+from epls import EPLS, tensor_fun_EPLS
 
 #theano.config.compute_test_value = 'warn'
 
@@ -295,7 +295,6 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
             'acts': [rectify, sigmoid]}
             }
 
-
     params = {
         'feature': {
             'layers': [feat_repr_size],
@@ -360,7 +359,6 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
     encoder_b = biases(h_rep_size, 'encoder_b')
     h_rep = hidden_contribution + encoder_b
 
-    if decode:
     # Build the decoder
     if decode:
         def step_dec(dataset, h_rep):
@@ -412,7 +410,6 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
                                           n_samples, nb_activation)
 
         h_rep = T.largest(0, h_rep - T.mean(h_rep))
-
 
     # Build the supervised network that takes the hidden representation of the
     # encoder as input and tries to predict the targets
@@ -605,7 +602,7 @@ def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
             test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
                                                    shuffle=False)
             t_mse = monitoring(test_minibatches, "test", val_fn,
-                               monitor_labels)
+                               monitor_labels)['prediction loss']
 
             test_MSE_epochs.append(best_epoch)
             test_MSEs.append(t_mse)
@@ -668,7 +665,7 @@ def main():
     parser.add_argument('--save_path',
                         '-sp',
                         type=str,
-                        default='/data/lisatmp4/carriepl/FeatureSelection/',
+                        default='/data/lisatmp4/romerosa/FeatureSelection/',
                         help="""Optional. Save path for the model""")
 
     parser.add_argument('--kfold',
@@ -703,14 +700,6 @@ def main():
         int(args.n_output),
         args.decode,
         args.scarse_unsup,
-        int(args.num_epochs),
-        str(args.save_path),
-        cross_validation)
-
-    print ("Arguments: {}".format(args))
-    execute(
-        args.dataset,
-        int(args.n_output),
         int(args.num_epochs),
         str(args.save_path),
         cross_validation)

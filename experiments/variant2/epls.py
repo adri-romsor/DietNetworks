@@ -5,6 +5,7 @@ import theano.typed_list as tl
 
 from lasagne.layers import Layer
 
+
 def tensor_fun_EPLS(H, act, N, nb_activation, debug=False):
     nb_sample, nb_cluster = H.shape
 
@@ -23,7 +24,8 @@ def tensor_fun_EPLS(H, act, N, nb_activation, debug=False):
 
     def update_act_target(i, target, a, H):
         activ = T.argsort(H[i]-act)[-nb_activation:]
-        a = T.inc_subtensor(a[activ], T.cast(nb_cluster, 'float32')/(N*nb_activation))
+        a = T.inc_subtensor(a[activ],
+                            T.cast(nb_cluster, 'float32')/(N*nb_activation))
         target = T.set_subtensor(target[i, activ], 1)
         return target, a
 
@@ -108,6 +110,7 @@ def test_EPLS_init():
     print target
     print target.sum(axis=0)
 
+
 def test2_EPLS():
     f = EPLS(50, nb_activation=15, debug=False)
     nb_sample = 10
@@ -134,6 +137,7 @@ def test_transposed_EPLS():
 
     print target.sum(axis=1)
     print target
+
 
 class EPLSLayer(Layer):
     def __init__(self, incoming, N=None, nb_activation=1, **kwargs):
