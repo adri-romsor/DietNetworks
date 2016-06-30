@@ -114,7 +114,7 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
     if dataset == 'protein_binding':
         from experiments.common.protein_loader import load_data
         x, y = load_data()
-    if dataset == 'dorothea':
+    elif dataset == 'dorothea':
         from feature_selection.experiments.common.dorothea import load_data
         x_train, y_train = load_data('train', 'standard', False, 'numpy')
         x_valid, y_valid = load_data('valid', 'standard', False, 'numpy')
