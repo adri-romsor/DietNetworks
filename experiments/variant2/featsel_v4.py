@@ -416,11 +416,11 @@ def main():
     parser.add_argument('--dataset',
                         default='protein_binding',
                         help='Dataset.')
-    parser.add_argument('n_output',
+    parser.add_argument('--n_output',
                         default=100,
                         help='Output dimension.')
-    parser.add_argument('embedding_source',
-                        default="predicted",
+    parser.add_argument('--embedding_source',
+                        default=None,
                         help='Source for the feature embedding. Either' +
                              '"predicted" or the name of a file from which' +
                              'to load a learned embedding')
@@ -433,8 +433,14 @@ def main():
 
     args = parser.parse_args()
 
-    execute(args.training, args.dataset, int(args.n_output),
-            args.embedding_source, int(args.num_epochs))
+    unsupervised = ['autoencoder']
+    supervised = False
+    n_hidden_u = [50, 50]
+    n_hidden_t = []
+    n_hidden_s = []
+
+    execute(args.training, args.dataset, n_hidden_u, n_hidden_t, n_hidden_s,
+            args.embedding_source, supervised, int(args.num_epochs), unsupervised)
 
 
 if __name__ == '__main__':

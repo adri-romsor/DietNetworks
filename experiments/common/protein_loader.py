@@ -3,7 +3,7 @@ import numpy as np
 
 
 def load_data(
-    path='/data/lisatmp4/dejoieti/Thrombin',
+    path='/data/lisatmp4/dejoieti/data/Thrombin',
     shuffle=False
 ):
     data_path = os.path.join(path, 'data.npy')
@@ -47,7 +47,7 @@ def data_to_numpy(path='/data/lisatmp4/dejoieti/data/Thrombin/'):
     assert data.shape[0] == labels.shape[0]
 
     np.save(os.path.join(path, 'data.npy'), data)
-    np.save(os.path.join(path, 'label.npy'))
+    np.save(os.path.join(path, 'label.npy'), labels)
 
 if __name__ == '__main__':
     data_to_numpy()
