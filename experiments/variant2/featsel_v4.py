@@ -180,8 +180,8 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
         print("Unknown dataset")
         return
 
-    n_samples, n_feats = x_train.shape
-    n_classes = y_train.max() + 1
+    n_samples, n_feats = x.shape
+    n_classes = y.max() + 1
     batch = 100
 
     save_path = '/data/lisatmp4/carriepl/FeatureSelection/'
@@ -436,7 +436,7 @@ def main():
     unsupervised = ['autoencoder']
     supervised = False
     n_hidden_u = [50, 50]
-    n_hidden_t = []
+    n_hidden_t = [50]
     n_hidden_s = []
 
     execute(args.training, args.dataset, n_hidden_u, n_hidden_t, n_hidden_s,
