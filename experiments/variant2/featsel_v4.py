@@ -346,7 +346,7 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
         print("Epoch {} of {}".format(epoch + 1, num_epochs))
 
         for batch in iterate_minibatches(x, y, 'train', batch, supervised,
-                                         unsupervised is None, shuffle=True):
+                                         unsupervised is not None, shuffle=True):
             loss_epoch += train_fn(*batch)
 
         loss_epoch /= nb_minibatches
@@ -358,7 +358,7 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
                                                 'valid',
                                                 batch,
                                                 supervised,
-                                                unsupervised is None,
+                                                unsupervised is not None,
                                                 shuffle=False)
 
         valid_err = monitoring(valid_minibatches, "valid", val_fn,
@@ -378,7 +378,7 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
                                                        'test',
                                                        batch,
                                                        supervised,
-                                                       unsupervised is None,
+                                                       unsupervised is not None,
                                                        shuffle=False)
                 valid_err = monitoring(test_minibatches, "test", val_fn,
                                        monitor_labels)
@@ -394,7 +394,7 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
                 # feature embedding prediction
                 for batch in iterate_minibatches(x, y, 'train', n_feats,
                                                  not supervised,
-                                                 unsupervised is None,
+                                                 unsupervised is not None,
                                                  shuffle=False):
                     pred = pred_feat_emb(*batch)
                 np.savez(save_path+'feature_emebedding.npz', pred)
@@ -440,7 +440,7 @@ def main():
     n_hidden_s = []
 
     execute(args.training, args.dataset, n_hidden_u, n_hidden_t, n_hidden_s,
-            args.embedding_source, supervised, int(args.num_epochs), unsupervised)
+            args.embedding_source, supervised, int(args.num_epochs), unsupervised=unsupervised)
 
 
 if __name__ == '__main__':
