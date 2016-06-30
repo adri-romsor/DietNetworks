@@ -12,22 +12,33 @@ import theano.tensor as T
 
 
 def iterate_minibatches(inputs, targets, which_set, batchsize, supervised,
-                        unsupervised, split=0.8, shuffle=False):
+                        unsupervised, split=[0.2, 0.2], shuffle=False):
     assert len(inputs) == len(targets)
 
+    n_total = inputs.shape[0] if supervised else inputs.shape[1]
+    n_valid = int(split[0]*n_total)
+    n_test = int(split[1]*n_total)
+
+    if which_set == 'train':
+        set_indices = slice(n_valid + n_test, n_total)
+    elif which_set == 'valid':
+        set_indices = slice(0, n_valid)
+    elif which_set == 'test':
+        set_indices = slice(n_valid, n_valid + n_test)
+
     if supervised and unsupervised:
-        inputs_iterable = inputs
+        inputs_iterable = inputs[set_indices]
+        targets = targets[set_indices]
         inputs_unsup = inputs.transpose()
     elif unsupervised:
-        inputs_iterable = inputs.transpose()
+        inputs_iterable = inputs.transpose()[set_indices]
     elif supervised:
-        inputs_iterable = inputs
+        inputs_iterable = inputs[set_indices]
+        targets = targets[set_indices]
 
     if shuffle:
         indices = np.arange(len(inputs_iterable))
         np.random.shuffle(indices)
-
-
 
     for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
         if shuffle:
@@ -35,10 +46,12 @@ def iterate_minibatches(inputs, targets, which_set, batchsize, supervised,
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
 
-        if axis == 0:
-            yield inputs[excerpt].transpose(), targets[excerpt]
-        elif axis == 1:
-            yield inputs[excerpt], targets
+        if supervised and unsupervised:
+            yield inputs_iterable[excerpt], targets[excerpt], inputs_unsup
+        elif unsupervised:
+            yield inputs_iterable[excerpt]
+        elif supervised:
+            yield inputs_iterable[excerpt], targets[excerpt]
 
 
 def onehot_labels(labels, min_val, max_val):
@@ -71,63 +84,26 @@ def generate_test_predictions(minibatches, pred_fn):
     # Also write the probabilities of the positive class to a text file
     filename_prob = "test_probs_" + time.strftime("%Y-%M-%d_%T") + ".txt"
     with open(filename_prob, "w") as f:
-        f.write(",".join([str(p) for p in all_probabilities])  )
+        f.write(",".join([str(p) for p in all_probabilities]))
 
 
-def monitoring(minibatches, dataset_name, val_fn, monitoring_labels,
-               pred_fn=None, n_classes=2):
+def monitoring(minibatches, dataset_name, error_fn, monitoring_labels):
 
     monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
-    all_probs = np.zeros((0, n_classes), "float32")
-    all_targets = np.zeros((0), "float32")
     global_batches = 0
 
     for batch in minibatches:
-        inputs, targets = batch
-
         # Update monitored values
-        out = val_fn(inputs, targets)
+        out = error_fn(*batch)
         monitoring_values = monitoring_values + out
         global_batches += 1
-
-        # Update the prediction / target lists
-        if pred_fn is not None:
-            probs = pred_fn(inputs)
-            all_probs = np.concatenate((all_probs, probs), axis=0)
-            all_targets = np.concatenate((all_targets, targets), axis=0)
 
     # Print monitored values
     monitoring_values /= global_batches
     for (label, val) in zip(monitoring_labels, monitoring_values):
         print ("  {} {}:\t\t{:.6f}".format(dataset_name, label, val))
 
-    # Print supervised-specific metrics
-    if pred_fn is not None:
-        # Compute the confusion matrix
-        all_predictions = all_probs.argmax(1)
-        confusion = np.zeros((n_classes, n_classes))
-        for i in range(len(all_predictions)):
-            confusion[all_targets[i], all_predictions[i]] += 1
-
-        # Print the BER (balanced error rate)
-        ber = 0.5 * (confusion[0, 1] / confusion.sum(axis=1)[0] +
-                     confusion[1, 0] / confusion.sum(axis=1)[1])
-        print ("  {} ber:\t\t\t{:.6f}".format(dataset_name, ber))
-
-        # Compute and print the AUC (this implementation is inefficient but
-        # simple, it may be sped up if it ever becomes a bottleneck. It comes
-        # from http://www.cs.ru.nl/~tomh/onderwijs/dm/dm_files/roc_auc.pdf)
-        preds_for_neg_examples = all_predictions[np.argwhere(all_targets == 0)]
-        preds_for_pos_examples = all_predictions[np.argwhere(all_targets == 1)]
-        auc = 0.
-        for neg_pred in preds_for_neg_examples:
-            for pos_pred in preds_for_pos_examples:
-                if pos_pred > neg_pred:
-                    auc += 1.
-        auc /= (len(preds_for_neg_examples) * len(preds_for_pos_examples))
-        print ("  {} auc:\t\t\t{:.6f}".format(dataset_name, auc))
-        return auc
-
+    return monitoring_values
 
 # Main program
 def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
@@ -135,6 +111,9 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
             num_epochs=500, unsupervised=None):
     # Load the dataset
     print("Loading data")
+    if dataset == 'protein_binding':
+        from experiments.common.protein_loader import load_data
+        x, y = load_data()
     if dataset == 'dorothea':
         from feature_selection.experiments.common.dorothea import load_data
         x_train, y_train = load_data('train', 'standard', False, 'numpy')
@@ -324,7 +303,7 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
                                on_unused_input='ignore')
 
     # Expressions required for test
-    monitor_labels = []
+    monitor_labels = ['total_loss_deterministic']
     val_outputs = [loss_det]
     if supervised:
         test_class = T.argmax(prediction_det, axis=1)
@@ -332,7 +311,7 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
                           dtype=theano.config.floatX) * 100.
 
         val_outputs += [loss_sup_det, test_acc]
-        monitor_labels += ["pred. loss", "accuracy"]
+        monitor_labels += ["loss_sup_deterministic", "accuracy"]
 
     if "autoencoder" in unsupervised:
         val_outputs += [loss_auto_det]
@@ -383,9 +362,10 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
                                                 shuffle=False)
 
         valid_err = monitoring(valid_minibatches, "valid", val_fn,
-                               monitor_labels, n_classes)
+                               monitor_labels)
         valid_loss += valid_err[0]
-        valid_acc += valid_err[2]
+        if supervised:
+            valid_acc += valid_err[2]
 
         if valid_err < best_valid:
             best_valid = valid_err
@@ -401,7 +381,7 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
                                                        unsupervised is None,
                                                        shuffle=False)
                 valid_err = monitoring(test_minibatches, "test", val_fn,
-                                       monitor_labels, n_classes)
+                                       monitor_labels)
 
             # Save network weights to a file
             if not os.path.exists(save_path):
@@ -430,11 +410,11 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
 def main():
     parser = argparse.ArgumentParser(description="""Implementation of the
                                      feature selection v2""")
-    parser.add_argument('training',
+    parser.add_argument('--training',
                         default='supervised',
                         help='Type of training.')
-    parser.add_argument('dataset',
-                        default='debug',
+    parser.add_argument('--dataset',
+                        default='protein_binding',
                         help='Dataset.')
     parser.add_argument('n_output',
                         default=100,
