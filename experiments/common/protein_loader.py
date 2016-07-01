@@ -9,8 +9,8 @@ def load_data(
     data_path = os.path.join(path, 'data.npy')
     labels_path = os.path.join(path, 'label.npy')
 
-    data = np.load(data_path)
-    labels = np.load(labels_path)
+    data = (np.load(data_path)).astype('float32')
+    labels = (np.load(labels_path)).astype('int32')
 
     if not shuffle:
         return data, labels

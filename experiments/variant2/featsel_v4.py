@@ -11,13 +11,19 @@ import theano
 import theano.tensor as T
 
 
+# Mini-batch iterator function
 def iterate_minibatches(inputs, targets, which_set, batchsize, supervised,
                         unsupervised, split=[0.2, 0.2], shuffle=False):
     assert len(inputs) == len(targets)
 
     n_total = inputs.shape[0] if supervised else inputs.shape[1]
-    n_valid = int(split[0]*n_total)
-    n_test = int(split[1]*n_total)
+
+    if supervised:
+        n_valid = int(split[0]*n_total)
+        n_test = int(split[1]*n_total)
+    else:
+        n_valid = int(split[0]*n_total)
+        n_test = 0  # we don't need test for the unsupervised-only case
 
     if which_set == 'train':
         set_indices = slice(n_valid + n_test, n_total)
@@ -40,7 +46,7 @@ def iterate_minibatches(inputs, targets, which_set, batchsize, supervised,
         indices = np.arange(len(inputs_iterable))
         np.random.shuffle(indices)
 
-    for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
+    for start_idx in range(0, len(inputs_iterable) - batchsize + 1, batchsize):
         if shuffle:
             excerpt = indices[start_idx:start_idx + batchsize]
         else:
@@ -54,61 +60,37 @@ def iterate_minibatches(inputs, targets, which_set, batchsize, supervised,
             yield inputs_iterable[excerpt], targets[excerpt]
 
 
-def onehot_labels(labels, min_val, max_val):
-    output = np.zeros((len(labels), max_val - min_val + 1), dtype="int32")
-    output[np.arange(len(labels)), labels - min_val] = 1
-    return output
-
-
-def generate_test_predictions(minibatches, pred_fn):
-
-    # Obtain the predictions over all the examples
-    all_predictions = np.zeros((0), "int32")
-    all_probabilities = np.zeros((0), "float32")
-    for batch in minibatches:
-        inputs, _ = batch
-
-        probs = pred_fn(inputs)
-        all_probabilities = np.concatenate((all_probabilities, probs[:, 1]),
-                                           axis=0)
-
-        predictions = probs.argmax(axis=1)
-        all_predictions = np.concatenate((all_predictions, predictions),
-                                         axis=0)
-
-    # Write the predictions to a text file
-    filename_pred = "test_preds_" + time.strftime("%Y-%M-%d_%T") + ".txt"
-    with open(filename_pred, "w") as f:
-        f.write(",".join([str(p) for p in all_predictions]))
-
-    # Also write the probabilities of the positive class to a text file
-    filename_prob = "test_probs_" + time.strftime("%Y-%M-%d_%T") + ".txt"
-    with open(filename_prob, "w") as f:
-        f.write(",".join([str(p) for p in all_probabilities]))
-
-
-def monitoring(minibatches, dataset_name, error_fn, monitoring_labels):
+# Monitoring function
+def monitoring(minibatches, which_set, error_fn, monitoring_labels,
+               supervised):
 
     monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
     global_batches = 0
 
     for batch in minibatches:
         # Update monitored values
-        out = error_fn(*batch)
+        if supervised:
+            out = error_fn(*batch)
+        else:
+            out = error_fn(batch)
+
         monitoring_values = monitoring_values + out
         global_batches += 1
 
     # Print monitored values
     monitoring_values /= global_batches
     for (label, val) in zip(monitoring_labels, monitoring_values):
-        print ("  {} {}:\t\t{:.6f}".format(dataset_name, label, val))
+        print ("  {} {}:\t\t{:.6f}".format(which_set, label, val))
 
     return monitoring_values
 
+
 # Main program
-def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
+def execute(dataset, n_hidden_u, n_hidden_t, n_hidden_s,
             embedding_source=None, supervised=True,
-            num_epochs=500, unsupervised=None):
+            unsupervised=[], num_epochs=500,
+            save_path='/Tmp/romerosa/feature_selection/newmodel/'):
+
     # Load the dataset
     print("Loading data")
     if dataset == 'protein_binding':
@@ -122,8 +104,6 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
         # WARNING : The dorothea dataset has no test labels
         x_test = load_data('test', 'standard', False, 'numpy')
         y_test = None
-
-        # ALERT: check that x and y are not transposed!
 
     elif dataset == 'opensnp':
         from feature_selection import aggregate_dataset
@@ -163,15 +143,6 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
         y_valid = y_valid.astype("float32")
         y_test = y_test.astype("float32")
 
-        """
-        # Preprocess the targets by removing the mean of the training labels
-        mean_y = y_train.mean()
-        y_train -= mean_y
-        y_valid -= mean_y
-        y_test -= mean_y
-        print("Labels have been centered by removing %f cm." % mean_y)
-        """
-
         # Make sure all is well
         print(x_sup.shape, x_test.shape, x_unsup.shape)
         print(x_train.shape, x_valid.shape, x_test.shape)
@@ -180,11 +151,17 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
         print("Unknown dataset")
         return
 
+    # Extract required information from data
     n_samples, n_feats = x.shape
     n_classes = y.max() + 1
-    batch = 100
 
-    save_path = '/data/lisatmp4/carriepl/FeatureSelection/'
+    # Set some variables
+    batch_size = 100
+
+    # Preparing folder to save stuff
+    save_path = save_path + dataset + "/"
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
 
     # Prepare Theano variables for inputs and targets
     input_var_sup = T.matrix('input_sup')
@@ -195,15 +172,18 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
     # Build model
     print("Building model")
 
+    # Some checkings
     assert len(n_hidden_u) > 0
     assert len(n_hidden_t) > 0
 
-    # Define unsupervised network
+    # Build unsupervised network
     if not embedding_source:
-        encoder_net = InputLayer((batch, n_samples),
+        encoder_net = InputLayer((batch_size if not supervised else n_feats,
+                                  n_samples),
                                  input_var_unsup)
         for out in n_hidden_u:
-            encoder_net = DenseLayer(encoder_net, num_units=out)
+            encoder_net = DenseLayer(encoder_net, num_units=out,
+                                     nonlinearity=sigmoid)
         feat_emb = lasagne.layers.get_output(encoder_net)
         pred_feat_emb = theano.function([input_var_unsup], feat_emb)
 
@@ -224,14 +204,15 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
         encoder_net = InputLayer((n_feats, n_hidden_u[-1]),
                                  feat_emb.get_value())
 
+    # Build transformation (f_theta) network and supervised network
     if supervised:
         # f_theta
         for hid in n_hidden_t:
             encoder_net = DenseLayer(encoder_net, num_units=hid)
         final_feat_emb = lasagne.layers.get_output(encoder_net)
 
-        # Define supervised network
-        discrim_net = InputLayer((batch, n_feats), input_var_sup)
+        # Supervised network
+        discrim_net = InputLayer((batch_size, n_feats), input_var_sup)
         discrim_net = DenseLayer(discrim_net, num_units=n_hidden_t[-1],
                                  W=final_feat_emb)
 
@@ -241,10 +222,8 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
         discrim_net = DenseLayer(discrim_net, num_units=n_classes,
                                  nonlinearity=softmax)
 
-    # Create a loss expression for training
     print("Building and compiling training functions")
-
-    # Expressions required for training
+    # Some variables
     loss_sup = 0
     loss_sup_det = 0
     loss_auto = 0
@@ -253,12 +232,14 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
     loss_epls_det = 0
     params = []
     inputs = []
+
+    # Build and compile training functions
     if supervised:
+        # Supervised functions
         prediction = lasagne.layers.get_output(discrim_net)
         prediction_det = lasagne.layers.get_output(discrim_net,
                                                    deterministic=True)
 
-        # ALERT!
         loss_sup = lasagne.objectives.categorical_crossentropy(
             prediction, target_var_sup).mean()
         loss_sup_det = lasagne.objectives.categorical_crossentropy(
@@ -266,13 +247,13 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
 
         params += lasagne.layers.get_all_params(discrim_net, trainable=True)
 
-        inputs += [input_var_sup, target_var_sup]
+        inputs += [input_var_sup, target_var_sup, input_var_unsup]
     if "autoencoder" in unsupervised:
+        # Unsupervised reconstruction functions
         reconstruction = lasagne.layers.get_output(decoder_net)
         reconstruction_det = lasagne.layers.get_output(decoder_net,
                                                        deterministic=True)
 
-        # ALERT!
         loss_auto = lasagne.objectives.squared_error(
             reconstruction,
             input_var_unsup).mean()
@@ -281,13 +262,16 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
             input_var_unsup).mean()
 
         params += lasagne.layers.get_all_params(decoder_net, trainable=True)
-        inputs += [input_var_unsup]
+        inputs += [input_var_unsup] if input_var_unsup not in inputs else []
     if "epls" in unsupervised:
+        # Unsupervised epls functions
         raise NotImplementedError
 
+    # Combine losses
     loss = loss_sup + loss_auto + loss_epls
     loss_det = loss_sup_det + loss_auto_det + loss_epls_det
 
+    # Compute network updates
     updates = lasagne.updates.rmsprop(loss,
                                       params,
                                       learning_rate=lr)
@@ -303,144 +287,207 @@ def execute(training, dataset, n_hidden_u, n_hidden_t, n_hidden_s,
                                on_unused_input='ignore')
 
     # Expressions required for test
-    monitor_labels = ['total_loss_deterministic']
+    monitor_labels = ['total_loss_det']
     val_outputs = [loss_det]
     if supervised:
+        # Supervised functions
         test_class = T.argmax(prediction_det, axis=1)
         test_acc = T.mean(T.eq(test_class, target_var_sup),
                           dtype=theano.config.floatX) * 100.
 
         val_outputs += [loss_sup_det, test_acc]
-        monitor_labels += ["loss_sup_deterministic", "accuracy"]
+        monitor_labels += ["loss_sup_det", "accuracy"]
 
     if "autoencoder" in unsupervised:
+        # Unsupervised reconstruction functions
         val_outputs += [loss_auto_det]
         monitor_labels += ["recon. loss"]
 
     if "epls" in unsupervised:
+        # Unsupervised epls functions
         raise NotImplementedError
 
+    # Compile validation function
     val_fn = theano.function(inputs,
                              val_outputs,
                              on_unused_input='ignore')
 
     # Finally, launch the training loop.
     print("Starting training...")
-    # We iterate over epochs:
-    best_valid = 0.0
+
+    # Some variables
     max_patience = 100
-    loss_epoch = 0
     patience = 0
 
     train_loss = []
     valid_loss = []
+    valid_loss_auto = []
+    valid_loss_epls = []
     valid_acc = []
 
-    # ALERT
-    nb_minibatches = (n_samples if supervised else n_feats)/batch
-
+    nb_minibatches = (n_samples if supervised else n_feats)/batch_size
+    start_training = time.time()
     for epoch in range(num_epochs):
-        # In each epoch, we do a full pass over the training data to updates
-        # the parameters:
         start_time = time.time()
-        print("Epoch {} of {}".format(epoch + 1, num_epochs))
+        print("Epoch {} of {}".format(epoch+1, num_epochs))
 
-        for batch in iterate_minibatches(x, y, 'train', batch, supervised,
-                                         unsupervised is not None, shuffle=True):
-            loss_epoch += train_fn(*batch)
+        loss_epoch = 0
+
+        # Train pass
+        for batch in iterate_minibatches(x, y, 'train',
+                                         batch_size, supervised,
+                                         embedding_source is None,
+                                         shuffle=True):
+            if supervised:
+                loss_epoch += train_fn(*batch)
+            else:
+                loss_epoch += train_fn(batch)
 
         loss_epoch /= nb_minibatches
-        train_loss += loss_epoch
+        train_loss += [loss_epoch]
 
-        # Only monitor on the validation set if training in a supervised way
-        # otherwise the dimensions will not match.
-        valid_minibatches = iterate_minibatches(x, y,
-                                                'valid',
-                                                batch,
-                                                supervised,
-                                                unsupervised is not None,
+        # Validation pass
+        valid_minibatches = iterate_minibatches(x, y, 'valid',
+                                                batch_size, supervised,
+                                                embedding_source is None,
                                                 shuffle=False)
 
         valid_err = monitoring(valid_minibatches, "valid", val_fn,
-                               monitor_labels)
-        valid_loss += valid_err[0]
-        if supervised:
-            valid_acc += valid_err[2]
+                               monitor_labels, supervised)
 
-        if valid_err < best_valid:
-            best_valid = valid_err
+        valid_loss += [valid_err[0]]
+        pos = 1
+        if supervised:
+            valid_acc += [valid_err[pos]]
+            pos += 1
+        if 'autoencoder' in unsupervised:
+            valid_loss_auto += [valid_err[pos]]
+            pos += 1
+        if 'epls' in unsupervised:
+            valid_loss_epls += [valid_err[pos]]
+
+        # Eearly stopping
+        if epoch == 0:
+            best_valid = valid_loss[epoch]
+        elif valid_loss[epoch] < best_valid:
+            best_valid = valid_loss[epoch]
             patience = 0
 
-            # If there are test labels, perform the monitoring. Else, print
-            # the test predictions for external evaluation.
-            if supervised:
-                test_minibatches = iterate_minibatches(x_test, y_test,
-                                                       'test',
-                                                       batch,
-                                                       supervised,
-                                                       unsupervised is not None,
-                                                       shuffle=False)
-                valid_err = monitoring(test_minibatches, "test", val_fn,
-                                       monitor_labels)
-
-            # Save network weights to a file
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-
+            # Save stuff
             if supervised:
                 np.savez(save_path+'model_supervised.npz',
                          *lasagne.layers.get_all_param_values(discrim_net))
+                np.savez(save_path + "errors_supervised.npz",
+                         train_loss, valid_loss, valid_acc)
             if not embedding_source:
-                # feature embedding prediction
-                for batch in iterate_minibatches(x, y, 'train', n_feats,
-                                                 not supervised,
-                                                 unsupervised is not None,
-                                                 shuffle=False):
-                    pred = pred_feat_emb(*batch)
-                np.savez(save_path+'feature_emebedding.npz', pred)
+                np.savez(save_path+'model_unsupervised.npz',
+                         *lasagne.layers.get_all_param_values(encoder_net))
+                np.savez(save_path + "errors_unsupervised.npz",
+                         valid_loss_auto, valid_loss_epls)
         else:
             patience += 1
 
-        if patience == max_patience:
+        # End training
+        if patience == max_patience or epoch == num_epochs-1:
+            print("   Ending training")
+            if not embedding_source:
+                # Load unsupervised best model
+                with np.load(save_path + 'model_unsupervised.npz',) as f:
+                    param_values = [f['arr_%d' % i]
+                                    for i in range(len(f.files))]
+                    nlayers = len(lasagne.layers.get_all_params(encoder_net))
+                    lasagne.layers.set_all_param_values(encoder_net,
+                                                        param_values[:nlayers])
+
+                # Save embedding
+                for batch in iterate_minibatches(x, y, 'train', n_feats,
+                                                 False,
+                                                 embedding_source is None,
+                                                 shuffle=False,
+                                                 split=[0., 0.]):
+                    if supervised:
+                        pred = pred_feat_emb(batch[2])
+                    else:
+                        pred = pred_feat_emb(batch)
+                np.savez(save_path+'feature_emebedding.npz', pred)
+
+            # Test model
+            if supervised:
+                # Load supervised best model
+                with np.load(save_path + 'model_supervised.npz',) as f:
+                    param_values = [f['arr_%d' % i]
+                                    for i in range(len(f.files))]
+                    nlayers = len(lasagne.layers.get_all_params(discrim_net))
+                    lasagne.layers.set_all_param_values(discrim_net,
+                                                        param_values[:nlayers])
+                # Test
+                test_minibatches = iterate_minibatches(
+                    x, y, 'test',
+                    batch_size, supervised,
+                    unsupervised is not None,
+                    shuffle=False)
+                test_err = monitoring(test_minibatches, "test", val_fn,
+                                      monitor_labels, supervised)
+            # Stop
+            print("  epoch time:\t\t\t{:.3f}s".format(time.time() - start_time))
             break
 
-    print("  total time:\t\t\t{:.3f}s".format(time.time() - start_time))
+        print("  epoch time:\t\t\t{:.3f}s".format(time.time() - start_time))
+
+    # Print all final errors for train, validation and test
+    print("Training time:\t\t\t{:.3f}s".format(time.time() - start_training))
 
 
 def main():
     parser = argparse.ArgumentParser(description="""Implementation of the
                                      feature selection v2""")
-    parser.add_argument('--training',
-                        default='supervised',
-                        help='Type of training.')
     parser.add_argument('--dataset',
                         default='protein_binding',
                         help='Dataset.')
-    parser.add_argument('--n_output',
-                        default=100,
-                        help='Output dimension.')
+    parser.add_argument('--n_hidden_u',
+                        default=[100],
+                        help='List of unsupervised hidden units.')
+    parser.add_argument('--n_hidden_t',
+                        default=[100],
+                        help='List of theta transformation hidden units.')
+    parser.add_argument('--n_hidden_s',
+                        default=[100],
+                        help='List of supervised hidden units.')
     parser.add_argument('--embedding_source',
                         default=None,
                         help='Source for the feature embedding. Either' +
-                             '"predicted" or the name of a file from which' +
+                             'None or the name of a file from which' +
                              'to load a learned embedding')
+    parser.add_argument('--supervised',
+                        default=False,
+                        help='Add supervised network and train it.')
+    parser.add_argument('--unsupervised',
+                        default=['autoencoder'],
+                        help='Add unsupervised part of the network:' +
+                             'list containinge autoencoder and/or epls' +
+                             'or []')
     parser.add_argument('--num_epochs',
                         '-ne',
                         type=int,
                         default=5,
                         help="""Optional. Int to indicate the max'
                         'number of epochs.""")
+    parser.add_argument('--save',
+                        default='/Tmp/romerosa/feature_selection/' +
+                                'newmodel',
+                        help='Path to save results.')
 
     args = parser.parse_args()
 
-    unsupervised = ['autoencoder']
-    supervised = False
-    n_hidden_u = [50, 50]
-    n_hidden_t = [50]
-    n_hidden_s = []
-
-    execute(args.training, args.dataset, n_hidden_u, n_hidden_t, n_hidden_s,
-            args.embedding_source, supervised, int(args.num_epochs), unsupervised=unsupervised)
+    execute(args.dataset,
+            args.n_hidden_u,
+            args.n_hidden_t,
+            args.n_hidden_s,
+            args.embedding_source,
+            args.supervised,
+            args.unsupervised,
+            int(args.num_epochs),
+            args.save)
 
 
 if __name__ == '__main__':
