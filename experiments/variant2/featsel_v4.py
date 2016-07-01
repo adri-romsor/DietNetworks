@@ -88,7 +88,7 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels,
 # Main program
 def execute(dataset, n_hidden_u, n_hidden_t, n_hidden_s,
             embedding_source=None, supervised=True,
-            unsupervised=[], num_epochs=500,
+            unsupervised=[], num_epochs=500, learning_rate=.001,
             save_path='/Tmp/romerosa/feature_selection/newmodel/'):
 
     # Load the dataset
@@ -167,7 +167,7 @@ def execute(dataset, n_hidden_u, n_hidden_t, n_hidden_s,
     input_var_sup = T.matrix('input_sup')
     input_var_unsup = T.matrix('input_unsup')
     target_var_sup = T.ivector('target_sup')
-    lr = theano.shared(np.float32(1e-3), 'learning_rate')
+    lr = theano.shared(np.float32(learning_rate), 'learning_rate')
 
     # Build model
     print("Building model")
@@ -175,6 +175,9 @@ def execute(dataset, n_hidden_u, n_hidden_t, n_hidden_s,
     # Some checkings
     assert len(n_hidden_u) > 0
     assert len(n_hidden_t) > 0
+    if embedding_source is not None and unsupervised != []:
+        raise ValueError('If we have an embedding_source, train' +
+                         'supervised only!')
 
     # Build unsupervised network
     if not embedding_source:
@@ -247,7 +250,9 @@ def execute(dataset, n_hidden_u, n_hidden_t, n_hidden_s,
 
         params += lasagne.layers.get_all_params(discrim_net, trainable=True)
 
-        inputs += [input_var_sup, target_var_sup, input_var_unsup]
+        inputs += [input_var_sup, target_var_sup]
+        inputs += [input_var_unsup] if embedding_source is None else []
+
     if "autoencoder" in unsupervised:
         # Unsupervised reconstruction functions
         reconstruction = lasagne.layers.get_output(decoder_net)
@@ -405,11 +410,8 @@ def execute(dataset, n_hidden_u, n_hidden_t, n_hidden_s,
                                                  embedding_source is None,
                                                  shuffle=False,
                                                  split=[0., 0.]):
-                    if supervised:
-                        pred = pred_feat_emb(batch[2])
-                    else:
-                        pred = pred_feat_emb(batch)
-                np.savez(save_path+'feature_emebedding.npz', pred)
+                    pred = pred_feat_emb(batch)
+                np.savez(save_path+'feature_embedding.npz', pred)
 
             # Test model
             if supervised:
@@ -424,7 +426,7 @@ def execute(dataset, n_hidden_u, n_hidden_t, n_hidden_s,
                 test_minibatches = iterate_minibatches(
                     x, y, 'test',
                     batch_size, supervised,
-                    unsupervised is not None,
+                    embedding_source is None,
                     shuffle=False)
                 test_err = monitoring(test_minibatches, "test", val_fn,
                                       monitor_labels, supervised)
@@ -459,10 +461,10 @@ def main():
                              'None or the name of a file from which' +
                              'to load a learned embedding')
     parser.add_argument('--supervised',
-                        default=False,
+                        default=True,
                         help='Add supervised network and train it.')
     parser.add_argument('--unsupervised',
-                        default=['autoencoder'],
+                        default=[],
                         help='Add unsupervised part of the network:' +
                              'list containinge autoencoder and/or epls' +
                              'or []')
@@ -470,11 +472,17 @@ def main():
                         '-ne',
                         type=int,
                         default=5,
-                        help="""Optional. Int to indicate the max'
+                        help="""Int to indicate the max'
                         'number of epochs.""")
+    parser.add_argument('--learning_rate',
+                        '-lr',
+                        type=float,
+                        default=.0001,
+                        help="""Float to indicate learning rate.""")
+
     parser.add_argument('--save',
                         default='/Tmp/romerosa/feature_selection/' +
-                                'newmodel',
+                                'newmodel/',
                         help='Path to save results.')
 
     args = parser.parse_args()
@@ -487,6 +495,7 @@ def main():
             args.supervised,
             args.unsupervised,
             int(args.num_epochs),
+            args.learning_rate,
             args.save)
 
 
