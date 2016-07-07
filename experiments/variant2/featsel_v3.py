@@ -24,6 +24,7 @@ scanOp_pushout_nonseqs_ops:scanOp_pushout_output" python featsel_v3.py \
 opensnp [...]
 """
 
+
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
     assert len(inputs) == len(targets)
     targets = targets.transpose()
@@ -71,9 +72,10 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels):
 
 
 def weights(n_in, n_out, name=None, init=0.01):
-    return theano.shared(np.random.uniform(-init, init,
-                                           size=(n_in, n_out)).astype("float32"),
-                         name)
+    return theano.shared(np.random.uniform(
+        -init, init,
+        size=(n_in, n_out)).astype("float32"),
+        name)
 
 
 def biases(n_out, name=None):
@@ -93,10 +95,10 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
         # WARNING : The dorothea dataset has no test labels
         print ("Warning: using validation as test set in execute, for Dorothea")
 
-        #x_test = load_data('test', 'standard', False, 'numpy')
-        #y_test = None
+        # x_test = load_data('test', 'standard', False, 'numpy')
+        # y_test = None
 
-        x_test,y_test = x_valid,y_valid
+        x_test, y_test = x_valid, y_valid
 
     elif dataset == 'genomics_all':
         from feature_selection.experiments.common.dorothea import load_data
@@ -207,21 +209,21 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
         train_examples = range(0, start_idx) + range(end_idx, len(full_y))
         valid_examples = range(start_idx, min(end_idx, len(full_y)))
 
-        train_x = full_x[train_examples]
-        train_y = full_y[train_examples]
-        valid_x = full_x[valid_examples]
-        valid_y = full_y[valid_examples]
+        x_train = full_x[train_examples]
+        y_train = full_y[train_examples]
+        x_valid = full_x[valid_examples]
+        y_valid = full_y[valid_examples]
 
         print("Altering training and validation datasets to perform k-fold"
               "crossvalidation for fold %i out of %i." % (no_fold, nb_folds))
-        print("New train shape :", train_x.shape)
-        print("New valid shape :", valid_x.shape)
+        print("New train shape :", x_train.shape)
+        print("New valid shape :", x_valid.shape)
 
     # supervised_type refers to the parameters of the network, and
     # changes the last layer.
     if dataset in ["opensnp", "debug", "debug_snp"]:
         supervised_type = "supervised_regression"
-    elif dataset in ["genomics","genomics_all"]:
+    elif dataset in ["genomics", "genomics_all"]:
         supervised_type = "supervised_classification"
     else:
         print (dataset)
@@ -235,14 +237,15 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
     input_var = T.fmatrix('inputs')
     target_var = T.fvector('targets')
 
-    feature_var = theano.shared(x_train.transpose().astype("float32"), 'feature_var')
+    feature_var = theano.shared(x_train.transpose().astype("float32"),
+                                'feature_var')
 
     #lr = theano.shared(np.float32(1e-4), 'learning_rate')
     lr = theano.shared(np.float32(1e-0), 'learning_rate')
 
-    #input_var.tag.test_value = x_train[:20]
-    #target_var.tag.test_value = y_train[:20]
-    #feature_var.tag.test_value = x_train.transpose()
+    # input_var.tag.test_value = x_train[:20]
+    # target_var.tag.test_value = y_train[:20]
+    # feature_var.tag.test_value = x_train.transpose()
 
     # Build model
     print("Building model")
@@ -323,21 +326,23 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
         for i in range(len(params['feature']['layers'])):
             if i > 0:
                 feature_rep_net = BatchNormLayer(feature_rep_net)
-            feature_rep_net = DenseLayer(feature_rep_net,
-                                num_units=params['feature']['layers'][i],
-                                W=params['feature']['weights'][i],
-                                b=params['feature']['biases'][i],
-                                nonlinearity=params['feature']['acts'][i])
+            feature_rep_net = DenseLayer(
+                feature_rep_net,
+                num_units=params['feature']['layers'][i],
+                W=params['feature']['weights'][i],
+                b=params['feature']['biases'][i],
+                nonlinearity=params['feature']['acts'][i])
 
         # Predict the encoder parameters for the features
         enc_weights_net = feature_rep_net
         for i in range(len(params['encoder_w']['layers'])):
             enc_weights_net = BatchNormLayer(enc_weights_net)
-            enc_weights_net = DenseLayer(enc_weights_net,
-                                num_units=params['encoder_w']['layers'][i],
-                                W=params['encoder_w']['weights'][i],
-                                b=params['encoder_w']['biases'][i],
-                                nonlinearity=params['encoder_w']['acts'][i])
+            enc_weights_net = DenseLayer(
+                enc_weights_net,
+                num_units=params['encoder_w']['layers'][i],
+                W=params['encoder_w']['weights'][i],
+                b=params['encoder_w']['biases'][i],
+                nonlinearity=params['encoder_w']['acts'][i])
         encoder_weights = lasagne.layers.get_output(enc_weights_net)
 
         # Predict the contribution to the encoder's hidden representation.
@@ -362,22 +367,25 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
         for i in range(len(params['feature']['layers'])):
             if i > 0:
                 feature_rep_net = BatchNormLayer(feature_rep_net)
-            feature_rep_net = DenseLayer(feature_rep_net,
-                                num_units=params['feature']['layers'][i],
-                                W=params['feature']['weights'][i],
-                                b=params['feature']['biases'][i],
-                                nonlinearity=params['feature']['acts'][i])
+            feature_rep_net = DenseLayer(
+                feature_rep_net,
+                num_units=params['feature']['layers'][i],
+                W=params['feature']['weights'][i],
+                b=params['feature']['biases'][i],
+                nonlinearity=params['feature']['acts'][i])
 
         # Predict the decoder parameters for the features
         dec_weights_net = feature_rep_net
         for i in range(len(params['decoder_w']['layers'])):
             dec_weights_net = BatchNormLayer(dec_weights_net)
-            dec_weights_net = DenseLayer(dec_weights_net,
-                                num_units=params['decoder_w']['layers'][i],
-                                W=params['decoder_w']['weights'][i],
-                                b=params['decoder_w']['biases'][i],
-                                nonlinearity=params['decoder_w']['acts'][i])
-        decoder_weights = lasagne.layers.get_output(dec_weights_net).transpose()
+            dec_weights_net = DenseLayer(
+                dec_weights_net,
+                num_units=params['decoder_w']['layers'][i],
+                W=params['decoder_w']['weights'][i],
+                b=params['decoder_w']['biases'][i],
+                nonlinearity=params['decoder_w']['acts'][i])
+        decoder_weights = \
+            lasagne.layers.get_output(dec_weights_net).transpose()
 
         # Predict the contribution to the decoder's reconstruction
         recon_contribution = T.dot(h_rep, decoder_weights)
@@ -408,12 +416,13 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
 
     unsup_loss = ((input_var - reconstruction) ** 2).mean()
 
-    #unsup_loss = lasagne.objectives.binary_crossentropy(T.nnet.sigmoid(reconstruction) / 2,
-    #                                                    input_var / 2).mean()
+    # unsup_loss = lasagne.objectives.binary_crossentropy(
+    #     T.nnet.sigmoid(reconstruction) / 2,
+    #     input_var / 2).mean()
 
     if supervised_type == "supervised_regression":
         sup_loss = ((target_var - prediction) ** 2 *
-                     T.neq(target_var, -1)).mean()
+                    T.neq(target_var, -1)).mean()
         sup_abs_loss = (abs(target_var - prediction) *
                         T.neq(target_var, -1)).mean()
 
@@ -426,40 +435,37 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
         print (prediction.ndim)
         print (target_diff_avg.ndim)
 
-
         numerator = ((target_var-prediction-target_diff_avg) ** 2 *
-                T.neq(target_var, -1)).mean()
+                     T.neq(target_var, -1)).mean()
 
         true_avg = target_var.mean()
         denominator = ((target_var - true_avg) ** 2 *
-                T.neq(target_var, -1)).mean()
+                       T.neq(target_var, -1)).mean()
 
-        #nonzero_numerator = T.neq(numerator,0)
-        #nonzero_denominator = T.neq(denominator,0)
-        #valid_score = nonzero_numerator & nonzero_denominator
-        #explained_variance = T.ones_like(target_var)
-        #print ("debug_ explained_variance shape: {}".
+        # nonzero_numerator = T.neq(numerator,0)
+        # nonzero_denominator = T.neq(denominator,0)
+        # valid_score = nonzero_numerator & nonzero_denominator
+        # explained_variance = T.ones_like(target_var)
+        # print ("debug_ explained_variance shape: {}".
         #        format(explained_variance.shape))
-        #print (explained_variance.ndim)
-        #print (numerator.ndim)
-        #print (denominator.ndim)
+        # print (explained_variance.ndim)
+        # print (numerator.ndim)
+        # print (denominator.ndim)
 
         explained_variance = 1 - (numerator / denominator)
-        #explained_variance[nonzero_numerator & ~nonzero_denominator] = 0.
-
-
+        # explained_variance[nonzero_numerator & ~nonzero_denominator] = 0.
 
     elif supervised_type == "supervised_classification":
-        index_0 = T.eq(target_var,0)
-        index_1 = T.eq(target_var,1)
+        index_0 = T.eq(target_var, 0)
+        index_1 = T.eq(target_var, 1)
 
         pred_0 = prediction[index_0]
         pred_1 = prediction[index_1]
 
         prop_0 = T.sum(index_0) / index_0.shape[0]
 
-        sup_loss = - (T.log(pred_0) * (1 - prop_0) + T.log(1 - pred_1) * prop_0)\
-                .mean()
+        sup_loss = - (T.log(pred_0) * (1 - prop_0) +
+                      T.log(1 - pred_1) * prop_0).mean()
 
     else:
         raise NotImplementedError()
@@ -469,28 +475,28 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
     # Define training funtions
     print("Building training functions")
 
-
+    # There are 3 places where the parameters are defined:
     # There are 3 places where the parameters are defined:
     # - In the 'params' dictionnary
     # - The encoder biases
     # - The params in the 'supervised_net' network
     all_params = ([encoder_b] +
-              params['feature']['weights'] +
-              params['feature']['biases'] +
-              params['encoder_w']['weights'] +
-              params['encoder_w']['biases'] +
-              params['decoder_w']['weights'] +
-              params['decoder_w']['biases'] +
-              params[supervised_type]['weights'] +
-              params[supervised_type]['biases'])
+                  params['feature']['weights'] +
+                  params['feature']['biases'] +
+                  params['encoder_w']['weights'] +
+                  params['encoder_w']['biases'] +
+                  params['decoder_w']['weights'] +
+                  params['decoder_w']['biases'] +
+                  params[supervised_type]['weights'] +
+                  params[supervised_type]['biases'])
 
     all_params = ([encoder_b] +
-              params['feature']['weights'] +
-              params['feature']['biases'] +
-              params['encoder_w']['weights'] +
-              params['encoder_w']['biases'] +
-              params[supervised_type]['weights'] +
-              params[supervised_type]['biases'])
+                  params['feature']['weights'] +
+                  params['feature']['biases'] +
+                  params['encoder_w']['weights'] +
+                  params['encoder_w']['biases'] +
+                  params[supervised_type]['weights'] +
+                  params[supervised_type]['biases'])
 
     # Do not train 'feature_var'. It's only a shared variable to avoid
     # transfers to/from the gpu
@@ -499,7 +505,7 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
     updates = lasagne.updates.rmsprop(total_loss,
                                       all_params,
                                       learning_rate=lr)
-    #updates = lasagne.updates.adam(total_loss, all_params, learning_rate=lr)
+    # updates = lasagne.updates.adam(total_loss, all_params, learning_rate=lr)
 
     # Reduce lr for parameters of the 'weights' predicting networks
     for p in (params['feature']['weights'] + params['feature']['biases'] +
@@ -518,13 +524,13 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
 
     if supervised_type == "supervised_regression":
         val_fn = theano.function([input_var, target_var],
-                             [unsup_loss, sup_loss, sup_abs_loss,
-                             explained_variance])
+                                 [unsup_loss, sup_loss, sup_abs_loss,
+                                  explained_variance])
         monitor_labels = ["reconstruction loss", "prediction loss",
-                      "prediction loss (MAE)", "explained variance"]
+                          "prediction loss (MAE)", "explained variance"]
     elif supervised_type == "supervised_classification":
         val_fn = theano.function([input_var, target_var],
-                            [unsup_loss, sup_loss])
+                                 [unsup_loss, sup_loss])
         monitor_labels = ["reconstruction loss", "prediction loss"]
     else:
         raise NotImplementedError()
@@ -534,6 +540,7 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
 
     # We iterate over epochs:
     best_valid_mse = 1e20
+    max_patience = 100
     best_epoch = 0
     train_MSEs = []
     valid_MSEs = []
@@ -567,7 +574,9 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
 
         # Monitor the test set if needed
         if v_mse < best_valid_mse:
+            patience = 0
             best_valid_mse = v_mse
+            best_train_mse = t_mse
             best_epoch = epoch + 1
 
             test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
@@ -577,14 +586,18 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
 
             test_MSE_epochs.append(best_epoch)
             test_MSEs.append(t_mse)
+            best_test_mse = t_mse
 
             # Save network weights to a file
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
 
-            #np.savez(save_path+'v3_sup.npz',
+            # np.savez(save_path+'v3_sup.npz',
             #         *lasagne.layers.get_all_param_values(supervised_net))
+        else:
+            patience += 1
 
+        # Adjust learning rate
         print("  learning rate:\t\t{:.9f}".format(float(lr.get_value())))
         print("  total time:\t\t\t{:.3f}s".format(time.time() - start_time))
 
@@ -592,13 +605,17 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
             lr.set_value(lr.get_value() * 0.5)
             best_epoch = epoch + 1
 
-        plot.clf()
-        plot.plot(range(1, epoch+2), train_MSEs, label="train")
         plot.plot(range(1, epoch+2), valid_MSEs, label="valid")
         plot.plot(test_MSE_epochs, test_MSEs, 'ro', label="test")
         plot.axis([1, epoch+2, 0, 200])
         plot.legend()
         plot.savefig("training_curves.png")
+
+        if patience >= max_patience:
+            print ("  Train pred. loss:\t\t{:.6f}".format(best_train_mse))
+            print ("  Valid pred. loss:\t\t{:.6f}".format(best_valid_mse))
+            print ("  Test  pred. loss:\t\t{:.6f}".format(best_test_mse))
+            break
 
     # Print summary of training
     best_epoch = test_MSE_epochs[-1]
@@ -607,8 +624,6 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
     print("Training loss : ", train_MSEs[best_epoch-1])
     print("Validation loss : ", valid_MSEs[best_epoch-1])
     print("Test loss : ", test_MSEs[-1])
-
-
 
 
 def main():
@@ -657,6 +672,13 @@ def main():
         str(args.save_path),
         cross_validation)
 
+    print ("Arguments: {}".format(args))
+    execute(
+        args.dataset,
+        int(args.n_output),
+        int(args.num_epochs),
+        str(args.save_path),
+        cross_validation)
 
 
 if __name__ == '__main__':
