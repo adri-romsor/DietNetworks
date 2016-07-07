@@ -19,7 +19,6 @@ def load_data(
         data = data[idx_shuffle]
         labels = labels[idx_shuffle]
 
-    # TODO: inplement shuffle
     return data, labels
 
 
