@@ -8,6 +8,7 @@
 Pierre Luc
 - [ ] Reuters : check dimensionality and stats
 - [ ] Merge epls and master branchs
+- [ ] Change softmax output to sigmoid
 
 Akram
 - [ ] IMDB : check dimensionality and stats
