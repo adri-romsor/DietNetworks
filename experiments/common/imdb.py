@@ -64,9 +64,8 @@ def getCleanReviews(reviews):
     return clean_reviews
 
 
-def load_imdb_BoW(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
-                  max_features=None, use_unlab=True,
-                  shuffle=False, seed=1):
+def build_imdb_BoW(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
+                   max_features=None, use_unlab=True):
     # load data
     train = pd.read_csv(os.path.join(path_to_data,
                                      'labeledTrainData.tsv'),
@@ -112,10 +111,10 @@ def load_imdb_BoW(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
     if use_unlab:
         vectorizer.fit(clean_train_reviews+clean_unlab_train_reviews)
         train_data_features = vectorizer.transform(clean_train_reviews)
-        unlab_data_features = vectorizer.transform(clean_unlab_train_reviews)
     else:
         train_data_features = vectorizer.fit_transform(clean_train_reviews)
 
+    unlab_data_features = vectorizer.transform(clean_unlab_train_reviews)
     # For the test set, we use the same vocab as for the train set
     test_data_features = vectorizer.transform(clean_test_reviews)
 
@@ -124,6 +123,19 @@ def load_imdb_BoW(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
     train_labels = np.array(train['sentiment'])
     test_data_features = test_data_features.toarray()
 
+    return train_data_features, train_labels, unlab_data_features,\
+        test_data_features
+
+
+def load_imdb_BoW(path_to_files='/data/lisatmp4/erraqabi/data/imdb_reviews/',
+                  shuffle=False, seed=0):
+
+    data = np.load(os.path.join(path_to_files, 'imdb.npz'))
+    train_data_features = data['train_data_features']
+    train_labels = data['train_labels']
+    unlab_data_features = data['unlab_data_features']
+    test_data_features = data['test_data_features']
+
     if shuffle:
         np.random.seed(seed)
         idx_shuffle = np.random.permutation(train_data_features.shape[0])
@@ -131,9 +143,8 @@ def load_imdb_BoW(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
         train_labels = train_labels[idx_shuffle]
         idx_shuffle = np.random.permutation(test_data_features.shape[0])
         test_data_features = test_data_features[idx_shuffle]
-        if use_unlab:
-            idx_shuffle = np.random.permutation(unlab_data_features.shape[0])
-            unlab_data_features = unlab_data_features[idx_shuffle]
+        idx_shuffle = np.random.permutation(unlab_data_features.shape[0])
+        unlab_data_features = unlab_data_features[idx_shuffle]
 
     return train_data_features, train_labels, unlab_data_features,\
         test_data_features
@@ -201,3 +212,17 @@ def load_imdb_word2vec(path_to_data, model_path=None, use_unlab=True):
                                            num_features)
 
     return train_data_features, train_labels, test_data_features
+
+
+def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
+                        feat_type='BoW'):
+    if feat_type == 'BoW':
+        train_data_features, train_labels, unlab_data_features,\
+            test_data_features = build_imdb_BoW()
+    np.savez('imdb.npz', train_data_features=train_data_features,
+             train_labels=train_labels,
+             test_data_features=test_data_features,
+             unlab_data_features=unlab_data_features)
+
+if __name__ == '__main__':
+    process_and_save_imdb()
