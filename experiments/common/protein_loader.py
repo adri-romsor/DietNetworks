@@ -4,7 +4,8 @@ import numpy as np
 
 def load_data(
     path='/data/lisatmp4/dejoieti/data/Thrombin',
-    shuffle=False
+    shuffle=False,
+    seed=0
 ):
     data_path = os.path.join(path, 'data.npy')
     labels_path = os.path.join(path, 'label.npy')
@@ -12,8 +13,11 @@ def load_data(
     data = (np.load(data_path)).astype('float32')
     labels = (np.load(labels_path)).astype('int32')
 
-    if not shuffle:
-        return data, labels
+    if shuffle:
+        np.random.seed(seed)
+        idx_shuffle = np.random.permutation(data.shape[0])
+        data = data[idx_shuffle]
+        labels = labels[idx_shuffle]
 
     # TODO: inplement shuffle
     return data, labels

@@ -64,8 +64,8 @@ def getCleanReviews(reviews):
     return clean_reviews
 
 
-def load_imdb_BoW(path_to_data_folder, use_unlab=True):
-
+def load_imdb_BoW(path_to_data_folder, max_features=None, use_unlab=True,
+                  shuffle=False, seed=1):
     # load data
     train = pd.read_csv(os.path.join(path_to_data_folder,
                                      'labeledTrainData.tsv'),
@@ -103,7 +103,7 @@ def load_imdb_BoW(path_to_data_folder, use_unlab=True):
                                  tokenizer=None,
                                  preprocessor=None,
                                  stop_words=None,
-                                 max_features=5000)
+                                 max_features=max_features)
 
     # fit_transform() does two functions: First, it fits the model
     # and learns the vocabulary; second, it transforms our training data
@@ -111,6 +111,7 @@ def load_imdb_BoW(path_to_data_folder, use_unlab=True):
     if use_unlab:
         vectorizer.fit(clean_train_reviews+clean_unlab_train_reviews)
         train_data_features = vectorizer.transform(clean_train_reviews)
+        unlab_data_features = vectorizer.transform(clean_unlab_train_reviews)
     else:
         train_data_features = vectorizer.fit_transform(clean_train_reviews)
 
@@ -122,7 +123,19 @@ def load_imdb_BoW(path_to_data_folder, use_unlab=True):
     train_labels = np.array(train['sentiment'])
     test_data_features = test_data_features.toarray()
 
-    return train_data_features, train_labels, test_data_features
+    if shuffle:
+        np.random.seed(seed)
+        idx_shuffle = np.random.permutation(train_data_features.shape[0])
+        train_data_features = train_data_features[idx_shuffle]
+        train_labels = train_labels[idx_shuffle]
+        idx_shuffle = np.random.permutation(test_data_features.shape[0])
+        test_data_features = test_data_features[idx_shuffle]
+        if use_unlab:
+            idx_shuffle = np.random.permutation(unlab_data_features.shape[0])
+            unlab_data_features = unlab_data_features[idx_shuffle]
+
+    return train_data_features, train_labels, unlab_data_features,\
+        test_data_features
 
 
 def load_imdb_word2vec(path_to_data_folder, model_path=None, use_unlab=True):
