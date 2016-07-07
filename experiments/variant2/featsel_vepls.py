@@ -15,6 +15,8 @@ import numpy as np
 import theano
 import theano.tensor as T
 
+from epls import EPLS, tensor_fun_EPLS
+
 #theano.config.compute_test_value = 'warn'
 
 """
@@ -83,17 +85,17 @@ def biases(n_out, name=None):
 
 
 # Main program
-def execute(dataset, n_output, num_epochs=500, save_path=None,
-            cross_validation=None):
+def execute(dataset, n_output, decode=False, epls=True, num_epochs=500,
+            save_path=None, cross_validation=None):
     # Load the dataset
     print("Loading data")
     if dataset == 'genomics':
-        from feature_selection.experiments.common.dorothea import load_data
+        from experiments.common.dorothea import load_data
         x_train, y_train = load_data('train', 'standard', False, 'numpy')
         x_valid, y_valid = load_data('valid', 'standard', False, 'numpy')
 
         # WARNING : The dorothea dataset has no test labels
-        print ("Warning: using validation as test set in execute, for Dorothea")
+        print ("Warning: using validation as test set in execute for Dorothea")
 
         # x_test = load_data('test', 'standard', False, 'numpy')
         # y_test = None
@@ -101,7 +103,7 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
         x_test, y_test = x_valid, y_valid
 
     elif dataset == 'genomics_all':
-        from feature_selection.experiments.common.dorothea import load_data
+        from experiments.common.dorothea import load_data
         x_train, y_train = load_data('all', 'standard', False, 'numpy')
         x_valid = None
         y_valid = None
@@ -138,7 +140,7 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
         y_test = np.random.randint(0, 200, size=n_test).astype('int8')
 
     elif dataset == 'opensnp':
-        from feature_selection import aggregate_dataset
+        import aggregate_dataset
 
         # This splits the data into [0.6, 0.2, 0.2] for the supervised examples
         # and puts half of the unsupervised examples in the training set
@@ -293,7 +295,6 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
             'acts': [rectify, sigmoid]}
             }
 
-    """
     params = {
         'feature': {
             'layers': [feat_repr_size],
@@ -315,7 +316,6 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
             'weights': [weights(h_rep_size, 1, 'sw1')],
             'biases': [biases(1, 'sb1')],
             'acts': [very_leaky_rectify]}}
-    """
 
     # Build the portion of the model that will predict the encoder's hidden
     # representation fron the inputs and the feature activations.
@@ -357,16 +357,17 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
     # Add a bias vector to the hidden_contribution and apply an activation
     # function to obtain the autoencoder's hidden representation
     encoder_b = biases(h_rep_size, 'encoder_b')
-    h_rep = T.nnet.relu(hidden_contribution + encoder_b)
+    h_rep = hidden_contribution + encoder_b
 
     # Build the decoder
-    def step_dec(dataset, h_rep):
+    if decode:
+        def step_dec(dataset, h_rep):
 
-        # Predict the feature representations
-        feature_rep_net = InputLayer((n_feats, n_samples), dataset)
-        for i in range(len(params['feature']['layers'])):
-            if i > 0:
-                feature_rep_net = BatchNormLayer(feature_rep_net)
+            # Predict the feature representations
+            feature_rep_net = InputLayer((n_feats, n_samples), dataset)
+            for i in range(len(params['feature']['layers'])):
+                if i > 0:
+                    feature_rep_net = BatchNormLayer(feature_rep_net)
             feature_rep_net = DenseLayer(
                 feature_rep_net,
                 num_units=params['feature']['layers'][i],
@@ -374,31 +375,45 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
                 b=params['feature']['biases'][i],
                 nonlinearity=params['feature']['acts'][i])
 
-        # Predict the decoder parameters for the features
-        dec_weights_net = feature_rep_net
-        for i in range(len(params['decoder_w']['layers'])):
-            dec_weights_net = BatchNormLayer(dec_weights_net)
+            # Predict the decoder parameters for the features
+            dec_weights_net = feature_rep_net
+            for i in range(len(params['decoder_w']['layers'])):
+                dec_weights_net = BatchNormLayer(dec_weights_net)
             dec_weights_net = DenseLayer(
                 dec_weights_net,
                 num_units=params['decoder_w']['layers'][i],
                 W=params['decoder_w']['weights'][i],
                 b=params['decoder_w']['biases'][i],
                 nonlinearity=params['decoder_w']['acts'][i])
-        decoder_weights = \
-            lasagne.layers.get_output(dec_weights_net).transpose()
+            decoder_weights = \
+                lasagne.layers.get_output(dec_weights_net).transpose()
 
-        # Predict the contribution to the decoder's reconstruction
-        recon_contribution = T.dot(h_rep, decoder_weights)
-        return recon_contribution
+            # Predict the contribution to the decoder's reconstruction
+            recon_contribution = T.dot(h_rep, decoder_weights)
+            return recon_contribution
 
-    results, updates = theano.scan(fn=step_dec,
-                                   non_sequences=[feature_var, h_rep],
-                                   n_steps=1, allow_gc=True,
-                                   name="decoder_w_scan")
-    reconstruction = results[0]
+        results, updates = theano.scan(fn=step_dec,
+                                       non_sequences=[feature_var, h_rep],
+                                       n_steps=1, allow_gc=True,
+                                       name="decoder_w_scan")
+        reconstruction = results[0]
+
+    if epls:
+        n_cluster = params['encoder_w']['layers'][0]
+        activation = theano.shared(np.zeros(n_cluster, dtype='float32'))
+        nb_activation = 1
+
+        # /!\ if non linearity not sigmoid, map output values to function image
+        hidden_unsup = T.nnet.sigmoid(h_rep)
+
+        target, new_act = tensor_fun_EPLS(hidden_unsup, activation,
+                                          n_samples, nb_activation)
+
+        h_rep = T.largest(0, h_rep - T.mean(h_rep))
 
     # Build the supervised network that takes the hidden representation of the
     # encoder as input and tries to predict the targets
+
     supervised_net = InputLayer((n_batch, h_rep_size), h_rep)
 
     for i in range(len(params[supervised_type]['layers'])):
@@ -411,12 +426,14 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
 
     prediction = lasagne.layers.get_output(supervised_net)[:, 0]
 
+    # prediction = prediction + 160 * T.ones_like(prediction.shape)
     # Compute loss expressions
     print("Defining loss functions")
 
-    unsup_loss = ((input_var - reconstruction) ** 2).mean()
-
-    # unsup_loss = lasagne.objectives.binary_crossentropy(
+    if decode:
+        unsup_loss = ((input_var - reconstruction) ** 2).mean()
+    if epls:
+        unsup_loss = ((hidden_unsup - target) ** 2).mean()
     #     T.nnet.sigmoid(reconstruction) / 2,
     #     input_var / 2).mean()
 
@@ -470,7 +487,7 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
     else:
         raise NotImplementedError()
 
-    total_loss = sup_loss
+    total_loss = unsup_loss + sup_loss
 
     # Define training funtions
     print("Building training functions")
@@ -516,6 +533,8 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
         if p in updates:
             updates[p] = p + (updates[p] - p) / 10000
 
+    updates[activation] = new_act
+
     train_fn = theano.function([input_var, target_var], total_loss,
                                updates=updates)
 
@@ -551,6 +570,7 @@ def execute(dataset, n_output, num_epochs=500, save_path=None,
         # In each epoch, we do a full pass over the training data to updates
         # the parameters:
         start_time = time.time()
+        activation.set_value(np.zeros(n_cluster, dtype='float32'))
         for batch in iterate_minibatches(x_train, y_train, n_batch,
                                          shuffle=True):
             inputs, targets = batch
@@ -645,7 +665,7 @@ def main():
     parser.add_argument('--save_path',
                         '-sp',
                         type=str,
-                        default='/data/lisatmp4/carriepl/FeatureSelection/',
+                        default='/data/lisatmp4/romerosa/FeatureSelection/',
                         help="""Optional. Save path for the model""")
 
     parser.add_argument('--kfold',
@@ -654,6 +674,16 @@ def main():
                         default=None,
                         help='Optional. Params for k-fold validation. ' +
                              'Format : "no_fold/nb_folds"')
+
+    parser.add_argument('--scarse_unsup',
+                        '-su',
+                        action='store_true',
+                        help='Optional. if set, will use scarse unsup loss')
+
+    parser.add_argument('--decode',
+                        '-de',
+                        action='store_true',
+                        help='Optional. if set, will use scarse unsup loss')
 
     args = parser.parse_args()
 
@@ -668,14 +698,8 @@ def main():
     execute(
         args.dataset,
         int(args.n_output),
-        int(args.num_epochs),
-        str(args.save_path),
-        cross_validation)
-
-    print ("Arguments: {}".format(args))
-    execute(
-        args.dataset,
-        int(args.n_output),
+        args.decode,
+        args.scarse_unsup,
         int(args.num_epochs),
         str(args.save_path),
         cross_validation)
