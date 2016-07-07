@@ -11,7 +11,7 @@ Pierre Luc
 - [ ] Change softmax output to sigmoid
 
 Akram
-- [ ] IMDB : check dimensionality and stats
+- [x] IMDB stats
 - [ ] Check Dragonn for protein 
 
 Adriana
