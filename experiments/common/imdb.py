@@ -156,7 +156,7 @@ def load_imdb_word2vec(path_to_data_folder, model_path=None, use_unlab=True):
     # load model from path if provided
     if model_path is not None:
         model = Word2Vec.load(model_path)
-        num_features = len(model[''])
+        num_features = len(model['human'])
     else:
         # Set values for various parameters
         num_features = 300    # Word vector dimensionality
