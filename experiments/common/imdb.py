@@ -225,4 +225,4 @@ def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
              unlab_data_features=unlab_data_features)
 
 if __name__ == '__main__':
-    process_and_save_imdb()
+    build_and_save_imdb()
