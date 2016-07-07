@@ -3,7 +3,7 @@
 Étienne
 - [ ] Check Baselines PB and stats
 - [ ] Implement EPLS in V4
-- [ ] Merge epls and master branchs
+- [X] Merge epls and master branchs
 
 Pierre Luc
 - [ ] Reuters : check dimensionality and stats
