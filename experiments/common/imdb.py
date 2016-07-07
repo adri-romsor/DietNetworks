@@ -64,16 +64,17 @@ def getCleanReviews(reviews):
     return clean_reviews
 
 
-def load_imdb_BoW(path_to_data_folder, max_features=None, use_unlab=True,
+def load_imdb_BoW(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
+                  max_features=None, use_unlab=True,
                   shuffle=False, seed=1):
     # load data
-    train = pd.read_csv(os.path.join(path_to_data_folder,
+    train = pd.read_csv(os.path.join(path_to_data,
                                      'labeledTrainData.tsv'),
                         header=0, delimiter="\t", quoting=3)
-    test = pd.read_csv(os.path.join(path_to_data_folder,
+    test = pd.read_csv(os.path.join(path_to_data,
                                     'testData.tsv'),
                        header=0, delimiter="\t", quoting=3)
-    unlabeled_data = pd.read_csv(os.path.join(path_to_data_folder,
+    unlabeled_data = pd.read_csv(os.path.join(path_to_data,
                                               'unlabeledTrainData.tsv'),
                                  header=0, delimiter="\t", quoting=3)
 
@@ -138,15 +139,15 @@ def load_imdb_BoW(path_to_data_folder, max_features=None, use_unlab=True,
         test_data_features
 
 
-def load_imdb_word2vec(path_to_data_folder, model_path=None, use_unlab=True):
+def load_imdb_word2vec(path_to_data, model_path=None, use_unlab=True):
     # load data
-    train = pd.read_csv(os.path.join(path_to_data_folder,
+    train = pd.read_csv(os.path.join(path_to_data,
                                      'labeledTrainData.tsv'),
                         header=0, delimiter="\t", quoting=3)
-    test = pd.read_csv(os.path.join(path_to_data_folder,
+    test = pd.read_csv(os.path.join(path_to_data,
                                     'testData.tsv'),
                        header=0, delimiter="\t", quoting=3)
-    unlabeled_data = pd.read_csv(os.path.join(path_to_data_folder,
+    unlabeled_data = pd.read_csv(os.path.join(path_to_data,
                                               'unlabeledTrainData.tsv'),
                                  header=0, delimiter="\t", quoting=3)
 
