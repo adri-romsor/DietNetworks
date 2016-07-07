@@ -20,6 +20,9 @@ Adriana
 All
 - [ ] Protein Binding (experiments)
 
+# Pending tasks
+- [ ] Train the model using partially labeled subsets (10%, 25%, 50% ...)
+
 # Feature-Selection
 Ackwnoledgement: we used scikit feature (added to the repo) for some of our baselines.
 https://github.com/jundongl
