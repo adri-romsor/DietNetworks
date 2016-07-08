@@ -219,7 +219,8 @@ def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
     if feat_type == 'BoW':
         train_data_features, train_labels, unlab_data_features,\
             test_data_features = build_imdb_BoW()
-    np.savez('imdb.npz', train_data_features=train_data_features,
+    np.savez(os.path.join(path, 'imdb.npz'),
+             train_data_features=train_data_features,
              train_labels=train_labels,
              test_data_features=test_data_features,
              unlab_data_features=unlab_data_features)
