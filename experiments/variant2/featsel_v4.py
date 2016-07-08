@@ -442,7 +442,7 @@ def execute(dataset, n_hidden_u, n_hidden_t, n_hidden_s,
 
 def main():
     parser = argparse.ArgumentParser(description="""Implementation of the
-                                     feature selection v2""")
+                                     feature selection v4""")
     parser.add_argument('--dataset',
                         default='protein_binding',
                         help='Dataset.')
