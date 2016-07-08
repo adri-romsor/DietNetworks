@@ -1,7 +1,7 @@
 # TODO list
 
 Étienne
-- [ ] Check Baselines PB and stats
+- [X] Check Baselines PB and stats
 - [ ] Implement EPLS in V4
 - [X] Merge epls and master branchs
 
