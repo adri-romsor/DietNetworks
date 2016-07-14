@@ -151,9 +151,23 @@ def execute(dataset, n_hidden_u, n_hidden_t, n_hidden_s,
         print("Unknown dataset")
         return
 
+    # Ensure that the targets are a matrix and not a vector
+    if 'y' in locals():
+        if y.ndim == 1:
+            y = y[:, None]
+    if 'y_train' in locals():
+        if y_train.ndim == 1:
+            y_train = y_train[:, None]
+    if 'y_valid' in locals():
+        if y_valid.ndim == 1:
+            y_valid = y_valid[:, None]
+    if 'y_test' in locals():
+        if y_test.ndim == 1:
+            y_test = y_test[:, None]
+
     # Extract required information from data
     n_samples, n_feats = x.shape
-    n_classes = y.max() + 1
+    n_binary_classifications = y.shape[1]
 
     # Set some variables
     batch_size = 100
@@ -222,8 +236,9 @@ def execute(dataset, n_hidden_u, n_hidden_t, n_hidden_s,
         for hid in n_hidden_s:
             discrim_net = DenseLayer(discrim_net, num_units=hid)
 
-        discrim_net = DenseLayer(discrim_net, num_units=n_classes,
-                                 nonlinearity=softmax)
+        discrim_net = DenseLayer(discrim_net,
+                                 num_units=n_binary_classifications,
+                                 nonlinearity=sigmoid)
 
     print("Building and compiling training functions")
     # Some variables
@@ -243,9 +258,9 @@ def execute(dataset, n_hidden_u, n_hidden_t, n_hidden_s,
         prediction_det = lasagne.layers.get_output(discrim_net,
                                                    deterministic=True)
 
-        loss_sup = lasagne.objectives.categorical_crossentropy(
+        loss_sup = lasagne.objectives.binary_crossentropy(
             prediction, target_var_sup).mean()
-        loss_sup_det = lasagne.objectives.categorical_crossentropy(
+        loss_sup_det = lasagne.objectives.binary_crossentropy(
             prediction_det, target_var_sup).mean()
 
         params += lasagne.layers.get_all_params(discrim_net, trainable=True)
