@@ -10,6 +10,8 @@ import numpy as np
 import theano
 import theano.tensor as T
 
+from epls import EPLS, tensor_fun_EPLS
+
 def iterate_minibatches(x, batch_size, shuffle=True):
     if shuffle:
         np.random.shuffle(x)
@@ -95,6 +97,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     # Prepare Theano variables for inputs and targets
     input_var = T.matrix('input_unsup')
     lr = theano.shared(np.float32(learning_rate), 'learning_rate')
+    update_epls = {}
 
     # Build model
     print("Building model")
@@ -120,7 +123,18 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
                                  nonlinearity=sigmoid)
         reconstruction = lasagne.layers.get_output(decoder_net)
     if 'epls' in unsupervised:
-        raise NotImplementedError
+        n_cluster = n_hidden_u[-1]
+        activation = theano.shared(np.zeros(n_cluster, dtype='float32'))
+        nb_activation = 1
+
+        # /!\ if non linearity not sigmoid, map output values to function image
+        hidden_unsup = T.nnet.sigmoid(feat_emb)
+
+        target, new_act = tensor_fun_EPLS(hidden_unsup, activation,
+                                          n_row, nb_activation)
+
+        update_epls[activation] = new_act
+        # h_rep = T.largest(0, h_rep - T.mean(h_rep))
 
     print("Building and compiling training functions")
     # Some variables
@@ -147,7 +161,8 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         params += lasagne.layers.get_all_params(decoder_net, trainable=True)
     if "epls" in unsupervised:
         # Unsupervised epls functions
-        raise NotImplementedError
+        loss_epls = ((hidden_unsup - target) ** 2).mean()
+        loss_epls_det = ((hidden_unsup - target) ** 2).mean()
 
     # Combine losses
     loss = loss_auto + loss_epls
@@ -162,6 +177,9 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     #                              learning_rate=lr)
     # updates = lasagne.updates.momentum(loss, params,
     #                                    learning_rate=lr, momentum=0.0)
+
+    if 'epls' in unsupervised:
+        updates[activation] = new_act
 
     # Compile training function
     train_fn = theano.function([input_var], loss,
@@ -179,11 +197,13 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
 
     if "epls" in unsupervised:
         # Unsupervised epls functions
-        raise NotImplementedError
+        val_outputs += [loss_epls_det]
+        monitor_labels += ["epls. loss"]
 
     # Compile validation function
     val_fn = theano.function([input_var],
-                             val_outputs)
+                             val_outputs,
+                             updates=update_epls)
 
     # Finally, launch the training loop.
     print("Starting training...")
