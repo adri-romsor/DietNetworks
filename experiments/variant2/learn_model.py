@@ -58,7 +58,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     ######### Put your data loading script in this block ############
 
 
-    ##      Define x_train, y_train, x_test, y_test, x_unsup       ##
+    #Define x_train, y_train, x_val, y_val, x_test, y_test, x_unsup #
 
 
     #################################################################
@@ -222,7 +222,6 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         for batch in iterate_minibatches(x_train, y_train,  # TBD
                                          batch_size,
                                          shuffle=True):
-            # p = pred_fn(*batch)
             loss_epoch += train_fn(*batch)
 
         loss_epoch /= nb_minibatches
