@@ -52,7 +52,7 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels):
 # Main program
 def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             embedding_source=None,
-            num_epochs=500, learning_rate=.001,
+            num_epochs=500, learning_rate=.001, gamma=1,
             save_path='/Tmp/romerosa/feature_selection/newmodel/'):
 
     ######### Put your data loading script in this block ############
@@ -165,7 +165,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                            trainable=True)
 
     # Combine losses
-    loss = loss_sup + reconst_loss
+    loss = loss_sup + gamma*reconst_loss
     loss_det = loss_sup_det + reconst_loss_det
     # Compute network updates
     updates = lasagne.updates.rmsprop(loss,
@@ -330,7 +330,11 @@ def main():
                         type=float,
                         default=.0001,
                         help="""Float to indicate learning rate.""")
-
+    parser.add_argument('--gamma',
+                        '-lr',
+                        type=float,
+                        default=1,
+                        help="""reconst_loss coeff.""")
     parser.add_argument('--save',
                         default='/Tmp/erraqaba/feature_selection/v4/',
                         help='Path to save results.')
@@ -345,6 +349,7 @@ def main():
             args.embedding_source,
             int(args.num_epochs),
             args.learning_rate,
+            args.gamma,
             args.save)
 
 
