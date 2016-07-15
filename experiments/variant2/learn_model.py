@@ -57,6 +57,10 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     ######### Put your data loading script in this block ############
 
+
+    ##      Define x_train, y_train, x_test, y_test, x_unsup       ##
+
+
     #################################################################
 
     # Extract required information from data
@@ -96,18 +100,6 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                      nonlinearity=sigmoid)
         feat_emb = lasagne.layers.get_output(encoder_net)
         pred_feat_emb = theano.function([], feat_emb)
-
-        # if 'autoencoder' in unsupervised:
-        #     decoder_net = encoder_net
-        #     for i in range(len(n_hidden_u)-2, -1, -1):
-        #         decoder_net = DenseLayer(decoder_net,
-        #                                  num_units=n_hidden_u[i],
-        #                                  nonlinearity=sigmoid)
-        #     decoder_net = DenseLayer(decoder_net, num_units=n_samples,
-        #                              nonlinearity=sigmoid)
-        #     reconstruction = lasagne.layers.get_output(decoder_net)
-        # if 'epls' in unsupervised:
-        #     raise NotImplementedError
 
     else:
         feat_emb_val = np.load(save_path + embedding_source).items()[0][1]
@@ -157,9 +149,6 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         prediction_det, target_var_sup).mean()
 
     inputs = [input_var_sup, target_var_sup]
-    # pred_fn = theano.function(inputs, prediction, on_unused_input='ignore')
-
-    # inputs += [input_var_unsup] if embedding_source is None else []
 
     # Unsupervised reconstruction loss
     reconstruction = lasagne.layers.get_output(reconst_net)
@@ -230,7 +219,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         loss_epoch = 0
 
         # Train pass
-        for batch in iterate_minibatches(x_train, y_train,
+        for batch in iterate_minibatches(x_train, y_train,  # TBD
                                          batch_size,
                                          shuffle=True):
             # p = pred_fn(*batch)
@@ -240,7 +229,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         train_loss += [loss_epoch]
 
         # Validation pass
-        valid_minibatches = iterate_minibatches(x_val, y_val,
+        valid_minibatches = iterate_minibatches(x_val, y_val,  # TBD
                                                 batch_size,
                                                 shuffle=False)
 
