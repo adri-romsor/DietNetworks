@@ -1,8 +1,8 @@
 import numpy
 
-from experiments.common import protein_loader
-from experiments.common import dorothea
-from feature selection import aggregate_dataset as opensnp
+from feature_selection.experiments.common import protein_loader
+from feature_selection.experiments.common import dorothea
+from feature_selection import aggregate_dataset as opensnp
 
 
 def shuffle(data_sources, seed=23):
@@ -29,13 +29,16 @@ def split(data_sources, splits):
     remaining 40%.
     """
     
+    if splits is None:
+        return data_sources
+    
     split_data_sources = []
     nb_elements = data_sources[0].shape[0]
     start = 0
     end = 0
     
     for s in splits:
-        end += int(nb_elements * split)
+        end += int(nb_elements * s)
         split_data_sources.append([d[start:end] for d in data_sources])
         start = end
     split_data_sources.append([d[end:] for d in data_sources])    
@@ -46,11 +49,10 @@ def split(data_sources, splits):
     
 def load_protein_binding(transpose=False, splits=[0.6, 0.2]):
     x, y = protein_loader.load_data()
-    assert y.ndim == 2
+    y = y[:,None]
     
     if transpose:
         x = x.transpose()
-        x, = shuffle([x])[0]
         split_data = split([x], splits)
     else:
         x, y = shuffle([x, y])
@@ -68,7 +70,6 @@ def load_dorothea(transpose=False, splits=[0.6, 0.2]):
     
     if transpose:
         all_x = numpy.vstack(train[0], valid[0]).transpose()
-        all_x = shuffle([all_x])[0]
         return split([all_x], splits)
     else:
         # Ignore the user defined splits, there are already defined
@@ -76,10 +77,10 @@ def load_dorothea(transpose=False, splits=[0.6, 0.2]):
         
         train = shuffle(train)
         valid = shuffle(valid)
-        return train, valid, valid
+        return train, valid, valid, None
     
     
- def load_opensnp(transpose=False, splits=[0.6, 0.2]):
+def load_opensnp(transpose=False, splits=[0.6, 0.2]):
 
     # Load all of the data, separating the unlabeled data from the labeled data
     data = aggregate_dataset.load_data23andme_baselines(split=1.0)
@@ -93,7 +94,6 @@ def load_dorothea(transpose=False, splits=[0.6, 0.2]):
     
     if transpose:
         all_x = numpy.vstack(x_sup, x_unsup).transpose()
-        all_x = shuffle([all_x])[0]
         return split([all_x], splits)
     else:
         
@@ -101,17 +101,5 @@ def load_dorothea(transpose=False, splits=[0.6, 0.2]):
         (x_sup, x_sup_labels) = shuffle((x_sup, x_sup_labels))
         train, valid, test = split([x_sup, x_sup_labels])
         
-        # Add the unlabeled data to the training data
-        missing_labels = numpy.ones((len(x_unsup), 1), dtype="float32")
-        x_train = numpy.vstack((train[0], x_unsup))
-        y_train = numpy.vstack((train[1], missing_labels))
-        x_train, y_train = shuffle((x_train, y_train))
-        
-        return (x_train, y_train), valid, test
-    
-    
- 
-reuters
-imdb (to big for memory => store on disk)
-
+        return (x_train, y_train), valid, test, x_unsup
 

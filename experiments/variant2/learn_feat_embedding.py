@@ -11,6 +11,7 @@ import theano
 import theano.tensor as T
 
 from epls import EPLS, tensor_fun_EPLS
+from feature_selection.experiments.common import dataset_utils
 
 def iterate_minibatches(x, batch_size, shuffle=True):
     if shuffle:
@@ -46,42 +47,24 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
 
     # Load the dataset
     print("Loading data")
+    splits = [0.80] # This will split the data into [80%, 20%]
     if dataset == 'protein_binding':
-        from experiments.common.protein_loader import load_data
-        x, _ = load_data()
+        data = dataset_utils.load_protein_binding(transpose=True, splits=splits)
     elif dataset == 'dorothea':
-        from feature_selection.experiments.common.dorothea import load_data
-
+        data = dataset_utils.load_dorothea(transpose=True, splits=splits)
     elif dataset == 'opensnp':
-        from feature_selection import aggregate_dataset
-
-        # This splits the data into [0.6, 0.2, 0.2] for the supervised examples
-        # and puts half of the unsupervised examples in the training set
-        # (because otherwise it would be way to expensive memory-wise)
-        # Shuffle x_train and y_train together
+        data = dataset_utils.load_opensnp(transpose=True, splits=splits)
 
     else:
         print("Unknown dataset")
         return
+    
+    x_train = data[0][0]
+    x_valid = data[1][0]
+    
+    print(x_train.shape)
+    print(x_valid.shape)
 
-    split = 0.75
-    if split:
-        n_train = int(split*x.shape[0])
-        x_train = x[:n_train]
-        x_valid = x[n_train:]
-    else:
-        x_train = x
-
-    # np.random.seed(0)
-    # indices = np.arange(x_train.shape[0])
-    # np.random.shuffle(indices)
-    #
-    # x_train = x_train[indices]
-    # y_train = y_train[indices]
-    #
-    # # Standardize the dtype
-    # x_train = x_train.astype("float32")
-    # x_valid = x_valid.astype("float32")
 
     # Extract required information from data
     n_row, n_col = x_train.shape
