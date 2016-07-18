@@ -63,30 +63,32 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     if dataset == 'protein_binding':
         data = dataset_utils.load_protein_binding(transpose=False,
                                                   splits=splits)
-        x_unsup = dataset_utils.load_protein_binding(transpose=True,
-                                                     splits=None)[0]
+        #x_unsup = dataset_utils.load_protein_binding(transpose=True,
+        #                                             splits=None)[0]
     elif dataset == 'dorothea':
         data = dataset_utils.load_dorothea(transpose=False, splits=None)
-        x_unsup = dataset_utils.load_dorothea(transpose=True, splits=None)[0]
+        #x_unsup = dataset_utils.load_dorothea(transpose=True, splits=None)[0]
     elif dataset == 'opensnp':
         data = dataset_utils.load_opensnp(transpose=False, splits=splits)
-        x_unsup = dataset_utils.load_opensnp(transpose=True, splits=None)[0]
+        #print(len(data))
+        #x_unsup = dataset_utils.load_opensnp(transpose=True, splits=None)[0]
     else:
         print("Unknown dataset")
         return
 
-    (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = data
-
-    print(x_train.shape)
-    print(x_valid.shape)
-    print(x_unsup.shape)
+    (x_train, y_train), (x_valid, y_valid), (x_test, y_test), x_nolabel = data
+    
+    if x_nolabel is None:
+        x_unsup = x_train.transpose()
+    else:
+        x_unsup = np.vstack((x_train, x_nolabel)).transpose()
 
     # Extract required information from data
     n_feats, n_samples = x_unsup.shape
     n_targets = y_train.shape[1]
 
     # Set some variables
-    batch_size = 128
+    batch_size = 16
 
     # Preparing folder to save stuff
     save_path = save_path + dataset + "/"

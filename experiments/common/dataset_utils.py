@@ -49,7 +49,7 @@ def split(data_sources, splits):
     
 def load_protein_binding(transpose=False, splits=[0.6, 0.2]):
     x, y = protein_loader.load_data()
-    y = y[:,None]
+    y = y[:, None]
     
     if transpose:
         x = x.transpose()
@@ -66,8 +66,10 @@ def load_dorothea(transpose=False, splits=[0.6, 0.2]):
     # dorothea has no labels for the test set
     train = dorothea.load_data('train', 'standard', False, 'numpy')
     valid = dorothea.load_data('valid', 'standard', False, 'numpy')
-    assert train[1].ndim == 2
-    
+
+    train = (train[0], train[1][:, None])
+    valid = (valid[0], valid[1][:, None])
+
     if transpose:
         all_x = numpy.vstack(train[0], valid[0]).transpose()
         return split([all_x], splits)
@@ -83,9 +85,9 @@ def load_dorothea(transpose=False, splits=[0.6, 0.2]):
 def load_opensnp(transpose=False, splits=[0.6, 0.2]):
 
     # Load all of the data, separating the unlabeled data from the labeled data
-    data = aggregate_dataset.load_data23andme_baselines(split=1.0)
+    data = opensnp.load_data23andme_baselines(split=1.0)
     (x_sup, x_sup_labels), _, x_unsup = data
-    assert x_sup_labels.ndim == 2
+    x_sup_labels = x_sup_labels[:, None]
     
     # Cast the data to the right dtype
     x_sup = x_sup.astype("float32")
@@ -93,13 +95,12 @@ def load_opensnp(transpose=False, splits=[0.6, 0.2]):
     x_unsup = x_unsup.astype("float32")
     
     if transpose:
-        all_x = numpy.vstack(x_sup, x_unsup).transpose()
+        all_x = numpy.vstack((x_sup, x_unsup)).transpose()
         return split([all_x], splits)
     else:
         
         # Separate the labeled data into train, valid and test
         (x_sup, x_sup_labels) = shuffle((x_sup, x_sup_labels))
-        train, valid, test = split([x_sup, x_sup_labels])
-        
-        return (x_train, y_train), valid, test, x_unsup
+        train, valid, test = split([x_sup, x_sup_labels], splits)
+        return train, valid, test, x_unsup
 
