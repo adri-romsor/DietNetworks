@@ -3,7 +3,8 @@
 Étienne
 - [X] Check Baselines PB and stats
 - [X] Merge epls and master branchs
-- [ ] Implement EPLS in learn_model.py et learn_feat_embedding.py
+- [X] Implement EPLS in learn_model.py et learn_feat_embedding.py
+- [ ] Check protein binding results, i.e. is the system learning to always say "no"? Compare the 98% from the first/last epochs. Check the number of false positives/false negatives.
 
 Pierre Luc
 - [x] Merge epls and master branchs
