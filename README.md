@@ -3,7 +3,7 @@
 Étienne
 - [X] Check Baselines PB and stats
 - [X] Merge epls and master branchs
-- [ ] Implement EPLS in V4
+- [ ] Implement EPLS in learn_model.py et learn_feat_embedding.py
 
 Pierre Luc
 - [x] Merge epls and master branchs
