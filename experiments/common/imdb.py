@@ -119,9 +119,9 @@ def build_imdb_BoW(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
     test_data_features = vectorizer.transform(clean_test_reviews)
 
     # convert the result to an array
-    train_data_features = train_data_features.toarray()
+    # train_data_features = train_data_features
     train_labels = np.array(train['sentiment'])
-    test_data_features = test_data_features.toarray()
+    # test_data_features = test_data_features
 
     return train_data_features, train_labels, unlab_data_features,\
         test_data_features
@@ -131,10 +131,10 @@ def load_imdb_BoW(path_to_files='/data/lisatmp4/erraqabi/data/imdb_reviews/',
                   shuffle=False, seed=0):
 
     data = np.load(os.path.join(path_to_files, 'imdb.npz'))
-    train_data_features = data['train_data_features']
+    train_data_features = data['train_data_features'].item()
     train_labels = data['train_labels']
-    unlab_data_features = data['unlab_data_features']
-    test_data_features = data['test_data_features']
+    unlab_data_features = data['unlab_data_features'].item()
+    test_data_features = data['test_data_features'].item()
 
     if shuffle:
         np.random.seed(seed)
