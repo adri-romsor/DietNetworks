@@ -10,6 +10,8 @@ import numpy as np
 import theano
 import theano.tensor as T
 
+from feature_selection.experiments.common import dataset_utils
+
 
 # Mini-batch iterator function
 def iterate_minibatches(inputs, targets, batchsize,
@@ -55,17 +57,33 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             num_epochs=500, learning_rate=.001, gamma=1,
             save_path='/Tmp/romerosa/feature_selection/newmodel/'):
 
-    ######### Put your data loading script in this block ############
+    # Load the dataset
+    print("Loading data")
+    splits = [0.6, 0.2] # This will split the data into [60%, 20%, 20%]
+    if dataset == 'protein_binding':
+        data = dataset_utils.load_protein_binding(transpose=False,
+                                                  splits=splits)
+        x_unsup = dataset_utils.load_protein_binding(transpose=True,
+                                                     splits=None)[0]
+    elif dataset == 'dorothea':
+        data = dataset_utils.load_dorothea(transpose=False, splits=None)
+        x_unsup = dataset_utils.load_dorothea(transpose=True, splits=None)[0]
+    elif dataset == 'opensnp':
+        data = dataset_utils.load_opensnp(transpose=False, splits=splits)
+        x_unsup = dataset_utils.load_opensnp(transpose=True, splits=None)[0]
+    else:
+        print("Unknown dataset")
+        return
 
+    (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = data
 
-    #Define x_train, y_train, x_val, y_val, x_test, y_test, x_unsup #
-
-
-    #################################################################
+    print(x_train.shape)
+    print(x_valid.shape)
+    print(x_unsup.shape)
 
     # Extract required information from data
-    n_samples, n_feats = x.shape  # x and y TBD
-    n_classes = y.max() + 1
+    n_feats, n_samples = x_unsup.shape
+    n_targets = y_train.shape[1]
 
     # Set some variables
     batch_size = 128
@@ -78,7 +96,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Prepare Theano variables for inputs and targets
     input_var_sup = T.matrix('input_sup')
     input_var_unsup = theano.shared(x_unsup, 'input_unsup')  # x_unsup TBD
-    target_var_sup = T.ivector('target_sup')
+    target_var_sup = T.matrix('target_sup')
     lr = theano.shared(np.float32(learning_rate), 'learning_rate')
 
     # Build model
@@ -93,8 +111,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Build unsupervised network
     if not embedding_source:
-        encoder_net = InputLayer((n_feats, n_samples),
-                                 input_var_unsup.get_value())
+        encoder_net = InputLayer((n_feats, n_samples), input_var_unsup)
         for out in n_hidden_u:
             encoder_net = DenseLayer(encoder_net, num_units=out,
                                      nonlinearity=sigmoid)
@@ -104,18 +121,19 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     else:
         feat_emb_val = np.load(save_path + embedding_source).items()[0][1]
         feat_emb = theano.shared(feat_emb_val, 'feat_emb')
-        encoder_net = InputLayer((n_feats, n_hidden_u[-1]),
-                                 feat_emb.get_value())
+        encoder_net = InputLayer((n_feats, n_hidden_u[-1]), feat_emb)
 
     # Build transformations (f_theta, f_theta') network and supervised network
     # f_theta (ou W_enc)
+    encoder_net_W_enc = encoder_net
     for hid in n_hidden_t_enc:
-        encoder_net_W_enc = DenseLayer(encoder_net, num_units=hid)
+        encoder_net_W_enc = DenseLayer(encoder_net_W_enc, num_units=hid)
     enc_feat_emb = lasagne.layers.get_output(encoder_net_W_enc)
 
     # f_theta' (ou W_dec)
+    encoder_net_W_dec = encoder_net
     for hid in n_hidden_t_dec:
-        encoder_net_W_dec = DenseLayer(encoder_net, num_units=hid)
+        encoder_net_W_dec = DenseLayer(encoder_net_W_dec, num_units=hid)
     dec_feat_emb = lasagne.layers.get_output(encoder_net_W_dec)
 
     # Supervised network
@@ -130,8 +148,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # predicting labels
     for hid in n_hidden_s:
         discrim_net = DenseLayer(discrim_net, num_units=hid)
-    discrim_net = DenseLayer(discrim_net, num_units=n_classes,
-                             nonlinearity=softmax)
+    discrim_net = DenseLayer(discrim_net, num_units=n_targets,
+                             nonlinearity=sigmoid)
 
     print("Building and compiling training functions")
     # Some variables
@@ -143,9 +161,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     prediction = lasagne.layers.get_output(discrim_net)
     prediction_det = lasagne.layers.get_output(discrim_net,
                                                deterministic=True)
-    loss_sup = lasagne.objectives.categorical_crossentropy(
+    loss_sup = lasagne.objectives.binary_crossentropy(
         prediction, target_var_sup).mean()
-    loss_sup_det = lasagne.objectives.categorical_crossentropy(
+    loss_sup_det = lasagne.objectives.binary_crossentropy(
         prediction_det, target_var_sup).mean()
 
     inputs = [input_var_sup, target_var_sup]
@@ -178,13 +196,12 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     #                                    learning_rate=lr, momentum=0.0)
 
     # Compile training function
-    train_fn = theano.function(inputs, loss,
-                               updates=updates,
+    train_fn = theano.function(inputs, loss, #updates=updates,
                                on_unused_input='ignore')
 
     # Supervised functions
-    test_class = T.argmax(prediction_det, axis=1)
-    test_acc = T.mean(T.eq(test_class, target_var_sup),
+    test_pred = T.gt(prediction_det, 0.5)
+    test_acc = T.mean(T.eq(test_pred, target_var_sup),
                       dtype=theano.config.floatX) * 100.
 
     # Expressions required for test
@@ -219,7 +236,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         loss_epoch = 0
 
         # Train pass
-        for batch in iterate_minibatches(x_train, y_train,  # TBD
+        for batch in iterate_minibatches(x_train, y_train,
                                          batch_size,
                                          shuffle=True):
             loss_epoch += train_fn(*batch)
@@ -228,7 +245,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         train_loss += [loss_epoch]
 
         # Validation pass
-        valid_minibatches = iterate_minibatches(x_val, y_val,  # TBD
+        valid_minibatches = iterate_minibatches(x_valid, y_valid,
                                                 batch_size,
                                                 shuffle=False)
 
@@ -331,7 +348,7 @@ def main():
                         default=.0001,
                         help="""Float to indicate learning rate.""")
     parser.add_argument('--gamma',
-                        '-lr',
+                        '-g',
                         type=float,
                         default=1,
                         help="""reconst_loss coeff.""")
