@@ -2,17 +2,24 @@
 
 Étienne
 - [X] Check Baselines PB and stats
-- [ ] Implement EPLS in V4
 - [X] Merge epls and master branchs
+- [ ] Implement EPLS in V4
 
 Pierre Luc
+- [x] Merge epls and master branchs
 - [ ] Reuters : check dimensionality and stats
-- [ ] Merge epls and master branchs
-- [ ] Change softmax output to sigmoid
+- [ ] Check if softmax has been changed to sigmoid in the new version of the code
+- [ ] Finish refactoring dataset loader
 
 Akram
 - [x] IMDB : check dimensionality and stats
+- [ ] Adapt IMDB loader to fit in memory and to work with new code
 - [ ] Check Dragonn for protein 
+
+Tristan
+- [ ] Check Dragonn for protein 
+- [ ] Check new version of the code and familiarize with it
+- [ ] Start running experiments
 
 Adriana
 - [ ] Consolidate Genomics Data Commons dataset
