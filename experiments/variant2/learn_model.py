@@ -63,15 +63,12 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     if dataset == 'protein_binding':
         data = dataset_utils.load_protein_binding(transpose=False,
                                                   splits=splits)
-        #x_unsup = dataset_utils.load_protein_binding(transpose=True,
-        #                                             splits=None)[0]
     elif dataset == 'dorothea':
         data = dataset_utils.load_dorothea(transpose=False, splits=None)
-        #x_unsup = dataset_utils.load_dorothea(transpose=True, splits=None)[0]
     elif dataset == 'opensnp':
         data = dataset_utils.load_opensnp(transpose=False, splits=splits)
-        #print(len(data))
-        #x_unsup = dataset_utils.load_opensnp(transpose=True, splits=None)[0]
+    elif dataset == 'reuters':
+        data = dataset_utils.load_reuters(transpose=False, splits=splits)
     else:
         print("Unknown dataset")
         return

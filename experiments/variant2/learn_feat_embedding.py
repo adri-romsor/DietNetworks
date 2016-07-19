@@ -54,17 +54,14 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         data = dataset_utils.load_dorothea(transpose=True, splits=splits)
     elif dataset == 'opensnp':
         data = dataset_utils.load_opensnp(transpose=True, splits=splits)
-
+    elif dataset == 'reuters':
+        data = dataset_utils.load_reuters(transpose=True, splits=splits)
     else:
         print("Unknown dataset")
         return
     
     x_train = data[0][0]
     x_valid = data[1][0]
-    
-    print(x_train.shape)
-    print(x_valid.shape)
-
 
     # Extract required information from data
     n_row, n_col = x_train.shape
@@ -257,9 +254,13 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
                                                     param_values[:nlayers])
 
                 # Save embedding
-                for batch in iterate_minibatches(x, n_row, shuffle=False):
-                    pred = pred_feat_emb(batch)
-                np.savez(save_path+'feature_embedding.npz', pred)
+                preds = []
+                for batch in iterate_minibatches(x_train, 1, shuffle=False):
+                    preds.append(pred_feat_emb(batch))
+                for batch in iterate_minibatches(x_valid, 1, shuffle=False):
+                    preds.append(pred_feat_emb(batch))
+                preds = np.vstack(preds)
+                np.savez(save_path+'feature_embedding.npz', preds)
 
             # Stop
             print(" epoch time:\t\t\t{:.3f}s".format(time.time() - start_time))
