@@ -6,6 +6,8 @@ import logging
 from gensim.models import Word2Vec
 import pandas as pd
 import numpy as np
+import h5py
+import tables
 
 
 def makeFeatureVec(words, model, num_features):
@@ -225,5 +227,77 @@ def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
              test_data_features=test_data_features,
              unlab_data_features=unlab_data_features)
 
+
+def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
+                 use_tables=True, split=0.8):
+    if not os.path.exists(path):
+        os.makedirs(path)
+    if unsupervised:
+        train_data, _, unlab_data, _ = load_imdb_BoW()
+        if use_tables:
+            f = tables.openFile(os.path.join(path,
+                                             'unsupervised_IMDB_table'
+                                             '_split80.hdf5'),
+                                mode='w')
+            features = np.empty((train_data.shape[1],
+                                 train_data.shape[0]+unlab_data.shape[0]),
+                                dtype='float32')
+            x_t = features.transpose()[:train_data.shape[0]]
+            x_unl = features.transpose()[train_data.shape[0]:]
+            x_t[:] = train_data.toarray().astype("float32")
+            x_unl[:] = unlab_data.toarray().astype("float32")
+            f.createArray(f.root, 'train',
+                          features[:int(features.shape[0]*split)])
+            f.createArray(f.root, 'val',
+                          features[int(features.shape[0]*split):])
+        else:
+            f = h5py.File(os.path.join(path, 'unsupervised_IMDB.hdf5'),
+                          mode='w')
+            features = f.create_dataset('features', (123333, 75000),
+                                        dtype='float32')
+            train_data, _, unlab_data, _ = load_imdb_BoW()
+            features = np.empty((train_data.shape[1],
+                                 train_data.shape[0]+unlab_data.shape[0]),
+                                dtype='float32')
+            x_t = features.transpose()[:train_data.shape[0]]
+            x_unl = features.transpose()[train_data.shape[0]:]
+            x_t[:] = train_data.toarray().astype("float32")
+            x_unl[:] = unlab_data.toarray().astype("float32")
+            f.flush()
+    else:
+        train_data, train_labels, _,\
+            test_data = load_imdb_BoW()
+        train_x = train_data.toarray().astype("float32")
+        train_labels = train_labels.astype("int32")
+        test_x = test_data.toarray().astype("float32")
+        f = tables.openFile(os.path.join(path, 'supervised_IMDB_table'
+                                               '_split80.hdf5'),
+                            mode='w')
+        f.createArray(f.root, 'train_features',
+                      train_x[:int(train_x.shape[0]*split)])
+        f.createArray(f.root, 'val_features',
+                      train_x[int(train_x.shape[0]*split):])
+        f.createArray(f.root, 'train_labels',
+                      train_labels[:int(train_x.shape[0]*split)])
+        f.createArray(f.root, 'val_labels',
+                      train_labels[int(train_x.shape[0]*split):])
+        f.createArray(f.root, 'test_features', test_x)
+
+    f.close()
+
+
+def read_from_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
+                   use_tables=True):
+    if unsupervised:
+        file_name = os.path.join(path, 'unsupervised_IMDB_table_split80.hdf5')
+    else:
+        file_name = os.path.join(path, 'supervised_IMDB_table_split80.hdf5')
+
+    read_file = tables.open_file(file_name, mode='r')
+    return read_file
+
 if __name__ == '__main__':
-    build_and_save_imdb()
+    # build_and_save_imdb()
+    save_as_hdf5(unsupervised=True, use_tables=False)
+    save_as_hdf5(unsupervised=True)
+    save_as_hdf5(unsupervised=False)

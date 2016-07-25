@@ -59,7 +59,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Load the dataset
     print("Loading data")
-    splits = [0.6, 0.2] # This will split the data into [60%, 20%, 20%]
+    splits = [0.6, 0.2]  # This will split the data into [60%, 20%, 20%]
     if dataset == 'protein_binding':
         data = dataset_utils.load_protein_binding(transpose=False,
                                                   splits=splits)
@@ -69,12 +69,14 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         data = dataset_utils.load_opensnp(transpose=False, splits=splits)
     elif dataset == 'reuters':
         data = dataset_utils.load_reuters(transpose=False, splits=splits)
+    elif dataset == 'imdb':
+        data = dataset_utils.load_imdb(transpose=False, splits=splits)
     else:
         print("Unknown dataset")
         return
 
     (x_train, y_train), (x_valid, y_valid), (x_test, y_test), x_nolabel = data
-    
+
     if x_nolabel is None:
         x_unsup = x_train.transpose()
     else:
