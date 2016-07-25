@@ -13,6 +13,7 @@ import theano.tensor as T
 from epls import EPLS, tensor_fun_EPLS
 from feature_selection.experiments.common import dataset_utils
 
+
 def iterate_minibatches(x, batch_size, shuffle=True):
     if shuffle:
         np.random.shuffle(x)
@@ -47,19 +48,22 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
 
     # Load the dataset
     print("Loading data")
-    splits = [0.80] # This will split the data into [80%, 20%]
+    splits = [0.80]  # This will split the data into [80%, 20%]
     if dataset == 'protein_binding':
-        data = dataset_utils.load_protein_binding(transpose=True, splits=splits)
+        data = dataset_utils.load_protein_binding(transpose=True,
+                                                  splits=splits)
     elif dataset == 'dorothea':
         data = dataset_utils.load_dorothea(transpose=True, splits=splits)
     elif dataset == 'opensnp':
         data = dataset_utils.load_opensnp(transpose=True, splits=splits)
     elif dataset == 'reuters':
         data = dataset_utils.load_reuters(transpose=True, splits=splits)
+    elif dataset == 'imdb':
+        data = dataset_utils.load_imdb(transpose=True, splits=splits)
     else:
         print("Unknown dataset")
         return
-    
+
     x_train = data[0][0]
     x_valid = data[1][0]
 

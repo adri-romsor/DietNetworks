@@ -1,7 +1,7 @@
 import numpy
 
 from feature_selection.experiments.common import (protein_loader, dorothea,
-                                                  reuters)
+                                                  reuters, imdb)
 from feature_selection import aggregate_dataset as opensnp
 
 
@@ -140,3 +140,36 @@ def load_reuters(transpose=False, splits=None):
         train = shuffle(train)
         train, valid = split(train, splits)
         return train, valid, test, None
+
+
+def load_imdb(transpose=False, splits=None, unlabeled=False, shuffle=False):
+    '''
+    loads imdb dataset so that it can fits in memory for each single
+    case of interest
+    '''
+    if transpose:
+        if unlabeled:
+            train_data, _, unlab_data, _ = imdb.load_imdb_BoW(shuffle=shuffle)
+            all_x = numpy.empty((train_data.shape[0]+unlab_data.shape[0],
+                                 train_data.shape[1]), dtype='float32')
+            all_x_t = all_x[:train_data.shape[0]]
+            all_x_unl = all_x[train_data.shape[0]:]
+            all_x_t[:] = train_data.toarray().astype("float32")
+            all_x_unl[:] = unlab_data.toarray().astype("float32")
+        else:
+            train_data, _, _, _ = imdb.load_imdb_BoW(shuffle=shuffle)
+            train_data = train_data.toarray().astype("float32")
+            all_x = train_data
+        all_x = all_x.transpose()
+        return split([all_x], splits)
+    else:
+        # separate labeled data into train and val
+        train_data, train_labels, _,\
+            test_data = imdb.load_imdb_BoW(shuffle=shuffle)
+        if splits is not None and len(splits) > 1:
+            splits = prune_splits(splits, nb_prune=1)
+        train_x = train_data.toarray().astype("float32")
+        train_labels = train_labels.astype("int32")
+        test_data = test_data.toarray().astype("float32")
+        train, val = split([train_x, train_labels], splits=splits)
+        return train, val, test_data, unlab_data
