@@ -16,19 +16,25 @@ from feature_selection.experiments.common import dataset_utils, imdb
 # Mini-batch iterator function
 def iterate_minibatches(inputs, targets, batchsize,
                         shuffle=False):
-    assert len(inputs) == len(targets)
-
+    assert inputs.shape[0] == targets.shape[0]
+    indices = np.arange(inputs.shape[0])
     if shuffle:
-        indices = np.arange(len(inputs))
-        np.random.shuffle(indices)
+        indices = np.random.permutation(inputs.shape[0])
+    for i in range(0, inputs.shape[0]-batchsize+1, batchsize):
+        yield inputs[indices[i:i+batchsize], :],\
+            targets[indices[i:i+batchsize]]
 
-    for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
-        if shuffle:
-            excerpt = indices[start_idx:start_idx + batchsize]
-        else:
-            excerpt = slice(start_idx, start_idx + batchsize)
-
-    yield inputs[excerpt], targets[excerpt]
+    # if shuffle:
+    #     indices = np.arange(len(inputs))
+    #     np.random.shuffle(indices)
+    #
+    # for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
+    #     if shuffle:
+    #         excerpt = indices[start_idx:start_idx + batchsize]
+    #     else:
+    #         excerpt = slice(start_idx, start_idx + batchsize)
+    #
+    # yield inputs[excerpt], targets[excerpt]
 
 
 # Monitoring function
@@ -76,11 +82,12 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         return
 
     if dataset == 'imdb':
-
         x_train = data.root.train_features
-        y_train = data.root.train_labels
+        y_train = data.root.train_labels[:]
+        y_train = np.column_stack((y_train, 1-y_train))
         x_valid = data.root.val_features
-        y_valid = data.root.val_labels
+        y_valid = data.root.val_labels[:]
+        y_valid = np.column_stack((y_valid, 1-y_valid))
         x_test = data.root.test_features
         x_nolabel = None
     else:
@@ -110,7 +117,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Prepare Theano variables for inputs and targets
     input_var_sup = T.matrix('input_sup')
     input_var_unsup = theano.shared(x_unsup, 'input_unsup')  # x_unsup TBD
-    target_var_sup = T.matrix('target_sup')
+    target_var_sup = T.imatrix('target_sup')
     lr = theano.shared(np.float32(learning_rate), 'learning_rate')
 
     # Build model
@@ -241,7 +248,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     valid_reconst_loss = []
     valid_acc = []
 
-    nb_minibatches = n_samples/batch_size
+    nb_minibatches = 0 # n_samples/batch_size
     start_training = time.time()
     for epoch in range(num_epochs):
         start_time = time.time()
@@ -254,7 +261,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                          batch_size,
                                          shuffle=True):
             loss_epoch += train_fn(*batch)
-
+            nb_minibatches += 1
         loss_epoch /= nb_minibatches
         train_loss += [loss_epoch]
 
@@ -271,7 +278,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         valid_acc += [valid_err[2]]
         valid_reconst_loss += [valid_err[3]]
 
-        # Eearly stopping
+        # Early stopping
         if epoch == 0:
             best_valid = valid_loss[epoch]
         elif valid_loss[epoch] < best_valid:
@@ -290,7 +297,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
         # End training
         if patience == max_patience or epoch == num_epochs-1:
-            print("   Ending training")
+            print("Ending training")
             # Load best model
             if not os.path.exists(save_path + 'model_feat_sel.npz'):
                 print("No saved model to be tested and/or generate"
@@ -334,7 +341,7 @@ def main():
                         default='imdb',
                         help='Dataset.')
     parser.add_argument('--n_hidden_u',
-                        default=[40],
+                        default=[100],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--n_hidden_t_enc',
                         default=[100],

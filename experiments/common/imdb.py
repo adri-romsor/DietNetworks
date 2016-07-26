@@ -253,7 +253,10 @@ def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
         else:
             f = h5py.File(os.path.join(path, 'unsupervised_IMDB.hdf5'),
                           mode='w')
-            features = f.create_dataset('features', (123333, 75000),
+            features = f.create_dataset('features',
+                                        (train_data.shape[1],
+                                         train_data.shape[0] +
+                                         unlab_data.shape[0]),
                                         dtype='float32')
             train_data, _, unlab_data, _ = load_imdb_BoW()
             features = np.empty((train_data.shape[1],

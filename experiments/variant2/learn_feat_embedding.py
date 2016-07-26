@@ -19,7 +19,7 @@ def iterate_minibatches(x, batch_size, shuffle=False, dataset=None):
     indices = np.arange(x.shape[0])
     if shuffle:
         indices = np.random.permutation(x.shape[0])
-    for i in range(0, x.shape[0]-batch_size, batch_size):
+    for i in range(0, x.shape[0]-batch_size+1, batch_size):
         yield x[indices[i:i+batch_size], :]
 
 
