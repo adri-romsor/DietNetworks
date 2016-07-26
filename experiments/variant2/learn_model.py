@@ -10,7 +10,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 
-from feature_selection.experiments.common import dataset_utils
+from feature_selection.experiments.common import dataset_utils, imdb
 
 
 # Mini-batch iterator function
@@ -70,20 +70,33 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     elif dataset == 'reuters':
         data = dataset_utils.load_reuters(transpose=False, splits=splits)
     elif dataset == 'imdb':
-        data = dataset_utils.load_imdb(transpose=False, splits=splits)
+        data = imdb.read_from_hdf5(unsupervised=False)
     else:
         print("Unknown dataset")
         return
 
-    (x_train, y_train), (x_valid, y_valid), (x_test, y_test), x_nolabel = data
+    if dataset == 'imdb':
 
-    if x_nolabel is None:
-        x_unsup = x_train.transpose()
+        x_train = data.root.train_features
+        y_train = data.root.train_labels
+        x_valid = data.root.val_features
+        y_valid = data.root.val_labels
+        x_test = data.root.test_features
+        x_nolabel = None
     else:
-        x_unsup = np.vstack((x_train, x_nolabel)).transpose()
+        (x_train, y_train), (x_valid, y_valid), (x_test, y_test),\
+            x_nolabel = data
 
+    if not embedding_source:
+        if x_nolabel is None:
+            x_unsup = x_train.transpose()
+        else:
+            x_unsup = np.vstack((x_train, x_nolabel)).transpose()
+        n_samples_unsup = x_unsup.shape[0]
+    else:
+        x_unsup = None
     # Extract required information from data
-    n_feats, n_samples = x_unsup.shape
+    n_samples, n_feats = x_train.shape
     n_targets = y_train.shape[1]
 
     # Set some variables
@@ -112,7 +125,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Build unsupervised network
     if not embedding_source:
-        encoder_net = InputLayer((n_feats, n_samples), input_var_unsup)
+        encoder_net = InputLayer((n_feats, n_samples_unsup), input_var_unsup)
         for out in n_hidden_u:
             encoder_net = DenseLayer(encoder_net, num_units=out,
                                      nonlinearity=sigmoid)
@@ -228,7 +241,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     valid_reconst_loss = []
     valid_acc = []
 
-    nb_minibatches = n_samples
+    nb_minibatches = n_samples/batch_size
     start_training = time.time()
     for epoch in range(num_epochs):
         start_time = time.time()
