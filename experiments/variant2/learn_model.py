@@ -37,6 +37,14 @@ def iterate_minibatches(inputs, targets, batchsize,
     # yield inputs[excerpt], targets[excerpt]
 
 
+def iterate_testbatches(inputs, batchsize, shuffle=False):
+    indices = np.arange(inputs.shape[0])
+    if shuffle:
+        indices = np.random.permutation(inputs.shape[0])
+    for i in range(0, inputs.shape[0]-batchsize+1, batchsize):
+        yield inputs[indices[i:i+batchsize], :]
+
+
 # Monitoring function
 def monitoring(minibatches, which_set, error_fn, monitoring_labels):
 
@@ -83,12 +91,11 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     if dataset == 'imdb':
         x_train = data.root.train_features
-        y_train = data.root.train_labels[:]
-        y_train = np.column_stack((y_train, 1-y_train))
+        y_train = data.root.train_labels[:][:, None]
         x_valid = data.root.val_features
-        y_valid = data.root.val_labels[:]
-        y_valid = np.column_stack((y_valid, 1-y_valid))
+        y_valid = data.root.val_labels[:][:, None]
         x_test = data.root.test_features
+        y_test = None
         x_nolabel = None
     else:
         (x_train, y_train), (x_valid, y_valid), (x_test, y_test),\
@@ -107,7 +114,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     n_targets = y_train.shape[1]
 
     # Set some variables
-    batch_size = 16
+    batch_size = 100
 
     # Preparing folder to save stuff
     save_path = save_path + dataset + "/"
@@ -200,7 +207,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         reconstruction_det,
         input_var_sup).mean()
 
-    params = lasagne.layers.get_all_params([discrim_net, reconst_net],
+    params = lasagne.layers.get_all_params([discrim_net, reconst_net,
+                                            encoder_net_W_dec,
+                                            encoder_net_W_enc],
                                            trainable=True)
 
     # Combine losses
@@ -217,11 +226,12 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     #                                    learning_rate=lr, momentum=0.0)
 
     # Compile training function
-    train_fn = theano.function(inputs, loss, #updates=updates,
+    train_fn = theano.function(inputs, loss, updates=updates,
                                on_unused_input='ignore')
 
     # Supervised functions
     test_pred = T.gt(prediction_det, 0.5)
+    predict = theano.function(input_var_sup, test_pred)
     test_acc = T.mean(T.eq(test_pred, target_var_sup),
                       dtype=theano.config.floatX) * 100.
 
@@ -248,7 +258,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     valid_reconst_loss = []
     valid_acc = []
 
-    nb_minibatches = 0 # n_samples/batch_size
+    nb_minibatches = 0  # n_samples/batch_size
     start_training = time.time()
     for epoch in range(num_epochs):
         start_time = time.time()
@@ -317,12 +327,21 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                 np.savez(save_path+'feature_embedding.npz', pred)
 
             # Test
-            test_minibatches = iterate_minibatches(x_test, y_test,
-                                                   batch_size,
-                                                   shuffle=False)
+            if y_test is not None:
+                test_minibatches = iterate_minibatches(x_test, y_test,
+                                                       batch_size,
+                                                       shuffle=False)
 
-            test_err = monitoring(test_minibatches, "test", val_fn,
-                                  monitor_labels)
+                test_err = monitoring(test_minibatches, "test", val_fn,
+                                      monitor_labels)
+            else:
+                for minibatch in iterate_testbatches(x_test,
+                                                     batch_size,
+                                                     shuffle=False):
+                    test_predictions = []
+                    test_predictions += [predict(minibatch)]
+                np.savez(save_path+'test_predictions.npz', test_predictions)
+
             # Stop
             print("  epoch time:\t\t\t{:.3f}s".format(time.time() -
                                                       start_time))
