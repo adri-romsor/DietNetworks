@@ -231,7 +231,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Supervised functions
     test_pred = T.gt(prediction_det, 0.5)
-    predict = theano.function(input_var_sup, test_pred)
+    predict = theano.function([input_var_sup], test_pred)
     test_acc = T.mean(T.eq(test_pred, target_var_sup),
                       dtype=theano.config.floatX) * 100.
 
