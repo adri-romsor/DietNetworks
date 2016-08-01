@@ -5,7 +5,9 @@ import os
 
 import lasagne
 from lasagne.layers import DenseLayer, InputLayer
-from lasagne.nonlinearities import sigmoid, softmax  # , tanh, linear
+from lasagne.nonlinearities import (sigmoid, softmax, tanh, linear, rectify,
+                                    leaky_rectify, very_leaky_rectify)
+from lasagne.init import Uniform
 import numpy as np
 import theano
 import theano.tensor as T
@@ -74,7 +76,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         return
 
     (x_train, y_train), (x_valid, y_valid), (x_test, y_test), x_nolabel = data
-    
+
     if x_nolabel is None:
         x_unsup = x_train.transpose()
     else:
@@ -82,6 +84,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Extract required information from data
     n_feats, n_samples = x_unsup.shape
+    print("Number of features : ", n_feats)
+    print("Glorot init : ", 2.0 / n_feats)
     n_targets = y_train.shape[1]
 
     # Set some variables
@@ -113,7 +117,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         encoder_net = InputLayer((n_feats, n_samples), input_var_unsup)
         for out in n_hidden_u:
             encoder_net = DenseLayer(encoder_net, num_units=out,
-                                     nonlinearity=sigmoid)
+                                     nonlinearity=rectify)
         feat_emb = lasagne.layers.get_output(encoder_net)
         pred_feat_emb = theano.function([], feat_emb)
 
@@ -126,19 +130,21 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # f_theta (ou W_enc)
     encoder_net_W_enc = encoder_net
     for hid in n_hidden_t_enc:
-        encoder_net_W_enc = DenseLayer(encoder_net_W_enc, num_units=hid)
+        encoder_net_W_enc = DenseLayer(encoder_net_W_enc, num_units=hid,
+                                       nonlinearity=tanh, W=Uniform(0.20))
     enc_feat_emb = lasagne.layers.get_output(encoder_net_W_enc)
 
     # f_theta' (ou W_dec)
     encoder_net_W_dec = encoder_net
     for hid in n_hidden_t_dec:
-        encoder_net_W_dec = DenseLayer(encoder_net_W_dec, num_units=hid)
+        encoder_net_W_dec = DenseLayer(encoder_net_W_dec, num_units=hid,
+                                       nonlinearity=tanh, W=Uniform(0.20))
     dec_feat_emb = lasagne.layers.get_output(encoder_net_W_dec)
 
     # Supervised network
     discrim_net = InputLayer((batch_size, n_feats), input_var_sup)
     discrim_net = DenseLayer(discrim_net, num_units=n_hidden_t_enc[-1],
-                             W=enc_feat_emb)
+                             W=enc_feat_emb, nonlinearity=rectify)
 
     # reconstruct the input using dec_feat_emb
     reconst_net = DenseLayer(discrim_net, num_units=n_feats,
@@ -182,8 +188,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                            trainable=True)
 
     # Combine losses
-    loss = loss_sup + gamma*reconst_loss
-    loss_det = loss_sup_det + reconst_loss_det
+    loss = loss_sup + gamma * reconst_loss
+    loss_det = loss_sup_det + gamma * reconst_loss_det
+
     # Compute network updates
     updates = lasagne.updates.rmsprop(loss,
                                       params,
@@ -195,7 +202,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     #                                    learning_rate=lr, momentum=0.0)
 
     # Compile training function
-    train_fn = theano.function(inputs, loss, #updates=updates,
+    train_fn = theano.function(inputs, loss, updates=updates,
                                on_unused_input='ignore')
 
     # Supervised functions
@@ -205,8 +212,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Expressions required for test
     monitor_labels = ["total_loss_det", "loss_sup_det", "accuracy",
-                      "recon. loss"]
-    val_outputs = [loss_det, loss_sup_det, test_acc, reconst_loss_det]
+                      "recon. loss", "enc_w_mean", "enc_w_var"]
+    val_outputs = [loss_det, loss_sup_det, test_acc, reconst_loss_det,
+                   enc_feat_emb.mean(), enc_feat_emb.var()]
 
     # Compile validation function
     val_fn = theano.function(inputs,
@@ -243,7 +251,14 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         loss_epoch /= nb_minibatches
         train_loss += [loss_epoch]
 
-        # Validation pass
+        # Monitoring on the training set
+        train_minibatches = iterate_minibatches(x_train, y_train,
+                                                batch_size,
+                                                shuffle=False)
+        train_err = monitoring(train_minibatches, "train", val_fn,
+                               monitor_labels)
+
+        # Monitoring on the validation set
         valid_minibatches = iterate_minibatches(x_valid, y_valid,
                                                 batch_size,
                                                 shuffle=False)
@@ -319,7 +334,7 @@ def main():
                         default='imdb',
                         help='Dataset.')
     parser.add_argument('--n_hidden_u',
-                        default=[40],
+                        default=[100],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--n_hidden_t_enc',
                         default=[100],
@@ -328,7 +343,7 @@ def main():
                         default=[100],
                         help='List of theta_prime transformation hidden units')
     parser.add_argument('--n_hidden_s',
-                        default=[60],
+                        default=[100],
                         help='List of supervised hidden units.')
     parser.add_argument('--embedding_source',
                         default=None,
@@ -338,21 +353,21 @@ def main():
     parser.add_argument('--num_epochs',
                         '-ne',
                         type=int,
-                        default=5,
+                        default=100,
                         help="""Int to indicate the max'
                         'number of epochs.""")
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=.0001,
+                        default=.001,
                         help="""Float to indicate learning rate.""")
     parser.add_argument('--gamma',
                         '-g',
                         type=float,
-                        default=1,
+                        default=1.0,
                         help="""reconst_loss coeff.""")
     parser.add_argument('--save',
-                        default='/Tmp/erraqaba/feature_selection/v4/',
+                        default='/Tmp/carriepl/feature_selection/v4/',
                         help='Path to save results.')
 
     args = parser.parse_args()
