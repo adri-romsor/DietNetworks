@@ -12,25 +12,39 @@ import numpy as np
 import theano
 import theano.tensor as T
 
-from feature_selection.experiments.common import dataset_utils
+from feature_selection.experiments.common import dataset_utils, imdb
 
 
 # Mini-batch iterator function
 def iterate_minibatches(inputs, targets, batchsize,
                         shuffle=False):
-    assert len(inputs) == len(targets)
-
+    assert inputs.shape[0] == targets.shape[0]
+    indices = np.arange(inputs.shape[0])
     if shuffle:
-        indices = np.arange(len(inputs))
-        np.random.shuffle(indices)
+        indices = np.random.permutation(inputs.shape[0])
+    for i in range(0, inputs.shape[0]-batchsize+1, batchsize):
+        yield inputs[indices[i:i+batchsize], :],\
+            targets[indices[i:i+batchsize]]
 
-    for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
-        if shuffle:
-            excerpt = indices[start_idx:start_idx + batchsize]
-        else:
-            excerpt = slice(start_idx, start_idx + batchsize)
+    # if shuffle:
+    #     indices = np.arange(len(inputs))
+    #     np.random.shuffle(indices)
+    #
+    # for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
+    #     if shuffle:
+    #         excerpt = indices[start_idx:start_idx + batchsize]
+    #     else:
+    #         excerpt = slice(start_idx, start_idx + batchsize)
+    #
+    # yield inputs[excerpt], targets[excerpt]
 
-    yield inputs[excerpt], targets[excerpt]
+
+def iterate_testbatches(inputs, batchsize, shuffle=False):
+    indices = np.arange(inputs.shape[0])
+    if shuffle:
+        indices = np.random.permutation(inputs.shape[0])
+    for i in range(0, inputs.shape[0]-batchsize+1, batchsize):
+        yield inputs[indices[i:i+batchsize], :]
 
 
 # Monitoring function
@@ -61,7 +75,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Load the dataset
     print("Loading data")
-    splits = [0.6, 0.2] # This will split the data into [60%, 20%, 20%]
+    splits = [0.6, 0.2]  # This will split the data into [60%, 20%, 20%]
     if dataset == 'protein_binding':
         data = dataset_utils.load_protein_binding(transpose=False,
                                                   splits=splits)
@@ -71,25 +85,41 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         data = dataset_utils.load_opensnp(transpose=False, splits=splits)
     elif dataset == 'reuters':
         data = dataset_utils.load_reuters(transpose=False, splits=splits)
+    elif dataset == 'imdb':
+        data = imdb.read_from_hdf5(unsupervised=False)
     else:
         print("Unknown dataset")
         return
 
-    (x_train, y_train), (x_valid, y_valid), (x_test, y_test), x_nolabel = data
-
-    if x_nolabel is None:
-        x_unsup = x_train.transpose()
+    if dataset == 'imdb':
+        x_train = data.root.train_features
+        y_train = data.root.train_labels[:][:, None]
+        x_valid = data.root.val_features
+        y_valid = data.root.val_labels[:][:, None]
+        x_test = data.root.test_features
+        y_test = None
+        x_nolabel = None
     else:
-        x_unsup = np.vstack((x_train, x_nolabel)).transpose()
+        (x_train, y_train), (x_valid, y_valid), (x_test, y_test),\
+            x_nolabel = data
+
+    if not embedding_source:
+        if x_nolabel is None:
+            x_unsup = x_train.transpose()
+        else:
+            x_unsup = np.vstack((x_train, x_nolabel)).transpose()
+        n_samples_unsup = x_unsup.shape[0]
+    else:
+        x_unsup = None
 
     # Extract required information from data
-    n_feats, n_samples = x_unsup.shape
+    n_samples, n_feats = x_train.shape
     print("Number of features : ", n_feats)
     print("Glorot init : ", 2.0 / n_feats)
     n_targets = y_train.shape[1]
 
     # Set some variables
-    batch_size = 16
+    batch_size = 100
 
     # Preparing folder to save stuff
     save_path = save_path + dataset + "/"
@@ -99,7 +129,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Prepare Theano variables for inputs and targets
     input_var_sup = T.matrix('input_sup')
     input_var_unsup = theano.shared(x_unsup, 'input_unsup')  # x_unsup TBD
-    target_var_sup = T.matrix('target_sup')
+    target_var_sup = T.imatrix('target_sup')
     lr = theano.shared(np.float32(learning_rate), 'learning_rate')
 
     # Build model
@@ -114,7 +144,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Build unsupervised network
     if not embedding_source:
-        encoder_net = InputLayer((n_feats, n_samples), input_var_unsup)
+        encoder_net = InputLayer((n_feats, n_samples_unsup), input_var_unsup)
         for out in n_hidden_u:
             encoder_net = DenseLayer(encoder_net, num_units=out,
                                      nonlinearity=rectify)
@@ -184,7 +214,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         reconstruction_det,
         input_var_sup).mean()
 
-    params = lasagne.layers.get_all_params([discrim_net, reconst_net],
+    params = lasagne.layers.get_all_params([discrim_net, reconst_net,
+                                            encoder_net_W_dec,
+                                            encoder_net_W_enc],
                                            trainable=True)
 
     # Combine losses
@@ -207,6 +239,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Supervised functions
     test_pred = T.gt(prediction_det, 0.5)
+    predict = theano.function([input_var_sup], test_pred)
     test_acc = T.mean(T.eq(test_pred, target_var_sup),
                       dtype=theano.config.floatX) * 100.
 
@@ -234,7 +267,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     valid_reconst_loss = []
     valid_acc = []
 
-    nb_minibatches = n_samples
+    nb_minibatches = 0  # n_samples/batch_size
     start_training = time.time()
     for epoch in range(num_epochs):
         start_time = time.time()
@@ -247,7 +280,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                          batch_size,
                                          shuffle=True):
             loss_epoch += train_fn(*batch)
-
+            nb_minibatches += 1
         loss_epoch /= nb_minibatches
         train_loss += [loss_epoch]
 
@@ -271,7 +304,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         valid_acc += [valid_err[2]]
         valid_reconst_loss += [valid_err[3]]
 
-        # Eearly stopping
+        # Early stopping
         if epoch == 0:
             best_valid = valid_loss[epoch]
         elif valid_loss[epoch] < best_valid:
@@ -290,7 +323,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
         # End training
         if patience == max_patience or epoch == num_epochs-1:
-            print("   Ending training")
+            print("Ending training")
             # Load best model
             if not os.path.exists(save_path + 'model_feat_sel.npz'):
                 print("No saved model to be tested and/or generate"
@@ -310,12 +343,21 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                 np.savez(save_path+'feature_embedding.npz', pred)
 
             # Test
-            test_minibatches = iterate_minibatches(x_test, y_test,
-                                                   batch_size,
-                                                   shuffle=False)
+            if y_test is not None:
+                test_minibatches = iterate_minibatches(x_test, y_test,
+                                                       batch_size,
+                                                       shuffle=False)
 
-            test_err = monitoring(test_minibatches, "test", val_fn,
-                                  monitor_labels)
+                test_err = monitoring(test_minibatches, "test", val_fn,
+                                      monitor_labels)
+            else:
+                for minibatch in iterate_testbatches(x_test,
+                                                     batch_size,
+                                                     shuffle=False):
+                    test_predictions = []
+                    test_predictions += [predict(minibatch)]
+                np.savez(save_path+'test_predictions.npz', test_predictions)
+
             # Stop
             print("  epoch time:\t\t\t{:.3f}s".format(time.time() -
                                                       start_time))

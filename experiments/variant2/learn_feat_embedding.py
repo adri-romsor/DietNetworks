@@ -2,6 +2,7 @@ from __future__ import print_function
 import argparse
 import time
 import os
+import tables
 
 import lasagne
 from lasagne.layers import DenseLayer, InputLayer
@@ -11,13 +12,15 @@ import theano
 import theano.tensor as T
 
 from epls import EPLS, tensor_fun_EPLS
-from feature_selection.experiments.common import dataset_utils
+from feature_selection.experiments.common import dataset_utils, imdb
 
-def iterate_minibatches(x, batch_size, shuffle=True):
+
+def iterate_minibatches(x, batch_size, shuffle=False, dataset=None):
+    indices = np.arange(x.shape[0])
     if shuffle:
-        np.random.shuffle(x)
-    for i in range(0, x.shape[0]-batch_size, batch_size):
-        yield x[i:i+batch_size]
+        indices = np.random.permutation(x.shape[0])
+    for i in range(0, x.shape[0]-batch_size+1, batch_size):
+        yield x[indices[i:i+batch_size], :]
 
 
 def monitoring(minibatches, which_set, error_fn, monitoring_labels):
@@ -47,21 +50,29 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
 
     # Load the dataset
     print("Loading data")
-    splits = [0.80] # This will split the data into [80%, 20%]
+    splits = [0.80]  # This will split the data into [80%, 20%]
     if dataset == 'protein_binding':
-        data = dataset_utils.load_protein_binding(transpose=True, splits=splits)
+        data = dataset_utils.load_protein_binding(transpose=True,
+                                                  splits=splits)
     elif dataset == 'dorothea':
         data = dataset_utils.load_dorothea(transpose=True, splits=splits)
     elif dataset == 'opensnp':
         data = dataset_utils.load_opensnp(transpose=True, splits=splits)
     elif dataset == 'reuters':
         data = dataset_utils.load_reuters(transpose=True, splits=splits)
+    elif dataset == 'imdb':
+        # data = dataset_utils.load_imdb(transpose=True, splits=splits)
+        data = imdb.read_from_hdf5(unsupervised=True)
     else:
         print("Unknown dataset")
         return
-    
-    x_train = data[0][0]
-    x_valid = data[1][0]
+    if dataset == 'imdb':
+        x_train = data.root.train
+        # print("Training set shape %d, %d" % x_train.shape)
+        x_valid = data.root.val
+    else:
+        x_train = data[0][0]
+        x_valid = data[1][0]
 
     # Extract required information from data
     n_row, n_col = x_train.shape
@@ -206,7 +217,8 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         loss_epoch = 0
 
         # Train pass
-        for batch in iterate_minibatches(x_train, batch_size, shuffle=True):
+        for batch in iterate_minibatches(x_train, batch_size,
+                                         dataset=dataset, shuffle=True):
             loss_epoch += train_fn(batch)
 
         loss_epoch /= nb_minibatches
@@ -214,7 +226,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
 
         # Validation pass
         valid_minibatches = iterate_minibatches(x_valid, batch_size,
-                                                shuffle=False)
+                                                dataset=dataset, shuffle=True)
 
         valid_err = monitoring(valid_minibatches, "valid", val_fn,
                                monitor_labels)
@@ -255,9 +267,11 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
 
                 # Save embedding
                 preds = []
-                for batch in iterate_minibatches(x_train, 1, shuffle=False):
+                for batch in iterate_minibatches(x_train, 1, dataset=dataset,
+                                                 shuffle=False):
                     preds.append(pred_feat_emb(batch))
-                for batch in iterate_minibatches(x_valid, 1, shuffle=False):
+                for batch in iterate_minibatches(x_valid, 1, dataset=dataset,
+                                                 shuffle=False):
                     preds.append(pred_feat_emb(batch))
                 preds = np.vstack(preds)
                 np.savez(save_path+'feature_embedding.npz', preds)

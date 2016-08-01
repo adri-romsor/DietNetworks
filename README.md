@@ -8,9 +8,9 @@
 
 Pierre Luc
 - [x] Merge epls and master branchs
-- [ ] Reuters : check dimensionality and stats
+- [x] Reuters : check dimensionality and stats
 - [x] Check if softmax has been changed to sigmoid in the new version of the code (it wasn't so I did it)
-- [ ] Finish refactoring dataset loader
+- [x] Finish refactoring dataset loader
 
 Akram
 - [x] IMDB : check dimensionality and stats
