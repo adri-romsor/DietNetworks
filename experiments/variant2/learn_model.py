@@ -4,7 +4,7 @@ import time
 import os
 
 import lasagne
-from lasagne.layers import DenseLayer, InputLayer
+from lasagne.layers import DenseLayer, InputLayer, DropoutLayer, BatchNormLayer
 from lasagne.nonlinearities import (sigmoid, softmax, tanh, linear, rectify,
                                     leaky_rectify, very_leaky_rectify)
 from lasagne.init import Uniform
@@ -47,22 +47,65 @@ def iterate_testbatches(inputs, batchsize, shuffle=False):
         yield inputs[indices[i:i+batchsize], :]
 
 
+def get_precision_recall_cutoff(predictions, targets):
+    
+    prev_threshold = 0.00
+    threshold_inc = 0.10
+    
+    while True:
+        if prev_threshold > 1.000:
+            cutoff = 0.0
+            break
+        
+        threshold = prev_threshold + threshold_inc
+        tp = ((predictions >= threshold) * (targets == 1)).sum()
+        fp = ((predictions >= threshold) * (targets == 0)).sum()
+        fn = ((predictions < threshold) * (targets == 1)).sum()
+        
+        precision = float(tp) / (tp + fp)
+        recall = float(tp) / (tp + fn)
+
+        if precision > recall:
+            if threshold_inc < 0.001:
+                cutoff = recall
+                break
+            else:
+                threshold_inc /= 10
+        else:
+            prev_threshold += threshold_inc
+            
+    return cutoff
+
+
 # Monitoring function
 def monitoring(minibatches, which_set, error_fn, monitoring_labels):
 
     monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
     global_batches = 0
+    
+    targets = []
+    predictions = []
 
     for batch in minibatches:
         # Update monitored values
         out = error_fn(*batch)
-        monitoring_values = monitoring_values + out
+
+        monitoring_values = monitoring_values + out[1:]
+        predictions.append(out[0])
+        targets.append(batch[1])
+
         global_batches += 1
+    
+    # Compute the precision-recall breakoff point
+    predictions = np.vstack(predictions)
+    targets = np.vstack(targets)
+    cutoff = get_precision_recall_cutoff(predictions, targets)
 
     # Print monitored values
     monitoring_values /= global_batches
     for (label, val) in zip(monitoring_labels, monitoring_values):
         print ("  {} {}:\t\t{:.6f}".format(which_set, label, val))
+    print ("  {} precis/recall cutoff:\t{:.6f}".format(which_set, cutoff))
 
     return monitoring_values
 
@@ -70,8 +113,8 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels):
 # Main program
 def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             embedding_source=None,
-            num_epochs=500, learning_rate=.001, gamma=1,
-            save_path='/Tmp/romerosa/feature_selection/newmodel/'):
+            num_epochs=500, learning_rate=.001, learning_rate_annealing=1.0,
+            gamma=1, save_path='/Tmp/romerosa/feature_selection/newmodel/'):
 
     # Load the dataset
     print("Loading data")
@@ -108,12 +151,12 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             x_unsup = x_train.transpose()
         else:
             x_unsup = np.vstack((x_train, x_nolabel)).transpose()
-        n_samples_unsup = x_unsup.shape[0]
+        n_samples_unsup = x_unsup.shape[1]
     else:
         x_unsup = None
 
     # Extract required information from data
-    n_samples, n_feats = x_train.shape
+    n_feats, n_samples = x_unsup.shape
     print("Number of features : ", n_feats)
     print("Glorot init : ", 2.0 / n_feats)
     n_targets = y_train.shape[1]
@@ -145,7 +188,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Build unsupervised network
     if not embedding_source:
         encoder_net = InputLayer((n_feats, n_samples_unsup), input_var_unsup)
-        for out in n_hidden_u:
+        for i, out in enumerate(n_hidden_u):
             encoder_net = DenseLayer(encoder_net, num_units=out,
                                      nonlinearity=rectify)
         feat_emb = lasagne.layers.get_output(encoder_net)
@@ -182,7 +225,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # predicting labels
     for hid in n_hidden_s:
+        discrim_net = BatchNormLayer(discrim_net)
         discrim_net = DenseLayer(discrim_net, num_units=hid)
+    #discrim_net = BatchNormLayer(discrim_net)
     discrim_net = DenseLayer(discrim_net, num_units=n_targets,
                              nonlinearity=sigmoid)
 
@@ -251,7 +296,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Compile validation function
     val_fn = theano.function(inputs,
-                             val_outputs,
+                             [prediction_det] + val_outputs,
                              on_unused_input='ignore')
 
     # Finally, launch the training loop.
@@ -364,6 +409,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             break
 
         print("  epoch time:\t\t\t{:.3f}s".format(time.time() - start_time))
+        
+        # Anneal the learning rate
+        lr.set_value(float(lr.get_value() * learning_rate_annealing))
 
     # Print all final errors for train, validation and test
     print("Training time:\t\t\t{:.3f}s".format(time.time() - start_training))
@@ -403,6 +451,11 @@ def main():
                         type=float,
                         default=.001,
                         help="""Float to indicate learning rate.""")
+    parser.add_argument('--learning_rate_annealing',
+                        '-lra',
+                        type=float,
+                        default=1.0,
+                        help="Float to indicate learning rate annealing rate.")
     parser.add_argument('--gamma',
                         '-g',
                         type=float,
@@ -422,6 +475,7 @@ def main():
             args.embedding_source,
             int(args.num_epochs),
             args.learning_rate,
+            args.learning_rate_annealing,
             args.gamma,
             args.save)
 
