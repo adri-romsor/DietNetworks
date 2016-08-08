@@ -14,8 +14,7 @@ Pierre Luc
 
 Akram
 - [x] IMDB : check dimensionality and stats
-- [ ] Adapt IMDB loader to fit in memory and to work with new code
-- [ ] Check Dragonn for protein 
+- [x] Adapt IMDB loader to fit in memory and to work with new code
 
 Tristan
 - [ ] Check Dragonn for protein 
