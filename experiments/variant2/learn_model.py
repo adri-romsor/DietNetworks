@@ -144,7 +144,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         x_unsup = None
 
     # Extract required information from data
-    n_feats, n_samples = x_unsup.shape
+    n_samples, n_feats = x_train.shape
     print("Number of features : ", n_feats)
     print("Glorot init : ", 2.0 / n_feats)
     n_targets = y_train.shape[1]
