@@ -50,8 +50,8 @@ def get_precision_recall_cutoff(predictions, targets):
         fp = ((predictions >= threshold) * (targets == 0)).sum()
         fn = ((predictions < threshold) * (targets == 1)).sum()
 
-        precision = float(tp) / (tp + fp)
-        recall = float(tp) / (tp + fn)
+        precision = float(tp) / (tp + fp + 1e-20)
+        recall = float(tp) / (tp + fn + 1e-20)
 
         if precision > recall:
             if threshold_inc < 0.001:
@@ -67,7 +67,7 @@ def get_precision_recall_cutoff(predictions, targets):
 
 # Monitoring function
 def monitoring(minibatches, which_set, error_fn, monitoring_labels):
-
+    print('-'*20 + which_set + ' monit.' + '-'*20)
     monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
     global_batches = 0
 
@@ -146,7 +146,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Extract required information from data
     n_samples, n_feats = x_train.shape
     print("Number of features : ", n_feats)
-    print("Glorot init : ", 2.0 / n_feats)
+    sigma_glorot = np.sqrt(2.0 / n_feats)
+    print("Glorot init : ", sigma_glorot)
     n_targets = y_train.shape[1]
 
     # Set some variables
@@ -160,7 +161,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Prepare Theano variables for inputs and targets
     input_var_sup = T.matrix('input_sup')
     input_var_unsup = theano.shared(x_unsup, 'input_unsup')  # x_unsup TBD
-    target_var_sup = T.matrix('target_sup')
+    target_var_sup = T.imatrix('target_sup')
     lr = theano.shared(np.float32(learning_rate), 'learning_rate')
 
     # Build model
@@ -187,34 +188,33 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         # feat_emb_val = np.random.randn(123333, 100)*0.5
         feat_emb = theano.shared(feat_emb_val, 'feat_emb')
         encoder_net = InputLayer((n_feats, n_hidden_u[-1]), feat_emb)
-    # print(feat_emb.get_value())
+
     # Build transformations (f_theta, f_theta') network and supervised network
     # f_theta (ou W_enc)
     encoder_net_W_enc = encoder_net
     for hid in n_hidden_t_enc:
         encoder_net_W_enc = DenseLayer(encoder_net_W_enc, num_units=hid,
-                                       nonlinearity=tanh)
+                                       nonlinearity=tanh, W=Uniform(std=sigma_glorot))
         # encoder_net_W_enc = DenseLayer(encoder_net_W_enc, num_units=hid,
         #                                nonlinearity=tanh, W=Uniform(0.20))
-    layers_net_W_enc = lasagne.layers.get_all_layers(encoder_net_W_enc)
-    activs_net_W_enc = lasagne.layers.get_output(layers_net_W_enc)
-    # enc_feat_emb = lasagne.layers.get_output(encoder_net_W_enc)
-    enc_feat_emb = activs_net_W_enc[-1]
+    # layers_net_W_enc = lasagne.layers.get_all_layers(encoder_net_W_enc)
+    # activs_net_W_enc = lasagne.layers.get_output(layers_net_W_enc)
+    enc_feat_emb = lasagne.layers.get_output(encoder_net_W_enc)
+    # enc_feat_emb = activs_net_W_enc[-1]
 
     # f_theta' (ou W_dec)
     encoder_net_W_dec = encoder_net
     for hid in n_hidden_t_dec:
         encoder_net_W_dec = DenseLayer(encoder_net_W_dec, num_units=hid,
-                                       nonlinearity=tanh)
-    #                                  nonlinearity=tanh, W=Uniform(0.20))
-    layers_net_W_dec = lasagne.layers.get_all_layers(encoder_net_W_dec)
-    activs_net_W_dec = lasagne.layers.get_output(layers_net_W_dec)
-    # dec_feat_emb = lasagne.layers.get_output(encoder_net_W_dec)
-    dec_feat_emb = activs_net_W_dec[-1]
+                                       nonlinearity=tanh, W=Uniform(std=sigma_glorot))
+    # layers_net_W_dec = lasagne.layers.get_all_layers(encoder_net_W_dec)
+    # activs_net_W_dec = lasagne.layers.get_output(layers_net_W_dec)
+    dec_feat_emb = lasagne.layers.get_output(encoder_net_W_dec)
+    # dec_feat_emb = activs_net_W_dec[-1]
 
     # Supervised network
     discrim_net = InputLayer((batch_size, n_feats), input_var_sup)
-    discrim_net = BatchNormLayer(discrim_net)
+    # discrim_net = BatchNormLayer(discrim_net, gamma=lasagne.init.Constant(.1))
     discrim_net = DenseLayer(discrim_net, num_units=n_hidden_t_enc[-1],
                              W=enc_feat_emb, nonlinearity=rectify)
 
@@ -224,7 +224,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # predicting labels
     for hid in n_hidden_s:
-        discrim_net = BatchNormLayer(discrim_net)
+        # discrim_net = BatchNormLayer(discrim_net)
         discrim_net = DenseLayer(discrim_net, num_units=hid)
     discrim_net = DenseLayer(discrim_net, num_units=n_targets,
                              nonlinearity=sigmoid)
@@ -236,13 +236,13 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Build and compile training functions
 
     # network activations
-    net_layers = lasagne.layers.get_all_layers([discrim_net, reconst_net])
-    net_activs = lasagne.layers.get_output(net_layers)
-    prediction = net_activs[len(lasagne.layers.get_all_layers(discrim_net))-1]
-    reconstruction = net_activs[-1]
-    net_activs += activs_net_W_enc + activs_net_W_dec[1:]
+    # net_layers = lasagne.layers.get_all_layers([discrim_net, reconst_net])
+    # net_activs = lasagne.layers.get_output(net_layers)
+    # prediction = net_activs[len(lasagne.layers.get_all_layers(discrim_net))-1]
+    # reconstruction = net_activs[-1]
+    # net_activs += activs_net_W_enc + activs_net_W_dec[1:]
 
-    # prediction = lasagne.layers.get_output(discrim_net)
+    prediction = lasagne.layers.get_output(discrim_net)
     prediction_det = lasagne.layers.get_output(discrim_net,
                                                deterministic=True)
 
@@ -255,7 +255,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     inputs = [input_var_sup, target_var_sup]
 
     # Unsupervised reconstruction loss
-    # reconstruction = lasagne.layers.get_output(reconst_net)
+    reconstruction = lasagne.layers.get_output(reconst_net)
     reconstruction_det = lasagne.layers.get_output(reconst_net,
                                                    deterministic=True)
     reconst_loss = lasagne.objectives.squared_error(
@@ -287,12 +287,12 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Compile training function
     train_fn = theano.function(inputs, loss, updates=updates,
                                on_unused_input='ignore')
-    # monitoring gradients and activations
-    acts = theano.function(inputs, net_activs, on_unused_input='ignore')
-    layers_grads = T.grad(loss, net_activs)
-    layers_grads_norm = [gd.norm(2) for gd in layers_grads]
-    net_grads = theano.function(inputs, layers_grads)
-    net_grads_norm = theano.function(inputs, layers_grads_norm)
+    # Monitoring gradients and activations
+    # acts = theano.function(inputs, net_activs, on_unused_input='ignore')
+    # layers_grads = T.grad(loss, net_activs)
+    # layers_grads_norm = [gd.norm(2) for gd in layers_grads]
+    # net_grads = theano.function(inputs, layers_grads)
+    # net_grads_norm = theano.function(inputs, layers_grads_norm)
     # Supervised functions
     test_pred = T.gt(prediction_det, 0.5)
     predict = theano.function([input_var_sup], test_pred)
@@ -323,9 +323,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     valid_reconst_loss = []
     valid_acc = []
 
-    nb_minibatches = 0  # n_samples/batch_size
+    nb_minibatches = 0
     start_training = time.time()
-    grads_norms = np.zeros((1, len(net_activs)))
+    # grads_norms = np.zeros((1, len(net_activs)))
     for epoch in range(num_epochs):
         start_time = time.time()
         print("Epoch {} of {}".format(epoch+1, num_epochs))
@@ -337,11 +337,10 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                          batch_size,
                                          shuffle=True):
             loss_epoch += train_fn(*batch)
-            grads_norms = np.vstack((grads_norms,
-                                     np.array(net_grads_norm(*batch))))
-            # loss_epoch += loss_fn_only(*batch)
+            # grads_norms = np.vstack((grads_norms,
+            #                          np.array(net_grads_norm(*batch))))
             nb_minibatches += 1
-        print ("  Train loss: \t\t{:.6f}".format(loss_epoch / nb_minibatches))
+        print ("  Train loss: \t\t\t{:.6f}".format(loss_epoch / nb_minibatches))
         loss_epoch /= nb_minibatches
         train_loss += [loss_epoch]
 
@@ -359,7 +358,6 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
         valid_err = monitoring(valid_minibatches, "valid", val_fn,
                                monitor_labels)
-
         valid_loss += [valid_err[0]]
         valid_loss_sup += [valid_err[1]]
         valid_acc += [valid_err[2]]
@@ -420,11 +418,11 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                 np.savez(save_path+'test_predictions.npz', test_predictions)
 
             # Stop
-            print("  epoch time:\t\t\t{:.3f}s".format(time.time() -
-                                                      start_time))
+            print("  epoch time:\t\t\t{:.3f}s \n".format(time.time() -
+                                                         start_time))
             break
 
-        print("  epoch time:\t\t\t{:.3f}s".format(time.time() - start_time))
+        print("  epoch time:\t\t\t{:.3f}s \n".format(time.time() - start_time))
 
         # Anneal the learning rate
         lr.set_value(float(lr.get_value() * learning_rate_annealing))
