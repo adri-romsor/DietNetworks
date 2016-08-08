@@ -4,8 +4,9 @@ import time
 import os
 
 import lasagne
-from lasagne.layers import DenseLayer, InputLayer
-from lasagne.nonlinearities import sigmoid, softmax  # , tanh, linear
+from lasagne.layers import DenseLayer, InputLayer, BatchNormLayer
+from lasagne.nonlinearities import (sigmoid, softmax, tanh, linear, rectify,
+                                    leaky_rectify, very_leaky_rectify)
 import numpy as np
 import theano
 import theano.tensor as T
@@ -114,7 +115,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     n_targets = y_train.shape[1]
 
     # Set some variables
-    batch_size = 100
+    batch_size = 128
 
     # Preparing folder to save stuff
     save_path = save_path + dataset + "/"
@@ -142,27 +143,37 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         encoder_net = InputLayer((n_feats, n_samples_unsup), input_var_unsup)
         for out in n_hidden_u:
             encoder_net = DenseLayer(encoder_net, num_units=out,
-                                     nonlinearity=sigmoid)
+                                     nonlinearity=rectify)
         feat_emb = lasagne.layers.get_output(encoder_net)
         pred_feat_emb = theano.function([], feat_emb)
 
     else:
         feat_emb_val = np.load(save_path + embedding_source).items()[0][1]
+        # feat_emb_val = np.random.randn(123333, 100)*0.5
         feat_emb = theano.shared(feat_emb_val, 'feat_emb')
         encoder_net = InputLayer((n_feats, n_hidden_u[-1]), feat_emb)
-
+    # print(feat_emb.get_value())
     # Build transformations (f_theta, f_theta') network and supervised network
     # f_theta (ou W_enc)
     encoder_net_W_enc = encoder_net
     for hid in n_hidden_t_enc:
-        encoder_net_W_enc = DenseLayer(encoder_net_W_enc, num_units=hid)
-    enc_feat_emb = lasagne.layers.get_output(encoder_net_W_enc)
+        encoder_net_W_enc = BatchNormLayer(encoder_net_W_enc)
+        encoder_net_W_enc = DenseLayer(encoder_net_W_enc, num_units=hid,
+                                       nonlinearity=tanh)
+    layers_net_W_enc = lasagne.layers.get_all_layers(encoder_net_W_enc)
+    activs_net_W_enc = lasagne.layers.get_output(layers_net_W_enc)
+    # enc_feat_emb = lasagne.layers.get_output(encoder_net_W_enc)
+    enc_feat_emb = activs_net_W_enc[-1]
 
     # f_theta' (ou W_dec)
     encoder_net_W_dec = encoder_net
     for hid in n_hidden_t_dec:
-        encoder_net_W_dec = DenseLayer(encoder_net_W_dec, num_units=hid)
-    dec_feat_emb = lasagne.layers.get_output(encoder_net_W_dec)
+        encoder_net_W_dec = DenseLayer(encoder_net_W_dec, num_units=hid,
+                                       nonlinearity=tanh)
+    layers_net_W_dec = lasagne.layers.get_all_layers(encoder_net_W_dec)
+    activs_net_W_dec = lasagne.layers.get_output(layers_net_W_dec)
+    # dec_feat_emb = lasagne.layers.get_output(encoder_net_W_dec)
+    dec_feat_emb = activs_net_W_dec[-1]
 
     # Supervised network
     discrim_net = InputLayer((batch_size, n_feats), input_var_sup)
@@ -185,10 +196,18 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     loss_sup_det = 0
     # Build and compile training functions
 
-    # Supervised loss
-    prediction = lasagne.layers.get_output(discrim_net)
+    # network activations
+    net_layers = lasagne.layers.get_all_layers([discrim_net, reconst_net])
+    net_activs = lasagne.layers.get_output(net_layers)
+    prediction = net_activs[len(lasagne.layers.get_all_layers(discrim_net))-1]
+    reconstruction = net_activs[-1]
+    net_activs += activs_net_W_enc + activs_net_W_dec[1:]
+
+    # prediction = lasagne.layers.get_output(discrim_net)
     prediction_det = lasagne.layers.get_output(discrim_net,
                                                deterministic=True)
+
+    # Supervised loss
     loss_sup = lasagne.objectives.binary_crossentropy(
         prediction, target_var_sup).mean()
     loss_sup_det = lasagne.objectives.binary_crossentropy(
@@ -197,7 +216,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     inputs = [input_var_sup, target_var_sup]
 
     # Unsupervised reconstruction loss
-    reconstruction = lasagne.layers.get_output(reconst_net)
+    # reconstruction = lasagne.layers.get_output(reconst_net)
     reconstruction_det = lasagne.layers.get_output(reconst_net,
                                                    deterministic=True)
     reconst_loss = lasagne.objectives.squared_error(
@@ -214,21 +233,26 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Combine losses
     loss = loss_sup + gamma*reconst_loss
-    loss_det = loss_sup_det + reconst_loss_det
+    loss_det = loss_sup_det + gamma*reconst_loss_det
     # Compute network updates
     updates = lasagne.updates.rmsprop(loss,
                                       params,
                                       learning_rate=lr)
     # updates = lasagne.updates.sgd(loss,
-    #                              params,
-    #                              learning_rate=lr)
+    #                               params,
+    #                               learning_rate=lr)
     # updates = lasagne.updates.momentum(loss, params,
     #                                    learning_rate=lr, momentum=0.0)
 
     # Compile training function
     train_fn = theano.function(inputs, loss, updates=updates,
                                on_unused_input='ignore')
-
+    # monitoring gradients and activations
+    acts = theano.function(inputs, net_activs, on_unused_input='ignore')
+    layers_grads = T.grad(loss, net_activs)
+    layers_grads_norm = [gd.norm(2) for gd in layers_grads]
+    net_grads = theano.function(inputs, layers_grads)
+    net_grads_norm = theano.function(inputs, layers_grads_norm)
     # Supervised functions
     test_pred = T.gt(prediction_det, 0.5)
     predict = theano.function([input_var_sup], test_pred)
@@ -236,9 +260,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                       dtype=theano.config.floatX) * 100.
 
     # Expressions required for test
-    monitor_labels = ["total_loss_det", "loss_sup_det", "accuracy",
-                      "recon. loss"]
-    val_outputs = [loss_det, loss_sup_det, test_acc, reconst_loss_det]
+    monitor_labels = ["total_loss_det", "loss_sup_det", "recon. loss",
+                      "accuracy"]
+    val_outputs = [loss_det, loss_sup_det, reconst_loss_det, test_acc]
 
     # Compile validation function
     val_fn = theano.function(inputs,
@@ -260,18 +284,23 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     nb_minibatches = 0  # n_samples/batch_size
     start_training = time.time()
+    grads_norms = np.zeros((1, len(net_activs)))
     for epoch in range(num_epochs):
         start_time = time.time()
         print("Epoch {} of {}".format(epoch+1, num_epochs))
 
         loss_epoch = 0
-
+        # grads_norms = np.zeros((1, len(net_layers)))
         # Train pass
         for batch in iterate_minibatches(x_train, y_train,
                                          batch_size,
                                          shuffle=True):
             loss_epoch += train_fn(*batch)
+            grads_norms = np.vstack((grads_norms,
+                                     np.array(net_grads_norm(*batch))))
+            # loss_epoch += loss_fn_only(*batch)
             nb_minibatches += 1
+        print ("  Train loss: \t\t{:.6f}".format(loss_epoch / nb_minibatches))
         loss_epoch /= nb_minibatches
         train_loss += [loss_epoch]
 
@@ -385,12 +414,12 @@ def main():
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=.0001,
+                        default=.00001,
                         help="""Float to indicate learning rate.""")
     parser.add_argument('--gamma',
                         '-g',
                         type=float,
-                        default=1,
+                        default=0,
                         help="""reconst_loss coeff.""")
     parser.add_argument('--save',
                         default='/Tmp/erraqaba/feature_selection/v4/',
