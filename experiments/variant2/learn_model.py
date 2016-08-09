@@ -120,7 +120,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     elif dataset == 'reuters':
         data = dataset_utils.load_reuters(transpose=False, splits=splits)
     elif dataset == 'imdb':
-        data = imdb.read_from_hdf5(unsupervised=False)
+        # use feat_type='tfidf' to load tfidf features
+        data = imdb.read_from_hdf5(unsupervised=False, feat_type='tfidf')
     else:
         print("Unknown dataset")
         return
@@ -184,21 +185,19 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                      nonlinearity=rectify)
         feat_emb = lasagne.layers.get_output(encoder_net)
         pred_feat_emb = theano.function([], feat_emb)
-        alpha_emb = 0.5
+        alpha_emb = 0.0095  # may need to adapt this constant
     else:
-        # feat_emb_val = np.load(save_path + embedding_source).items()[0][1]
-        feat_emb_val = np.random.randn(123333, 100)*0.5
-        feat_emb = theano.shared(feat_emb_val.astype('float32'), 'feat_emb')
+        feat_emb_val = np.load(save_path + embedding_source).items()[0][1]
+        # feat_emb_val = np.random.randn(123333, 100).astype('float32')
+        feat_emb = theano.shared(feat_emb_val, 'feat_emb')
         encoder_net = InputLayer((n_feats, n_hidden_u[-1]), feat_emb)
-        alpha_emb = 0.0015
+        alpha_emb = 0.0015  # may need to adapt this constant
     # Build transformations (f_theta, f_theta') network and supervised network
     # f_theta (ou W_enc)
     encoder_net_W_enc = encoder_net
     for hid in n_hidden_t_enc:
         encoder_net_W_enc = DenseLayer(encoder_net_W_enc, num_units=hid,
-                                       nonlinearity=tanh, W=Uniform(0.0095))
-        # encoder_net_W_enc = DenseLayer(encoder_net_W_enc, num_units=hid,
-        #                                nonlinearity=tanh, W=Uniform(0.20))
+                                       nonlinearity=tanh, W=Uniform(alpha_emb))
     # layers_net_W_enc = lasagne.layers.get_all_layers(encoder_net_W_enc)
     # activs_net_W_enc = lasagne.layers.get_output(layers_net_W_enc)
     enc_feat_emb = lasagne.layers.get_output(encoder_net_W_enc)
@@ -235,6 +234,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Some variables
     loss_sup = 0
     loss_sup_det = 0
+
     # Build and compile training functions
 
     # network activations
@@ -289,12 +289,14 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Compile training function
     train_fn = theano.function(inputs, loss, updates=updates,
                                on_unused_input='ignore')
+
     # Monitoring gradients and activations
     # acts = theano.function(inputs, net_activs, on_unused_input='ignore')
     # layers_grads = T.grad(loss, net_activs)
     # layers_grads_norm = [gd.norm(2) for gd in layers_grads]
     # net_grads = theano.function(inputs, layers_grads)
     # net_grads_norm = theano.function(inputs, layers_grads_norm)
+
     # Supervised functions
     test_pred = T.gt(prediction_det, 0.5)
     predict = theano.function([input_var_sup], test_pred)
