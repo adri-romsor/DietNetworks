@@ -66,7 +66,7 @@ def get_precision_recall_cutoff(predictions, targets):
 
 
 # Monitoring function
-def monitoring(minibatches, which_set, error_fn, monitoring_labels):
+def monitoring(minibatches, which_set, error_fn, monitoring_labels, PR=True):
     print('-'*20 + which_set + ' monit.' + '-'*20)
     monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
     global_batches = 0
@@ -77,23 +77,26 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels):
     for batch in minibatches:
         # Update monitored values
         out = error_fn(*batch)
-
-        monitoring_values = monitoring_values + out[1:]
-        predictions.append(out[0])
-        targets.append(batch[1])
-
+        if PR:
+            monitoring_values = monitoring_values + out[1:]
+            predictions.append(out[0])
+            targets.append(batch[1])
+        else:
+            monitoring_values = monitoring_values + out
         global_batches += 1
 
-    # Compute the precision-recall breakoff point
-    predictions = np.vstack(predictions)
-    targets = np.vstack(targets)
-    cutoff = get_precision_recall_cutoff(predictions, targets)
+    if PR:
+        # Compute the precision-recall breakoff point
+        predictions = np.vstack(predictions)
+        targets = np.vstack(targets)
+        cutoff = get_precision_recall_cutoff(predictions, targets)
 
     # Print monitored values
     monitoring_values /= global_batches
     for (label, val) in zip(monitoring_labels, monitoring_values):
         print ("  {} {}:\t\t{:.6f}".format(which_set, label, val))
-    print ("  {} precis/recall cutoff:\t{:.6f}".format(which_set, cutoff))
+    if PR:
+        print ("  {} precis/recall cutoff:\t{:.6f}".format(which_set, cutoff))
 
     return monitoring_values
 
@@ -136,7 +139,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     if not embedding_source:
         if x_nolabel is None:
-            x_unsup = x_train.transpose()
+            x_unsup = x_train[:5000].transpose()
         else:
             x_unsup = np.vstack((x_train, x_nolabel)).transpose()
         n_samples_unsup = x_unsup.shape[1]
@@ -323,10 +326,10 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     valid_reconst_loss = []
     valid_acc = []
 
-    nb_minibatches = 0
     start_training = time.time()
     # grads_norms = np.zeros((1, len(net_activs)))
     for epoch in range(num_epochs):
+        nb_minibatches = 0
         start_time = time.time()
         print("Epoch {} of {}".format(epoch+1, num_epochs))
 
@@ -348,8 +351,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         train_minibatches = iterate_minibatches(x_train, y_train,
                                                 batch_size,
                                                 shuffle=False)
-        train_err = monitoring(train_minibatches, "train", val_fn,
-                               monitor_labels)
+        monitoring(train_minibatches, "train", val_fn,
+                   monitor_labels)
 
         # Monitoring on the validation set
         valid_minibatches = iterate_minibatches(x_valid, y_valid,
