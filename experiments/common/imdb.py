@@ -1,5 +1,5 @@
 import os
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from Word2VecUtility import Word2VecUtility
 import nltk.data
 import logging
@@ -129,10 +129,77 @@ def build_imdb_BoW(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
         test_data_features
 
 
-def load_imdb_BoW(path_to_files='/data/lisatmp4/erraqabi/data/imdb_reviews/',
-                  shuffle=False, seed=0):
+def build_imdb_tfidf(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
+                     max_features=None, use_unlab=True):
+    # load data
+    train = pd.read_csv(os.path.join(path_to_data,
+                                     'labeledTrainData.tsv'),
+                        header=0, delimiter="\t", quoting=3)
+    test = pd.read_csv(os.path.join(path_to_data,
+                                    'testData.tsv'),
+                       header=0, delimiter="\t", quoting=3)
+    unlabeled_data = pd.read_csv(os.path.join(path_to_data,
+                                              'unlabeledTrainData.tsv'),
+                                 header=0, delimiter="\t", quoting=3)
 
-    data = np.load(os.path.join(path_to_files, 'imdb.npz'))
+    # Initialize an empty list to hold the clean reviews
+    clean_train_reviews = []
+    clean_test_reviews = []
+    clean_unlab_train_reviews = []
+
+    # cleaning the reviews text
+    print "Cleaning and parsing the training set movie reviews...\n"
+    for i in xrange(0, len(train["review"])):
+        clean_train_reviews.append(" ".join(
+            Word2VecUtility.review_to_wordlist(
+                train["review"][i], True)))
+    for i in xrange(0, len(test["review"])):
+        clean_test_reviews.append(" ".join(
+            Word2VecUtility.review_to_wordlist(
+                test["review"][i], True)))
+    for i in xrange(0, len(unlabeled_data["review"])):
+        clean_unlab_train_reviews.append(" ".join(
+            Word2VecUtility.review_to_wordlist(
+                unlabeled_data["review"][i], True)))
+
+    print "Creating the bag of words...\n"
+    # Initialize the vectorizer
+    vectorizer = CountVectorizer(analyzer="word",
+                                 tokenizer=None,
+                                 preprocessor=None,
+                                 stop_words=None,
+                                 max_features=max_features)
+
+    # fit_transform() does two functions: First, it fits the model
+    # and learns the vocabulary; second, it transforms our training data
+    # into feature vectors.
+    if use_unlab:
+        vectorizer.fit(clean_train_reviews+clean_unlab_train_reviews)
+        train_data_features = vectorizer.transform(clean_train_reviews)
+    else:
+        train_data_features = vectorizer.fit_transform(clean_train_reviews)
+    # build the tf-idf transformer
+    tf_transformer = TfidfTransformer(use_idf=False).fit(train_data_features)
+    # transform the counts to tf-idf
+    train_data_features = tf_transformer.transform(train_data_features)
+    unlab_data_features = tf_transformer.transform(
+        vectorizer.transform(clean_unlab_train_reviews))
+    # For the test set, we use the same vocab as for the train set
+    test_data_features = tf_transformer.transform(
+        vectorizer.transform(clean_test_reviews))
+
+    # convert the result to an array
+    # train_data_features = train_data_features
+    train_labels = np.array(train['sentiment'])
+    # test_data_features = test_data_features
+
+    return train_data_features, train_labels, unlab_data_features,\
+        test_data_features
+
+
+def load_imdb(path_to_files='/data/lisatmp4/erraqabi/data/imdb_reviews/',
+              feat_type='BoW', shuffle=False, seed=0):
+    data = np.load(os.path.join(path_to_files, 'imdb_'+feat_type+'.npz'))
     train_data_features = data['train_data_features'].item()
     train_labels = data['train_labels']
     unlab_data_features = data['unlab_data_features'].item()
@@ -221,7 +288,10 @@ def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
     if feat_type == 'BoW':
         train_data_features, train_labels, unlab_data_features,\
             test_data_features = build_imdb_BoW()
-    np.savez(os.path.join(path, 'imdb.npz'),
+    if feat_type == 'tfidf':
+        train_data_features, train_labels, unlab_data_features,\
+            test_data_features = build_imdb_tfidf()
+    np.savez(os.path.join(path, 'imdb_'+feat_type+'.npz'),
              train_data_features=train_data_features,
              train_labels=train_labels,
              test_data_features=test_data_features,
@@ -229,14 +299,15 @@ def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
 
 
 def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
-                 use_tables=True, split=0.8):
+                 feat_type='BoW', use_tables=True, split=0.8):
     if not os.path.exists(path):
         os.makedirs(path)
     if unsupervised:
-        train_data, _, unlab_data, _ = load_imdb_BoW()
+        train_data, _, unlab_data, _ = load_imdb(feat_type=feat_type)
         if use_tables:
             f = tables.openFile(os.path.join(path,
-                                             'unsupervised_IMDB_table'
+                                             'unsupervised_IMDB_'+feat_type +
+                                             '_table'
                                              '_split80.hdf5'),
                                 mode='w')
             features = np.empty((train_data.shape[1],
@@ -251,14 +322,15 @@ def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
             f.createArray(f.root, 'val',
                           features[int(features.shape[0]*split):])
         else:
-            f = h5py.File(os.path.join(path, 'unsupervised_IMDB.hdf5'),
+            f = h5py.File(os.path.join(path, 'unsupervised_IMDB_'+feat_type +
+                                             '.hdf5'),
                           mode='w')
             features = f.create_dataset('features',
                                         (train_data.shape[1],
                                          train_data.shape[0] +
                                          unlab_data.shape[0]),
                                         dtype='float32')
-            train_data, _, unlab_data, _ = load_imdb_BoW()
+            train_data, _, unlab_data, _ = load_imdb(feat_type=feat_type)
             features = np.empty((train_data.shape[1],
                                  train_data.shape[0]+unlab_data.shape[0]),
                                 dtype='float32')
@@ -269,11 +341,12 @@ def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
             f.flush()
     else:
         train_data, train_labels, _,\
-            test_data = load_imdb_BoW()
+            test_data = load_imdb(feat_type=feat_type)
         train_x = train_data.toarray().astype("float32")
         train_labels = train_labels.astype("int32")
         test_x = test_data.toarray().astype("float32")
-        f = tables.openFile(os.path.join(path, 'supervised_IMDB_table'
+        f = tables.openFile(os.path.join(path, 'supervised_IMDB_'+feat_type +
+                                               '_table'
                                                '_split80.hdf5'),
                             mode='w')
         f.createArray(f.root, 'train_features',
@@ -290,17 +363,21 @@ def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
 
 
 def read_from_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
-                   use_tables=True):
+                   use_tables=True, feat_type='BoW'):
     if unsupervised:
-        file_name = os.path.join(path, 'unsupervised_IMDB_table_split80.hdf5')
+        file_name = os.path.join(path, 'unsupervised_IMDB_' + feat_type +
+                                       '_table_split80.hdf5')
     else:
-        file_name = os.path.join(path, 'supervised_IMDB_table_split80.hdf5')
+        file_name = os.path.join(path, 'supervised_IMDB_' + feat_type +
+                                       '_table_split80.hdf5')
 
     read_file = tables.open_file(file_name, mode='r')
     return read_file
 
 if __name__ == '__main__':
-    # build_and_save_imdb()
-    save_as_hdf5(unsupervised=True, use_tables=False)
-    save_as_hdf5(unsupervised=True)
-    save_as_hdf5(unsupervised=False)
+    # build_and_save_imdb(feat_type='tfidf')
+    save_as_hdf5(unsupervised=True, feat_type='tfidf', use_tables=False)
+    print('1')
+    save_as_hdf5(unsupervised=True, feat_type='tfidf')
+    print('2')
+    save_as_hdf5(unsupervised=False, feat_type='tfidf')

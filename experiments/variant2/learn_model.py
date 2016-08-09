@@ -149,8 +149,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Extract required information from data
     n_samples, n_feats = x_train.shape
     print("Number of features : ", n_feats)
-    sigma_glorot = np.sqrt(2.0 / n_feats)
-    print("Glorot init : ", sigma_glorot)
+    print("Glorot init : ", 2.0 / n_feats)
     n_targets = y_train.shape[1]
 
     # Set some variables
@@ -185,19 +184,19 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                      nonlinearity=rectify)
         feat_emb = lasagne.layers.get_output(encoder_net)
         pred_feat_emb = theano.function([], feat_emb)
-
+        alpha_emb = 0.5
     else:
-        feat_emb_val = np.load(save_path + embedding_source).items()[0][1]
-        # feat_emb_val = np.random.randn(123333, 100)*0.5
-        feat_emb = theano.shared(feat_emb_val, 'feat_emb')
+        # feat_emb_val = np.load(save_path + embedding_source).items()[0][1]
+        feat_emb_val = np.random.randn(123333, 100)*0.5
+        feat_emb = theano.shared(feat_emb_val.astype('float32'), 'feat_emb')
         encoder_net = InputLayer((n_feats, n_hidden_u[-1]), feat_emb)
-
+        alpha_emb = 0.0015
     # Build transformations (f_theta, f_theta') network and supervised network
     # f_theta (ou W_enc)
     encoder_net_W_enc = encoder_net
     for hid in n_hidden_t_enc:
         encoder_net_W_enc = DenseLayer(encoder_net_W_enc, num_units=hid,
-                                       nonlinearity=tanh, W=Uniform(std=sigma_glorot))
+                                       nonlinearity=tanh, W=Uniform(0.0095))
         # encoder_net_W_enc = DenseLayer(encoder_net_W_enc, num_units=hid,
         #                                nonlinearity=tanh, W=Uniform(0.20))
     # layers_net_W_enc = lasagne.layers.get_all_layers(encoder_net_W_enc)
@@ -209,7 +208,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     encoder_net_W_dec = encoder_net
     for hid in n_hidden_t_dec:
         encoder_net_W_dec = DenseLayer(encoder_net_W_dec, num_units=hid,
-                                       nonlinearity=tanh, W=Uniform(std=sigma_glorot))
+                                       nonlinearity=tanh, W=Uniform(alpha_emb))
     # layers_net_W_dec = lasagne.layers.get_all_layers(encoder_net_W_dec)
     # activs_net_W_dec = lasagne.layers.get_output(layers_net_W_dec)
     dec_feat_emb = lasagne.layers.get_output(encoder_net_W_dec)
@@ -329,10 +328,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     start_training = time.time()
     # grads_norms = np.zeros((1, len(net_activs)))
     for epoch in range(num_epochs):
-        nb_minibatches = 0
         start_time = time.time()
         print("Epoch {} of {}".format(epoch+1, num_epochs))
-
+        nb_minibatches = 0
         loss_epoch = 0
         # grads_norms = np.zeros((1, len(net_layers)))
         # Train pass
@@ -343,7 +341,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             # grads_norms = np.vstack((grads_norms,
             #                          np.array(net_grads_norm(*batch))))
             nb_minibatches += 1
-        print ("  Train loss: \t\t\t{:.6f}".format(loss_epoch / nb_minibatches))
+        # print ("  Train loss: \t\t\t{:.6f}".format(loss_epoch / nb_minibatches))
         loss_epoch /= nb_minibatches
         train_loss += [loss_epoch]
 
