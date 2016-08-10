@@ -62,7 +62,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         data = dataset_utils.load_reuters(transpose=True, splits=splits)
     elif dataset == 'imdb':
         # data = dataset_utils.load_imdb(transpose=True, splits=splits)
-        data = imdb.read_from_hdf5(unsupervised=True)
+        data = imdb.read_from_hdf5(unsupervised=True, feat_type='tfidf')
     else:
         print("Unknown dataset")
         return
