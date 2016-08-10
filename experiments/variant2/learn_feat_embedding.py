@@ -6,7 +6,7 @@ import tables
 
 import lasagne
 from lasagne.layers import DenseLayer, InputLayer
-from lasagne.nonlinearities import sigmoid, softmax  # , tanh, linear
+from lasagne.nonlinearities import sigmoid, softmax, rectify  # , tanh, linear
 import numpy as np
 import theano
 import theano.tensor as T
@@ -109,9 +109,9 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         decoder_net = encoder_net
         for i in range(len(n_hidden_u)-2, -1, -1):
             decoder_net = DenseLayer(decoder_net, num_units=n_hidden_u[i],
-                                     nonlinearity=sigmoid)
+                                     nonlinearity=rectify)
         decoder_net = DenseLayer(decoder_net, num_units=n_col,
-                                 nonlinearity=sigmoid)
+                                 nonlinearity=rectify)
         reconstruction = lasagne.layers.get_output(decoder_net)
     if 'epls' in unsupervised:
         n_cluster = n_hidden_u[-1]
