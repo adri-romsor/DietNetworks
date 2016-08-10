@@ -24,7 +24,7 @@ def iterate_minibatches(x, batch_size, shuffle=False, dataset=None):
 
 
 def monitoring(minibatches, which_set, error_fn, monitoring_labels):
-
+    print('-'*20 + which_set + ' monit.' + '-'*20)
     monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
     global_batches = 0
 
@@ -224,6 +224,9 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         loss_epoch /= nb_minibatches
         train_loss += [loss_epoch]
 
+        train_minibatches = iterate_minibatches(x_train, batch_size,
+                                                dataset=dataset, shuffle=True)
+        monitoring(train_minibatches, "train", val_fn, monitor_labels)
         # Validation pass
         valid_minibatches = iterate_minibatches(x_valid, batch_size,
                                                 dataset=dataset, shuffle=True)
