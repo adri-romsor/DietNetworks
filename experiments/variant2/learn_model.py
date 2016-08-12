@@ -12,7 +12,8 @@ import numpy as np
 import theano
 import theano.tensor as T
 
-from feature_selection.experiments.common import dataset_utils, imdb
+from feature_selection.experiments.common import dataset_utils, imdb, \
+    dragonn_data
 
 
 # Mini-batch iterator function
@@ -122,6 +123,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     elif dataset == 'imdb':
         # use feat_type='tfidf' to load tfidf features
         data = imdb.read_from_hdf5(unsupervised=False, feat_type='tfidf')
+    elif dataset == 'dragonn':
+        data = dragonn_data.load_data(500, 100, 100)
     else:
         print("Unknown dataset")
         return

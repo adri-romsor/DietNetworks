@@ -12,7 +12,8 @@ import theano
 import theano.tensor as T
 
 from epls import EPLS, tensor_fun_EPLS
-from feature_selection.experiments.common import dataset_utils, imdb
+from feature_selection.experiments.common import dataset_utils, imdb, \
+    dragonn_data
 
 
 def iterate_minibatches(x, batch_size, shuffle=False, dataset=None):
@@ -63,6 +64,8 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     elif dataset == 'imdb':
         # data = dataset_utils.load_imdb(transpose=True, splits=splits)
         data = imdb.read_from_hdf5(unsupervised=True, feat_type='tfidf')
+    elif dataset == 'dragonn':
+        data = dragonn_data.load_data(500, 10000, 10000)
     else:
         print("Unknown dataset")
         return

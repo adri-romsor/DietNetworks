@@ -68,8 +68,11 @@ def get_simulation_data(simulation_name, simulation_parameters,
     X_valid = get_matrix(X_valid)
     X_test = get_matrix(X_test)
 
-    return Data(X_train, X_valid, X_test,
-                y_train, y_valid, y_test, motif_names)
+    train = (X_train, y_train)
+    valid = (X_valid, y_valid)
+    test = (X_test, y_test)
+
+    return train, valid, test, None
 
 
 def one_hot_encode(sequences):
@@ -119,11 +122,17 @@ def load_data(seq_len, num_pos, num_neg):
                                                  "motif2": "IRF_known20",
                                                  "min_spacing": 2,
                                                  "max_spacing": 5}
+
+    ntot = num_pos + num_neg
+    n_test_valid = int((ntot - .7*ntot) / 2)
+
     simulation_data = \
         get_simulation_data("simulate_heterodimer_grammar",
-                            heterodimer_grammar_simulation_parameters)
+                            heterodimer_grammar_simulation_parameters,
+                            test_set_size=n_test_valid,
+                            validation_set_size=n_test_valid)
 
     return simulation_data
 
 if __name__ == "__main__":
-    sd = load_data(500, 10000, 10000)
+    sd = load_data(500, 100, 100)
