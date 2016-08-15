@@ -71,11 +71,13 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels):
 def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             embedding_source=None,
             num_epochs=500, learning_rate=.001, gamma=1,
-            save_path='/Tmp/romerosa/feature_selection/newmodel/'):
+            save_path='/Tmp/romerosa/feature_selection/newmodel/',
+            dataset_path="/Tmp/sylvaint/datasets"):
 
     # Load the dataset
     print("Loading data")
     splits = [0.6, 0.2]  # This will split the data into [60%, 20%, 20%]
+
     if dataset == 'protein_binding':
         data = dataset_utils.load_protein_binding(transpose=False,
                                                   splits=splits)
@@ -86,7 +88,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     elif dataset == 'reuters':
         data = dataset_utils.load_reuters(transpose=False, splits=splits)
     elif dataset == 'imdb':
-        data = imdb.read_from_hdf5(unsupervised=False)
+        dataset_path = os.path.join(dataset_path,"imdb")
+        data = imdb.read_from_hdf5(path=dataset_path,unsupervised=False)
     else:
         print("Unknown dataset")
         return
@@ -411,8 +414,13 @@ def main():
     parser.add_argument('--save',
                         default='/Tmp/carriepl/feature_selection/v4/',
                         help='Path to save results.')
+    parser.add_argument('--dataset_path',
+                        default='/Tmp/erraqaba/datasets/',
+                        help='Path to dataset')
 
     args = parser.parse_args()
+    print ("Printing args")
+    print (args)
 
     execute(args.dataset,
             args.n_hidden_u,
@@ -423,7 +431,8 @@ def main():
             int(args.num_epochs),
             args.learning_rate,
             args.gamma,
-            args.save)
+            args.save,
+            args.dataset_path)
 
 
 if __name__ == '__main__':
