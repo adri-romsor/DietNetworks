@@ -105,14 +105,10 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels, PR=True):
 # Main program
 def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             embedding_source=None,
-<<<<<<< HEAD
-            num_epochs=500, learning_rate=.001, gamma=1,
+            num_epochs=500, learning_rate=.001, learning_rate_annealing=.001,
+            gamma=1,
             save_path='/Tmp/romerosa/feature_selection/newmodel/',
             dataset_path="/Tmp/sylvaint/datasets"):
-=======
-            num_epochs=500, learning_rate=.001, learning_rate_annealing=1.0,
-            gamma=1, save_path='/Tmp/romerosa/feature_selection/newmodel/'):
->>>>>>> c9d9fb97361f45c635fbd4e321fc84ad41e8576a
 
     # Load the dataset
     print("Loading data")
@@ -128,15 +124,12 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     elif dataset == 'reuters':
         data = dataset_utils.load_reuters(transpose=False, splits=splits)
     elif dataset == 'imdb':
-<<<<<<< HEAD
         dataset_path = os.path.join(dataset_path,"imdb")
-        data = imdb.read_from_hdf5(path=dataset_path,unsupervised=False)
-=======
+        #data = imdb.read_from_hdf5(path=dataset_path,unsupervised=False)
         # use feat_type='tfidf' to load tfidf features
-        data = imdb.read_from_hdf5(unsupervised=False, feat_type='tfidf')
+        data = imdb.read_from_hdf5(path=dataset_path,unsupervised=False, feat_type='tfidf')
     elif dataset == 'dragonn':
         data = dragonn_data.load_data(500, 100, 100)
->>>>>>> c9d9fb97361f45c635fbd4e321fc84ad41e8576a
     else:
         print("Unknown dataset")
         return
