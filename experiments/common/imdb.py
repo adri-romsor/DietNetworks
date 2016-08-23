@@ -362,8 +362,8 @@ def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
     f.close()
 
 
-def read_from_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
-                   use_tables=True, feat_type='BoW'):
+def read_from_hdf5(path='/Tmp/carriepl/datasets/imdb/', unsupervised=True,
+                   use_tables=True, feat_type='Bow'):
     if unsupervised:
         file_name = os.path.join(path, 'unsupervised_IMDB_' + feat_type +
                                        '_table_split80.hdf5')

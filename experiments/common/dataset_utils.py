@@ -1,7 +1,7 @@
 import numpy
 
 from feature_selection.experiments.common import (protein_loader, dorothea,
-                                                  reuters, imdb)
+                                                  reuters, imdb, iric_molecules)
 from feature_selection import aggregate_dataset as opensnp
 
 
@@ -139,6 +139,20 @@ def load_reuters(transpose=False, splits=None):
 
         train = shuffle(train)
         train, valid = split(train, splits)
+        return train, valid, test, None
+
+
+def load_iric_molecules(transpose=False, splits=None):
+
+    d = iric_molecules.IricMoleculesDataset()
+    x = d.load_data("fingerprint")
+    y = d.load_data("affinity")
+
+    if transpose:
+        return split([x.transpose()], splits)
+    else:
+        (x, y) = shuffle((x, y))
+        train, valid, test = split([x, y], splits)
         return train, valid, test, None
 
 

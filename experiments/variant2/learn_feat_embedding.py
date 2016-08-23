@@ -6,7 +6,7 @@ import tables
 
 import lasagne
 from lasagne.layers import DenseLayer, InputLayer
-from lasagne.nonlinearities import sigmoid, softmax  # , tanh, linear
+from lasagne.nonlinearities import sigmoid, softmax, tanh, linear, rectify
 import numpy as np
 import theano
 import theano.tensor as T
@@ -46,7 +46,7 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels):
 # Main program
 def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
             learning_rate=.001,
-            save_path='/Tmp/romerosa/feature_selection/newmodel/'):
+            save_path='/Tmp/$USER/feature_selection/newmodel/'):
 
     # Load the dataset
     print("Loading data")
@@ -62,13 +62,13 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         data = dataset_utils.load_reuters(transpose=True, splits=splits)
     elif dataset == 'imdb':
         # data = dataset_utils.load_imdb(transpose=True, splits=splits)
-        data = imdb.read_from_hdf5(unsupervised=True)
+        data = imdb.read_from_hdf5(unsupervised=True, feat_type='tfidf')
     else:
         print("Unknown dataset")
         return
+
     if dataset == 'imdb':
         x_train = data.root.train
-        # print("Training set shape %d, %d" % x_train.shape)
         x_valid = data.root.val
     else:
         x_train = data[0][0]
@@ -111,7 +111,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
             decoder_net = DenseLayer(decoder_net, num_units=n_hidden_u[i],
                                      nonlinearity=sigmoid)
         decoder_net = DenseLayer(decoder_net, num_units=n_col,
-                                 nonlinearity=sigmoid)
+                                 nonlinearity=rectify)
         reconstruction = lasagne.layers.get_output(decoder_net)
     if 'epls' in unsupervised:
         n_cluster = n_hidden_u[-1]
@@ -190,6 +190,12 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         # Unsupervised epls functions
         val_outputs += [loss_epls_det]
         monitor_labels += ["epls. loss"]
+        
+    # Add some monitoring on the learned feature embedding
+    val_outputs += [feat_emb.min(), feat_emb.mean(),
+                    feat_emb.max(), feat_emb.var()]
+    monitor_labels += ["feat. emb. min", "feat. emb. mean",
+                       "feat. emb. max", "feat. emb. var"]
 
     # Compile validation function
     val_fn = theano.function([input_var],
@@ -286,6 +292,19 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     print("Training time:\t\t\t{:.3f}s".format(time.time() - start_training))
 
 
+def parse_int_list_arg(arg):
+    if isinstance(arg, str):
+        arg = eval(arg)
+        
+    if isinstance(arg, list):
+        return arg
+    if isinstance(arg, int):
+        return [arg]
+    else:
+        raise ValueError("Following arg value could not be cast as a list of"
+                         "integer values : " % arg)
+
+
 def main():
     parser = argparse.ArgumentParser(description="""Implementation of the
                                      feature selection v4""")
@@ -313,8 +332,8 @@ def main():
                         help="""Float to indicate learning rate.""")
 
     parser.add_argument('--save',
-                        default='/Tmp/romerosa/feature_selection/' +
-                                'newmodel/',
+                        default='/Tmp/$USER/feature_selection/' +
+                                'feat_embeddings/',
                         help='Path to save results.')
 
     args = parser.parse_args()
@@ -322,7 +341,7 @@ def main():
     if args.unsupervised == []:
         raise StandardError('you must provide non empty list for unsupervised')
     execute(args.dataset,
-            args.n_hidden_u,
+            parse_int_list_arg(args.n_hidden_u),
             args.unsupervised,
             int(args.num_epochs),
             args.learning_rate,
