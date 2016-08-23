@@ -24,7 +24,7 @@ def iterate_minibatches(x, batch_size, shuffle=False, dataset=None):
 
 
 def monitoring(minibatches, which_set, error_fn, monitoring_labels):
-
+    print('-'*20 + which_set + ' monit.' + '-'*20)
     monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
     global_batches = 0
 
@@ -63,6 +63,9 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     elif dataset == 'imdb':
         # data = dataset_utils.load_imdb(transpose=True, splits=splits)
         data = imdb.read_from_hdf5(unsupervised=True, feat_type='tfidf')
+    elif dataset == 'dragonn':
+        from feature_selection.experiments.common import dragonn_data
+        data = dragonn_data.load_data(500, 10000, 10000)
     else:
         print("Unknown dataset")
         return
@@ -109,7 +112,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         decoder_net = encoder_net
         for i in range(len(n_hidden_u)-2, -1, -1):
             decoder_net = DenseLayer(decoder_net, num_units=n_hidden_u[i],
-                                     nonlinearity=sigmoid)
+                                     nonlinearity=rectify)
         decoder_net = DenseLayer(decoder_net, num_units=n_col,
                                  nonlinearity=rectify)
         reconstruction = lasagne.layers.get_output(decoder_net)
@@ -230,6 +233,9 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         loss_epoch /= nb_minibatches
         train_loss += [loss_epoch]
 
+        train_minibatches = iterate_minibatches(x_train, batch_size,
+                                                dataset=dataset, shuffle=True)
+        monitoring(train_minibatches, "train", val_fn, monitor_labels)
         # Validation pass
         valid_minibatches = iterate_minibatches(x_valid, batch_size,
                                                 dataset=dataset, shuffle=True)

@@ -9,6 +9,8 @@ import numpy as np
 import h5py
 import tables
 
+import argparse
+
 
 def makeFeatureVec(words, model, num_features):
     # Function to average all of the word vectors in a given
@@ -375,9 +377,22 @@ def read_from_hdf5(path='/Tmp/carriepl/datasets/imdb/', unsupervised=True,
     return read_file
 
 if __name__ == '__main__':
+    # build_and_save_imdb()
+
+    parser = argparse.ArgumentParser(description=
+            """Creating the imdb datasets""")
+    parser.add_argument('--save',
+                        default='/Tmp/sylvaint/datasets/imdb',
+                        help='Path to save results.')
+    args = parser.parse_args()
+    print ("Printing args")
+    print (args)
+
+    #save_as_hdf5(unsupervised=True, use_tables=False)
+    #save_as_hdf5(unsupervised=True)
+    #save_as_hdf5(unsupervised=False)
+
     # build_and_save_imdb(feat_type='tfidf')
     save_as_hdf5(unsupervised=True, feat_type='tfidf', use_tables=False)
-    print('1')
     save_as_hdf5(unsupervised=True, feat_type='tfidf')
-    print('2')
     save_as_hdf5(unsupervised=False, feat_type='tfidf')

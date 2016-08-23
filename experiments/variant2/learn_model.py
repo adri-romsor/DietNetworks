@@ -104,11 +104,13 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             embedding_source=None,
             num_epochs=500, learning_rate=.001, learning_rate_annealing=1.0,
             gamma=1, disc_nonlinearity="sigmoid",
-            save_path='/Tmp/romerosa/feature_selection/newmodel/'):
+            save_path='/Tmp/romerosa/feature_selection/newmodel/',
+            dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/'):
 
     # Load the dataset
     print("Loading data")
     splits = [0.6, 0.2]  # This will split the data into [60%, 20%, 20%]
+
     if dataset == 'protein_binding':
         data = dataset_utils.load_protein_binding(transpose=False,
                                                   splits=splits)
@@ -121,8 +123,12 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     elif dataset == 'iric_molecule':
         data = dataset_utils.load_iric_molecules(transpose=False, splits=splits)
     elif dataset == 'imdb':
+        dataset_path = os.path.join(dataset_path,"imdb")
         # use feat_type='tfidf' to load tfidf features
-        data = imdb.read_from_hdf5(unsupervised=False, feat_type='tfidf')
+        data = imdb.read_from_hdf5(path=dataset_path,unsupervised=False, feat_type='tfidf')
+    elif dataset == 'dragonn':
+        from feature_selection.experiments.common import dragonn_data
+        data = dragonn_data.load_data(500, 100, 100)
     else:
         print("Unknown dataset")
         return
@@ -495,8 +501,13 @@ def main():
     parser.add_argument('--save',
                         default='/Tmp/carriepl/feature_selection/v4/',
                         help='Path to save results.')
+    parser.add_argument('--dataset_path',
+                        default='/Tmp/' + os.environ["USER"] + '/datasets/',
+                        help='Path to dataset')
 
     args = parser.parse_args()
+    print ("Printing args")
+    print (args)
 
     execute(args.dataset,
             parse_int_list_arg(args.n_hidden_u),
@@ -509,7 +520,8 @@ def main():
             args.learning_rate_annealing,
             args.gamma,
             args.disc_nonlinearity,
-            args.save)
+            args.save,
+            args.dataset_path)
 
 
 if __name__ == '__main__':
