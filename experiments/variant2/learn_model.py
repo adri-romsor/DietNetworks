@@ -2,6 +2,7 @@ from __future__ import print_function
 import argparse
 import time
 import os
+import random
 
 import lasagne
 from lasagne.layers import DenseLayer, InputLayer, DropoutLayer, BatchNormLayer
@@ -103,7 +104,9 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels,
 def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             embedding_source=None,
             num_epochs=500, learning_rate=.001, learning_rate_annealing=1.0,
-            gamma=1, disc_nonlinearity="sigmoid",
+            gamma=1, disc_nonlinearity="sigmoid", encoder_net_init=0.2,
+            decoder_net_init=0.2, keep_labels=1.0, prec_recall_cutoff=True,
+            missing_labels_val=-1.0,
             save_path='/Tmp/romerosa/feature_selection/newmodel/',
             dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/'):
 
@@ -129,6 +132,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     elif dataset == 'dragonn':
         from feature_selection.experiments.common import dragonn_data
         data = dragonn_data.load_data(500, 100, 100)
+    elif dataset == '1000_genomes':
+        data = dataset_utils.load_1000_genomes(transpose=False,
+                                               label_splits=splits)
     else:
         print("Unknown dataset")
         return
@@ -156,11 +162,26 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         n_samples_unsup = x_unsup.shape[1]
     else:
         x_unsup = None
+        
+    # If needed, remove some of the training labels
+    if keep_labels <= 1.0:
+        training_labels = y_train.copy()
+        random.seed(23)
+        nb_train = len(training_labels)
+        
+        indices = range(nb_train)
+        random.shuffle(indices)
+        
+        indices_discard = indices[:int(nb_train * (1 - keep_labels))]
+        for idx in indices_discard:
+            training_labels[idx] = missing_labels_val
+    else:
+        training_labels = y_train
 
     # Extract required information from data
     n_samples, n_feats = x_train.shape
     print("Number of features : ", n_feats)
-    print("Glorot init : ", 2.0 / n_feats)
+    print("Glorot init : ", 2.0 / (n_feats + n_hidden_t_enc[-1]))
     n_targets = y_train.shape[1]
 
     # Set some variables
@@ -205,14 +226,16 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     encoder_net_W_enc = encoder_net
     for hid in n_hidden_t_enc:
         encoder_net_W_enc = DenseLayer(encoder_net_W_enc, num_units=hid,
-                                       nonlinearity=tanh, W=Uniform(0.20))
+                                       nonlinearity=tanh,
+                                       W=Uniform(encoder_net_init))
     enc_feat_emb = lasagne.layers.get_output(encoder_net_W_enc)
 
     # f_theta' (ou W_dec)
     encoder_net_W_dec = encoder_net
     for hid in n_hidden_t_dec:
         encoder_net_W_dec = DenseLayer(encoder_net_W_dec, num_units=hid,
-                                       nonlinearity=tanh, W=Uniform(0.20))
+                                       nonlinearity=tanh,
+                                       W=Uniform(decoder_net_init))
     dec_feat_emb = lasagne.layers.get_output(encoder_net_W_dec)
 
     # Supervised network
@@ -226,10 +249,11 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # predicting labels
     for hid in n_hidden_s:
-        discrim_net = BatchNormLayer(discrim_net)
+        discrim_net = DropoutLayer(discrim_net)
         discrim_net = DenseLayer(discrim_net, num_units=hid)
         
-    assert disc_nonlinearity in ["sigmoid", "linear", "rectify"]
+    assert disc_nonlinearity in ["sigmoid", "linear", "rectify", "softmax"]
+    discrim_net = DropoutLayer(discrim_net)
     discrim_net = DenseLayer(discrim_net, num_units=n_targets,
                              nonlinearity=eval(disc_nonlinearity))
 
@@ -247,16 +271,31 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Supervised loss
     if disc_nonlinearity == "sigmoid":
         loss_sup = lasagne.objectives.binary_crossentropy(
-            prediction, target_var_sup).mean()
+            prediction, target_var_sup)
         loss_sup_det = lasagne.objectives.binary_crossentropy(
-            prediction_det, target_var_sup).mean()
+            prediction_det, target_var_sup)
+    elif disc_nonlinearity == "softmax":
+        loss_sup = lasagne.objectives.categorical_crossentropy(prediction,
+                                                               target_var_sup)
+        loss_sup_det = lasagne.objectives.categorical_crossentropy(prediction_det,
+                                                                   target_var_sup)
     elif disc_nonlinearity in ["linear", "rectify"]:
         loss_sup = lasagne.objectives.squared_error(
-            prediction, target_var_sup).mean()
+            prediction, target_var_sup)
         loss_sup_det = lasagne.objectives.squared_error(
-            prediction_det, target_var_sup).mean()
+            prediction_det, target_var_sup)
     else:
         raise ValueError("Unsupported non-linearity")
+    
+    # If some labels are missing, mask the appropriate losses before taking
+    # the mean.
+    if keep_labels < 1.0:
+        mask = T.neq(target_var_sup, missing_labels_val)
+        scale_factor = 1.0 / mask.mean()
+        loss_sup = (loss_sup * mask) * scale_factor
+        loss_sup_det = (loss_sup_det * mask) * scale_factor
+    loss_sup = loss_sup.mean()
+    loss_sup_det = loss_sup_det.mean()
 
     inputs = [input_var_sup, target_var_sup]
 
@@ -289,22 +328,38 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     #                               learning_rate=lr)
     # updates = lasagne.updates.momentum(loss, params,
     #                                    learning_rate=lr, momentum=0.0)
+    
+    # Apply norm constraints on the weights
+    for k in updates.keys():
+        if updates[k].ndim == 2:
+            updates[k] = lasagne.updates.norm_constraint(updates[k], 1.0)
 
     # Compile training function
     train_fn = theano.function(inputs, loss, updates=updates,
                                on_unused_input='ignore')
-
-    # Supervised functions
-    test_pred = T.gt(prediction_det, 0.5)
-    predict = theano.function([input_var_sup], test_pred)
-    test_acc = T.mean(T.eq(test_pred, target_var_sup),
-                      dtype=theano.config.floatX) * 100.
-
+    
     # Expressions required for test
-    monitor_labels = ["total_loss_det", "loss_sup_det", "accuracy",
-                      "recon. loss", "enc_w_mean", "enc_w_var"]
-    val_outputs = [loss_det, loss_sup_det, test_acc, reconst_loss_det,
+    monitor_labels = ["total_loss_det", "loss_sup_det", "recon. loss",
+                      "enc_w_mean", "enc_w_var"]
+    val_outputs = [loss_det, loss_sup_det, reconst_loss_det,
                    enc_feat_emb.mean(), enc_feat_emb.var()]
+
+    if disc_nonlinearity in ["sigmoid", "softmax"]:
+        if disc_nonlinearity == "sigmoid":
+            test_pred = T.gt(prediction_det, 0.5)
+            test_acc = T.mean(T.eq(test_pred, target_var_sup),
+                            dtype=theano.config.floatX) * 100.
+            
+        elif disc_nonlinearity == "softmax":
+            test_pred = prediction_det.argmax(1)
+            test_acc = T.mean(T.eq(test_pred, target_var_sup.argmax(1)),
+                            dtype=theano.config.floatX) * 100
+        
+        monitor_labels.append("accuracy")
+        val_outputs.append(test_acc)
+    
+    # Compile prediction function
+    predict = theano.function([input_var_sup], test_pred)
 
     # Compile validation function
     val_fn = theano.function(inputs,
@@ -315,7 +370,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     print("Starting training...")
 
     # Some variables
-    max_patience = 100
+    max_patience = 1000
     patience = 0
 
     train_loss = []
@@ -329,11 +384,13 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     
     train_minibatches = iterate_minibatches(x_train, y_train,
                                             batch_size, shuffle=False)
-    monitoring(train_minibatches, "train", val_fn, monitor_labels)
+    monitoring(train_minibatches, "train", val_fn, monitor_labels,
+               prec_recall_cutoff)
     
     valid_minibatches = iterate_minibatches(x_valid, y_valid,
                                             batch_size, shuffle=False)
-    valid_err = monitoring(valid_minibatches, "valid", val_fn, monitor_labels)
+    valid_err = monitoring(valid_minibatches, "valid", val_fn, monitor_labels,
+                           prec_recall_cutoff)
 
     # Training loop
     start_training = time.time()
@@ -344,7 +401,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         loss_epoch = 0
 
         # Train pass
-        for batch in iterate_minibatches(x_train, y_train,
+        for batch in iterate_minibatches(x_train, training_labels,
                                          batch_size,
                                          shuffle=True):
             loss_epoch += train_fn(*batch)
@@ -356,14 +413,15 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         # Monitoring on the training set
         train_minibatches = iterate_minibatches(x_train, y_train,
                                                 batch_size, shuffle=False)
-        monitoring(train_minibatches, "train", val_fn, monitor_labels)
+        monitoring(train_minibatches, "train", val_fn, monitor_labels,
+                   prec_recall_cutoff)
 
         # Monitoring on the validation set
         valid_minibatches = iterate_minibatches(x_valid, y_valid,
                                                 batch_size, shuffle=False)
 
         valid_err = monitoring(valid_minibatches, "valid", val_fn,
-                               monitor_labels)
+                               monitor_labels, prec_recall_cutoff)
         valid_loss += [valid_err[0]]
         valid_loss_sup += [valid_err[1]]
         valid_acc += [valid_err[2]]
@@ -414,7 +472,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                                        shuffle=False)
 
                 test_err = monitoring(test_minibatches, "test", val_fn,
-                                      monitor_labels)
+                                      monitor_labels, prec_recall_cutoff)
             else:
                 for minibatch in iterate_testbatches(x_test,
                                                      batch_size,
@@ -482,7 +540,7 @@ def main():
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=.00001,
+                        default=.001,
                         help="""Float to indicate learning rate.""")
     parser.add_argument('--learning_rate_annealing',
                         '-lra',
@@ -498,6 +556,26 @@ def main():
                         '-nl',
                         default="sigmoid",
                         help="""Nonlinearity to use in disc_net's last layer""")
+    parser.add_argument('--encoder_net_init',
+                        '-eni',
+                        type=float,
+                        default=0.2,
+                        help="Bounds of uniform initialization for " +
+                              "encoder_net weights")
+    parser.add_argument('--decoder_net_init',
+                        '-dni',
+                        type=float,
+                        default=0.2,
+                        help="Bounds of uniform initialization for " +
+                              "decoder_net weights")
+    parser.add_argument('--keep_labels',
+                        type=float,
+                        default=1.0,
+                        help='Fraction of training labels to keep')
+    parser.add_argument('--prec_recall_cutoff',
+                        type=int,
+                        help='Whether to compute the precision-recall cutoff' +
+                             'or not')
     parser.add_argument('--save',
                         default='/Tmp/carriepl/feature_selection/v4/',
                         help='Path to save results.')
@@ -520,6 +598,10 @@ def main():
             args.learning_rate_annealing,
             args.gamma,
             args.disc_nonlinearity,
+            args.encoder_net_init,
+            args.decoder_net_init,
+            args.keep_labels,
+            args.prec_recall_cutoff != 0, -1,
             args.save,
             args.dataset_path)
 

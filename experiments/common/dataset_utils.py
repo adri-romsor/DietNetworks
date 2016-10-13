@@ -1,7 +1,9 @@
 import numpy
+import os
 
 from feature_selection.experiments.common import (protein_loader, dorothea,
-                                                  reuters, imdb, iric_molecules)
+                                                  reuters, imdb, iric_molecules,
+                                                  thousand_genomes)
 from feature_selection import aggregate_dataset as opensnp
 
 
@@ -153,6 +155,24 @@ def load_iric_molecules(transpose=False, splits=None):
     else:
         (x, y) = shuffle((x, y))
         train, valid, test = split([x, y], splits)
+        return train, valid, test, None
+
+
+def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None):
+    
+    user = os.getenv("USER")
+    path = "/Tmp/%s/Genomics_Datasets/1000_Genome_project/" % user
+    x, y = thousand_genomes.load_data(path)
+    x = x.astype("float32")
+    
+    (x, y) = shuffle((x, y))
+    train, valid, test = split([x, y], label_splits)
+    
+    if transpose:
+        import pdb; pdb.set_trace()
+        (transposed,) = shuffle((train[0].transpose(),))
+        return split([train[0].transpose()], feature_splits)
+    else:
         return train, valid, test, None
 
 

@@ -66,6 +66,9 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     elif dataset == 'dragonn':
         from feature_selection.experiments.common import dragonn_data
         data = dragonn_data.load_data(500, 10000, 10000)
+    elif dataset == '1000_genomes':
+        data = dataset_utils.load_1000_genomes(
+                   transpose=True, label_splits=splits, feature_splits=splits)
     else:
         print("Unknown dataset")
         return
