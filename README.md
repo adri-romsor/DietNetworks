@@ -15,7 +15,7 @@ What we would like to see: regular-AE MLP overfits whereas weight-aux-model does
 
 **1000 genomes:**
 - [x] Wrap dataset
-- [ ] Run experiments
+- [ ] Run experiments with different number of labeled samples
 - [ ] Run PCA/k-means baselines
 
 # Results
