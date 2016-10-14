@@ -2,8 +2,8 @@
 
 **Proof of concept:**
 - [ ] Generate bigram/trigram IMDB dataset
-- [ ] Train IMDB with weight-auxiliary-model reducing the number of unlabeled samples to emulate fat data (concatenating uni/bi/tri grams to increase data dimensionality).
-- [ ] Train IMDB regular-AE MLP reducing the number of unlabeled samples to emulate fat data (concatenating uni/bi/tri grams to increase data dimensionality).
+- [ ] Train IMDB with weight-auxiliary-model concatenating uni/bi/tri grams to increase data dimensionality.
+- [ ] Train IMDB regular-AE MLP concatenating uni/bi/tri grams to increase data dimensionality (2 versions supervised & semi-supervised).
 - [x] Train the model using partially labeled subsets (10%, 25%, 50% ...): the model does not seem to suffer from using few labeled samples.
 
 What we would like to see: regular-AE MLP overfits whereas weight-aux-model does not.
