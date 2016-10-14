@@ -20,15 +20,18 @@ What we would like to see: regular-AE MLP overfits whereas weight-aux-model does
 
 # Results
 
-**Partially labeled subsets on IMDB:**
+**Accoracy for partially labeled subsets on IMDB:**
 
-|Model|Partial subset|Acc.|
-|-----|--------------|----|
-|Ours|100%||
-|Ours|50%||
-|Ours|25%||
-|Ours|10%||
-|Ours|1%||
+The results with NBSVM were obtained with the following repo : https://github.com/carriepl/nbsvm forked from Grégoire Mesnil's repo (https://github.com/mesnilgr/nbsvm). The only modification is the addition of code in nbsvm.py that supports using only a fraction of the training data and a new batch script 'less_labels.sh' that runs trains the model on various fractions of the training set using either unigram inputs, unigram+bigram inputs or unigram+bigram+trigram inputs.
+
+Partial subset|Our model|nbsvm uni|nbsvm uni+bi|nbsvm uni+bi+tri|
+--------------|---------|---------|------------|----------------|
+|         100%|         |   88.61%|      91.56%|          91.87%|
+|          50%|         |   88.34%|      91.00%|          91.23%|
+|          25%|         |   87.65%|      90.14%|          90.48%|
+|          10%|         |   86.68%|      88.93%|          88.98%|
+|           5%|         |   85.32%|      87.42%|          87.64%|
+|           1%|         |   82.42%|      83.90%|          84.38%|
 
 **SOTA methods on IMDB:**
 
