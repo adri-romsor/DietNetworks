@@ -41,7 +41,7 @@ Partial subset|Our model uni|nbsvm uni|nbsvm uni+bi|nbsvm uni+bi+tri|
 
 |Model|Acc.|
 |-----|----|
-|Ours||
+|Ours|88.91%|
 |PCA||
 |K-means hard||
 |K-means soft||
