@@ -18,6 +18,28 @@ What we would like to see: regular-AE MLP overfits whereas weight-aux-model does
 - [ ] Run experiments
 - [ ] Run PCA/k-means baselines
 
+# Results
+
+**Partially labeled subsets on IMDB:**
+
+|Model|Partial subset|Acc.|
+|-----|--------------|----|
+|Ours|100%||
+|Ours|50%||
+|Ours|25%||
+|Ours|10%||
+|Ours|1%||
+
+**SOTA methods on IMDB:**
+
+
+
+**100 Genomes:**
+
+|Model|Acc.|
+|-----|----|
+|Ours||
+
 # Feature-Selection
 Ackwnoledgement: we used scikit feature (added to the repo) for some of our baselines.
 https://github.com/jundongl
