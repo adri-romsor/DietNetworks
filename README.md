@@ -42,6 +42,9 @@ Partial subset|Our model uni|nbsvm uni|nbsvm uni+bi|nbsvm uni+bi+tri|
 |Model|Acc.|
 |-----|----|
 |Ours||
+|PCA||
+|K-means hard||
+|K-means soft||
 
 # Feature-Selection
 Ackwnoledgement: we used scikit feature (added to the repo) for some of our baselines.
