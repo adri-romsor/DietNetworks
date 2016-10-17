@@ -166,13 +166,14 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None):
     x = x.astype("float32")
 
     (x, y) = shuffle((x, y))
-    train, valid, test = split([x, y], label_splits)
 
     if transpose:
         import pdb; pdb.set_trace()
+        train, valid = split([x, y], label_splits)
         (transposed,) = shuffle((train[0].transpose(),))
         return split([train[0].transpose()], feature_splits)
     else:
+        train, valid, test = split([x, y], label_splits)
         return train, valid, test, None
 
 

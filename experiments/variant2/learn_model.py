@@ -224,7 +224,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         feat_emb = lasagne.layers.get_output(encoder_net)
         pred_feat_emb = theano.function([], feat_emb)
     else:
-        feat_emb_val = np.load(os.path.join(save_path, embedding_source)).items()[0][1]
+        feat_emb_val = np.load(os.path.join(save_path.rsplit('/', 1)[0],
+                                            embedding_source)).items()[0][1]
         feat_emb = theano.shared(feat_emb_val, 'feat_emb')
         encoder_net = InputLayer((n_feats, n_hidden_u[-1]), feat_emb)
 
@@ -329,12 +330,12 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     loss_det = loss_sup_det + gamma*reconst_loss_det
 
     # Compute network updates
-    updates = lasagne.updates.rmsprop(loss,
-                                      params,
-                                      learning_rate=lr)
-    # updates = lasagne.updates.sgd(loss,
-    #                               params,
-    #                               learning_rate=lr)
+    # updates = lasagne.updates.rmsprop(loss,
+    #                                   params,
+    #                                   learning_rate=lr)
+    updates = lasagne.updates.sgd(loss,
+                                  params,
+                                  learning_rate=lr)
     # updates = lasagne.updates.momentum(loss, params,
     #                                    learning_rate=lr, momentum=0.0)
 
@@ -419,6 +420,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             loss_epoch += train_fn(*batch)
             nb_minibatches += 1
 
+        loss_epoch /= nb_minibatches
+        train_loss += [loss_epoch]
+
         # Monitoring on the training set
         train_minibatches = iterate_minibatches(x_train, y_train,
                                                 batch_size, shuffle=False)
@@ -426,7 +430,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         train_err = monitoring(train_minibatches, "train", val_fn,
                                monitor_labels, prec_recall_cutoff)
 
-        train_loss += [train_err[0]]
+        # train_loss += [train_err[0]]
         train_loss_sup += [train_err[1]]
         train_reconst_loss += [train_err[2]]
         train_acc += [train_err[5]]
@@ -548,7 +552,7 @@ def main():
                         default=[100],
                         help='List of supervised hidden units.')
     parser.add_argument('--embedding_source',
-                        default=None,
+                        default=None, # 'our_model_aux/feature_embedding.npz',
                         help='Source for the feature embedding. Either' +
                              'None or the name of a file from which' +
                              'to load a learned embedding')
@@ -561,12 +565,12 @@ def main():
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=0.000001,
+                        default=0.0000005,
                         help="""Float to indicate learning rate.""")
     parser.add_argument('--learning_rate_annealing',
                         '-lra',
                         type=float,
-                        default=.99,
+                        default=1.0,
                         help="Float to indicate learning rate annealing rate.")
     parser.add_argument('--gamma',
                         '-g',
