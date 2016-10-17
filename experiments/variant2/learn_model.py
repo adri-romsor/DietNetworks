@@ -5,6 +5,7 @@ import argparse
 import time
 import os
 import random
+from distutils.dir_util import copy_tree
 
 import lasagne
 from lasagne.layers import DenseLayer, InputLayer, DropoutLayer, BatchNormLayer
@@ -223,7 +224,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         feat_emb = lasagne.layers.get_output(encoder_net)
         pred_feat_emb = theano.function([], feat_emb)
     else:
-        feat_emb_val = np.load(save_path + embedding_source).items()[0][1]
+        feat_emb_val = np.load(os.path.join(save_path, embedding_source)).items()[0][1]
         feat_emb = theano.shared(feat_emb_val, 'feat_emb')
         encoder_net = InputLayer((n_feats, n_hidden_u[-1]), feat_emb)
 
@@ -233,7 +234,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     for hid in n_hidden_t_enc:
         encoder_net_W_enc = DenseLayer(encoder_net_W_enc, num_units=hid,
                                        nonlinearity=tanh,
-                                       W=Uniform(encoder_net_init))
+                                       # W=Uniform(encoder_net_init)
+                                       )
     enc_feat_emb = lasagne.layers.get_output(encoder_net_W_enc)
 
     # f_theta' (ou W_dec)
@@ -241,7 +243,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     for hid in n_hidden_t_dec:
         encoder_net_W_dec = DenseLayer(encoder_net_W_dec, num_units=hid,
                                        nonlinearity=tanh,
-                                       W=Uniform(decoder_net_init))
+                                       # W=Uniform(decoder_net_init)
+                                       )
     dec_feat_emb = lasagne.layers.get_output(encoder_net_W_dec)
 
     # Supervised network
@@ -447,10 +450,10 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             patience = 0
 
             # Save stuff
-            np.savez(save_path+'model_feat_sel.npz',
+            np.savez(os.path.join(save_path, 'model_feat_sel.npz'),
                      *lasagne.layers.get_all_param_values([reconst_net,
                                                            discrim_net]))
-            np.savez(save_path + "errors_supervised.npz",
+            np.savez(os.path.join(save_path, "errors_supervised.npz"),
                      train_loss, train_loss_sup, train_acc, train_reconst_loss,
                      valid_loss, valid_loss_sup, valid_acc, valid_reconst_loss)
         else:
@@ -460,11 +463,11 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         if patience == max_patience or epoch == num_epochs-1:
             print("Ending training")
             # Load best model
-            if not os.path.exists(save_path + 'model_feat_sel.npz'):
+            if not os.path.exists(os.path.join(save_path, 'model_feat_sel.npz')):
                 print("No saved model to be tested and/or generate"
                       " the embedding !")
             else:
-                with np.load(save_path + 'model_feat_sel.npz',) as f:
+                with np.load(os.path.join(save_path, 'model_feat_sel.npz')) as f:
                     param_values = [f['arr_%d' % i]
                                     for i in range(len(f.files))]
                     nlayers = len(lasagne.layers.get_all_params([reconst_net,
@@ -475,7 +478,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             if not embedding_source:
                 # Save embedding
                 pred = pred_feat_emb()
-                np.savez(save_path+'feature_embedding.npz', pred)
+                np.savez(os.path.join(save_path,'feature_embedding.npz'), pred)
 
             # Test
             if y_test is not None:
@@ -491,7 +494,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                                      shuffle=False):
                     test_predictions = []
                     test_predictions += [predict(minibatch)]
-                np.savez(save_path+'test_predictions.npz', test_predictions)
+                np.savez(os.path.join(save_path, 'test_predictions.npz'),
+                                      test_predictions)
 
             # Stop
             print("  epoch time:\t\t\t{:.3f}s \n".format(time.time() -
@@ -557,17 +561,17 @@ def main():
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=0.00005,
+                        default=0.000001,
                         help="""Float to indicate learning rate.""")
     parser.add_argument('--learning_rate_annealing',
                         '-lra',
                         type=float,
-                        default=1.0,
+                        default=.99,
                         help="Float to indicate learning rate annealing rate.")
     parser.add_argument('--gamma',
                         '-g',
                         type=float,
-                        default=1.0,
+                        default=0.0,
                         help="""reconst_loss coeff.""")
     parser.add_argument('--disc_nonlinearity',
                         '-nl',
