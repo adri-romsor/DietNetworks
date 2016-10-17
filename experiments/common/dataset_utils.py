@@ -164,6 +164,8 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None):
     path = "/data/lisatmp4/romerosa/datasets/1000_Genome_project/"  # % user
     x, y = thousand_genomes.load_data(path)
     x = x.astype("float32")
+    
+    x = (x - x.mean(axis=0)[None, :]) / x.std(axis=0)[None, :]
 
     (x, y) = shuffle((x, y))
 
