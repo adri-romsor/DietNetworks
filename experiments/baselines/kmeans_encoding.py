@@ -26,6 +26,8 @@ def main(embedding_path, which_method="kmeans"):
 
         x_train = np.array(f['x_train_supervised'], dtype=np.float32)
         y_train = np.array(f['y_train_supervised'])
+        x_valid = np.array(f['x_valid_supervised'], dtype=np.float32)
+        y_valid = np.array(f['y_valid_supervised'])
         x_test = np.array(f['x_test_supervised'], dtype=np.float32)
         y_test = np.array(f['y_test_supervised'])
 
@@ -36,6 +38,8 @@ def main(embedding_path, which_method="kmeans"):
         # Encode using triangulation
         means = x_train.mean(1)
         new_x_train = np.maximum(means[:, None] - x_train, 0)
+        means = x_valid.mean(1)
+        new_x_valid = np.maximum(means[:, None] - x_valid, 0)
         means = x_test.mean(1)
         new_x_test = np.maximum(means[:, None] - x_test, 0)
 
@@ -44,10 +48,12 @@ def main(embedding_path, which_method="kmeans"):
         np.savez(file_name,
                  x_train_supervised=new_x_train,
                  y_train_supervised=y_train,
+                 x_valid_supervised=new_x_valid,
+                 y_valid_supervised=y_valid,
                  x_test_supervised=new_x_test,
                  y_test_supervised=y_test)
 
 if __name__ == '__main__':
 
-    embedding_path = "/data/lisatmp4/romerosa/feature_selection/"
+    embedding_path = "/data/lisatmp4/romerosa/feature_selection/1000_genomes/"
     main(embedding_path)
