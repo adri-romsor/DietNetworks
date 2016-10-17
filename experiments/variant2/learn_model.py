@@ -106,7 +106,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             num_epochs=500, learning_rate=.001, learning_rate_annealing=1.0,
             gamma=1, disc_nonlinearity="sigmoid", encoder_net_init=0.2,
             decoder_net_init=0.2, keep_labels=1.0, prec_recall_cutoff=True,
-            missing_labels_val=-1.0,
+            missing_labels_val=-1.0, early_stop_criterion='loss_sup_det',
             save_path='/Tmp/romerosa/feature_selection/newmodel/',
             dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/'):
 
@@ -373,11 +373,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     max_patience = 1000
     patience = 0
 
+    train_monitored = []
+    valid_monitored = []
     train_loss = []
-    valid_loss = []
-    valid_loss_sup = []
-    valid_reconst_loss = []
-    valid_acc = []
 
     # Pre-training monitoring
     print("Epoch 0 of {}".format(num_epochs))
@@ -413,8 +411,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         # Monitoring on the training set
         train_minibatches = iterate_minibatches(x_train, y_train,
                                                 batch_size, shuffle=False)
-        monitoring(train_minibatches, "train", val_fn, monitor_labels,
-                   prec_recall_cutoff)
+        train_err = monitoring(train_minibatches, "train", val_fn,
+                               monitor_labels, prec_recall_cutoff)
+        train_monitored += [train_err]
 
         # Monitoring on the validation set
         valid_minibatches = iterate_minibatches(x_valid, y_valid,
@@ -422,16 +421,26 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
         valid_err = monitoring(valid_minibatches, "valid", val_fn,
                                monitor_labels, prec_recall_cutoff)
-        valid_loss += [valid_err[0]]
-        valid_loss_sup += [valid_err[1]]
-        valid_acc += [valid_err[2]]
-        valid_reconst_loss += [valid_err[3]]
+        valid_monitored += [valid_err]
+        
+        # Monitoring on the test set
+        if y_test is not None:
+            test_minibatches = iterate_minibatches(x_test, y_test, batch_size,
+                                                   shuffle=False)
+            test_err = monitoring(test_minibatches, "test", val_fn,
+                                  monitor_labels, prec_recall_cutoff)
+        
+        try:
+            early_stop_val = valid_err[monitor_labels.index(early_stop_criterion)]
+        except:
+            raise ValueError("There is no monitored value by the name of %s" %
+                             early_stop_criterion)
 
         # Early stopping
         if epoch == 0:
-            best_valid = valid_loss[epoch]
-        elif valid_loss[epoch] < best_valid:
-            best_valid = valid_loss[epoch]
+            best_valid = early_stop_val
+        elif early_stop_val < best_valid:
+            best_valid = early_stop_val
             patience = 0
 
             # Save stuff
@@ -439,8 +448,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                      *lasagne.layers.get_all_param_values([reconst_net,
                                                            discrim_net]))
             np.savez(save_path + "errors_supervised.npz",
-                     train_loss, valid_loss, valid_loss_sup, valid_acc,
-                     valid_reconst_loss)
+                     zip(*train_monitored), zip(*valid_monitored))
         else:
             patience += 1
 
@@ -576,6 +584,9 @@ def main():
                         type=int,
                         help='Whether to compute the precision-recall cutoff' +
                              'or not')
+    parser.add_argument('--early_stop_criterion',
+                        default='loss_sup_det',
+                        help='What monitored variable to use for early-stopping')
     parser.add_argument('--save',
                         default='/Tmp/carriepl/feature_selection/v4/',
                         help='Path to save results.')
@@ -602,6 +613,7 @@ def main():
             args.decoder_net_init,
             args.keep_labels,
             args.prec_recall_cutoff != 0, -1,
+            args.early_stop_criterion,
             args.save,
             args.dataset_path)
 
