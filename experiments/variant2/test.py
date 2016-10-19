@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+#!/usr/bin/env python2
 
 from __future__ import print_function
 import argparse
@@ -15,13 +14,11 @@ from lasagne.nonlinearities import (sigmoid, softmax, tanh, linear, rectify,
 from lasagne.init import Uniform
 import numpy as np
 import theano
-from theano import config
 import theano.tensor as T
 
 from feature_selection.experiments.common import dataset_utils, imdb
 
-print ("config floatX: {}".format(config.floatX))
-
+import matplotlib.pyplot as plt
 
 # Mini-batch iterator function
 def iterate_minibatches(inputs, targets, batchsize,
@@ -104,7 +101,7 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels,
         cutoff = get_precision_recall_cutoff(predictions, targets)
         print ("  {} precis/recall cutoff:\t{:.6f}".format(which_set, cutoff))
 
-    return monitoring_values
+    return monitoring_values, predictions, targets
 
 
 # Main program
@@ -113,15 +110,13 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             num_epochs=500, learning_rate=.001, learning_rate_annealing=1.0,
             gamma=1, disc_nonlinearity="sigmoid", encoder_net_init=0.2,
             decoder_net_init=0.2, keep_labels=1.0, prec_recall_cutoff=True,
-            missing_labels_val=-1.0, which_fold=0, early_stop_criterion='loss_sup_det',
-            save_path='/Tmp/romerosa/feature_selection/newmodel/',
+            missing_labels_val=-1.0, early_stop_criterion='loss_sup_det',
             save_copy='/Tmp/romerosa/feature_selection/',
             dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/'):
 
     # Load the dataset
     print("Loading data")
-    # This will split the training data into 60% train, 20% valid, 20% test
-    splits = [.6, .2]
+    splits = [0.6, 0.2]  # This will split the data into [60%, 20%, 20%]
 
     if dataset == 'protein_binding':
         data = dataset_utils.load_protein_binding(transpose=False,
@@ -133,51 +128,17 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     elif dataset == 'reuters':
         data = dataset_utils.load_reuters(transpose=False, splits=splits)
     elif dataset == 'iric_molecule':
-        data = dataset_utils.load_iric_molecules(
-            transpose=False, splits=splits)
+        data = dataset_utils.load_iric_molecules(transpose=False, splits=splits)
     elif dataset == 'imdb':
-        dataset_path = os.path.join(dataset_path, "imdb")
-        feat_type = "tfidf"
-        unsupervised = False
-
-        print ("Loading imdb")
-        if unsupervised:
-            file_name = os.path.join(
-                dataset_path,
-                'unsupervised_IMDB_' + feat_type + '_table_split80.hdf5')
-        else:
-            file_name = os.path.join(
-                dataset_path,
-                'supervised_IMDB_' + feat_type + '_table_split80.hdf5')
-
-        # This is in order to copy dataset if it doesn't exist
-        # import ipdb; ipdb.set_trace()
-        print (file_name)
-        print (os.path.isfile(file_name))
-
-        if not os.path.isfile(file_name):
-            print ("Saving dataset to path")
-            imdb.save_as_hdf5(
-                path=dataset_path,
-                unsupervised=unsupervised,
-                feat_type=feat_type,
-                use_tables=False)
-            print ("Done saving dataset")
+        dataset_path = os.path.join(dataset_path,"imdb")
         # use feat_type='tfidf' to load tfidf features
-        data = imdb.read_from_hdf5(
-            path=dataset_path, unsupervised=unsupervised, feat_type=feat_type)
-
+        data = imdb.read_from_hdf5(path=dataset_path,unsupervised=False, feat_type='tfidf')
     elif dataset == 'dragonn':
         from feature_selection.experiments.common import dragonn_data
         data = dragonn_data.load_data(500, 100, 100)
     elif dataset == '1000_genomes':
-        # This will split the training data into 75% train, 25%
-        # this corresponds to the split 60/20 of the whole data,
-        # test is considered elsewhere as an extra 20% of the whole data
-        splits = [.75]
         data = dataset_utils.load_1000_genomes(transpose=False,
-                                               label_splits=splits,
-                                               fold=which_fold)
+                                               label_splits=splits)
     else:
         print("Unknown dataset")
         return
@@ -206,25 +167,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     else:
         x_unsup = None
 
-    # If needed, remove some of the training labels
-    if keep_labels <= 1.0:
-        training_labels = y_train.copy()
-        random.seed(23)
-        nb_train = len(training_labels)
-
-        indices = range(nb_train)
-        random.shuffle(indices)
-
-        indices_discard = indices[:int(nb_train * (1 - keep_labels))]
-        for idx in indices_discard:
-            training_labels[idx] = missing_labels_val
-    else:
-        training_labels = y_train
-
     # Extract required information from data
     n_samples, n_feats = x_train.shape
-    print("Number of features : ", n_feats)
-    print("Glorot init : ", 2.0 / (n_feats + n_hidden_t_enc[-1]))
     n_targets = y_train.shape[1]
 
     # Set some variables
@@ -233,24 +177,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Preparing folder to save stuff
     exp_name = 'our_model' + str(keep_labels) + '_sup' + \
         ('_unsup' if gamma > 0 else '')
-    exp_name += '_hu'
-    for i in range(len(n_hidden_u)):
-        exp_name += ("-" + str(n_hidden_u[i]))
-    exp_name += '_tenc'
-    for i in range(len(n_hidden_t_enc)):
-        exp_name += ("-" + str(n_hidden_t_enc[i]))
-    exp_name += '_tdec'
-    for i in range(len(n_hidden_t_dec)):
-        exp_name += ("-" + str(n_hidden_t_dec[i]))
-    exp_name += '_hs'
-    for i in range(len(n_hidden_s)):
-        exp_name += ("-" + str(n_hidden_s[i]))
-    exp_name += '_fold' + str(which_fold)
-    print("Experiment: " + exp_name)
-    save_path = os.path.join(save_path, dataset, exp_name)
     save_copy = os.path.join(save_copy, dataset, exp_name)
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
 
     # Prepare Theano variables for inputs and targets
     input_var_sup = T.matrix('input_sup')
@@ -269,18 +196,12 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     assert n_hidden_t_dec[-1] == n_hidden_t_enc[-1]
 
     # Build unsupervised network
-    if not embedding_source:
-        encoder_net = InputLayer((n_feats, n_samples_unsup), input_var_unsup)
-        for i, out in enumerate(n_hidden_u):
-            encoder_net = DenseLayer(encoder_net, num_units=out,
-                                     nonlinearity=rectify)
-        feat_emb = lasagne.layers.get_output(encoder_net)
-        pred_feat_emb = theano.function([], feat_emb)
-    else:
-        feat_emb_val = np.load(os.path.join(save_path.rsplit('/', 1)[0],
-                                            embedding_source)).items()[0][1]
-        feat_emb = theano.shared(feat_emb_val, 'feat_emb')
-        encoder_net = InputLayer((n_feats, n_hidden_u[-1]), feat_emb)
+    encoder_net = InputLayer((n_feats, n_samples_unsup), input_var_unsup)
+    for i, out in enumerate(n_hidden_u):
+        encoder_net = DenseLayer(encoder_net, num_units=out,
+                                 nonlinearity=rectify)
+    feat_emb = lasagne.layers.get_output(encoder_net)
+    pred_feat_emb = theano.function([], feat_emb)
 
     # Build transformations (f_theta, f_theta') network and supervised network
     # f_theta (ou W_enc)
@@ -321,91 +242,20 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                              nonlinearity=eval(disc_nonlinearity))
 
     print("Building and compiling training functions")
-    # Some variables
-    loss_sup = 0
-    loss_sup_det = 0
-
     # Build and compile training functions
-
-    prediction = lasagne.layers.get_output(discrim_net)
     prediction_det = lasagne.layers.get_output(discrim_net,
                                                deterministic=True)
 
-    # Supervised loss
-    if disc_nonlinearity == "sigmoid":
-        loss_sup = lasagne.objectives.binary_crossentropy(
-            prediction, target_var_sup)
-        loss_sup_det = lasagne.objectives.binary_crossentropy(
-            prediction_det, target_var_sup)
-    elif disc_nonlinearity == "softmax":
-        loss_sup = lasagne.objectives.categorical_crossentropy(prediction,
-                                                               target_var_sup)
-        loss_sup_det = lasagne.objectives.categorical_crossentropy(prediction_det,
-                                                                   target_var_sup)
-    elif disc_nonlinearity in ["linear", "rectify"]:
-        loss_sup = lasagne.objectives.squared_error(
-            prediction, target_var_sup)
-        loss_sup_det = lasagne.objectives.squared_error(
-            prediction_det, target_var_sup)
-    else:
-        raise ValueError("Unsupported non-linearity")
-
-    # If some labels are missing, mask the appropriate losses before taking
-    # the mean.
-    if keep_labels < 1.0:
-        mask = T.neq(target_var_sup, missing_labels_val)
-        scale_factor = 1.0 / mask.mean()
-        loss_sup = (loss_sup * mask) * scale_factor
-        loss_sup_det = (loss_sup_det * mask) * scale_factor
-    loss_sup = loss_sup.mean()
-    loss_sup_det = loss_sup_det.mean()
-
     inputs = [input_var_sup, target_var_sup]
-
-    # Unsupervised reconstruction loss
-    reconstruction = lasagne.layers.get_output(reconst_net)
-    reconstruction_det = lasagne.layers.get_output(reconst_net,
-                                                   deterministic=True)
-    reconst_loss = lasagne.objectives.squared_error(
-        reconstruction,
-        input_var_sup).mean()
-    reconst_loss_det = lasagne.objectives.squared_error(
-        reconstruction_det,
-        input_var_sup).mean()
 
     params = lasagne.layers.get_all_params([discrim_net, reconst_net,
                                             encoder_net_W_dec,
                                             encoder_net_W_enc],
                                            trainable=True)
 
-    # Combine losses
-    loss = loss_sup + gamma*reconst_loss
-    loss_det = loss_sup_det + gamma*reconst_loss_det
-
-    # Compute network updates
-    updates = lasagne.updates.rmsprop(loss,
-                                      params,
-                                      learning_rate=lr)
-    # updates = lasagne.updates.sgd(loss,
-    #                               params,
-    #                               learning_rate=lr)
-    # updates = lasagne.updates.momentum(loss, params,
-    #                                    learning_rate=lr, momentum=0.0)
-
-    # Apply norm constraints on the weights
-    for k in updates.keys():
-        if updates[k].ndim == 2:
-            updates[k] = lasagne.updates.norm_constraint(updates[k], 1.0)
-
-    # Compile training function
-    train_fn = theano.function(inputs, loss, updates=updates,
-                               on_unused_input='ignore')
-
     # Expressions required for test
-    monitor_labels = ["total_loss_det", "loss_sup_det", "recon. loss",
-                      "enc_w_mean", "enc_w_var"]
-    val_outputs = [loss_det, loss_sup_det, reconst_loss_det,
-                   enc_feat_emb.mean(), enc_feat_emb.var()]
+    monitor_labels = []
+    val_outputs = []
 
     if disc_nonlinearity in ["sigmoid", "softmax"]:
         if disc_nonlinearity == "sigmoid":
@@ -430,160 +280,36 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                              on_unused_input='ignore')
 
     # Finally, launch the training loop.
-    print("Starting training...")
+    print("Starting testing...")
 
-    # Some variables
-    max_patience = 100
-    patience = 0
+    # Load best model
+    with np.load(os.path.join(save_copy, 'model_feat_sel.npz')) as f:
+        param_values = [f['arr_%d' % i] for i in range(len(f.files))]
+        lasagne.layers.set_all_param_values([reconst_net,
+                                             discrim_net],
+                                            param_values)
 
-    train_monitored = []
-    valid_monitored = []
-    train_loss = []
+    test_minibatches = iterate_minibatches(x_test, y_test, batch_size,
+                                           shuffle=False)
 
-    # Pre-training monitoring
-    print("Epoch 0 of {}".format(num_epochs))
+    test_err, pred, lab = monitoring(test_minibatches, "test", val_fn,
+                                     monitor_labels, prec_recall_cutoff)
 
-    train_minibatches = iterate_minibatches(x_train, y_train,
-                                            batch_size, shuffle=False)
+    lab = lab.argmax(1)
+    pred_argmax = pred.argmax(1)
 
-    train_errr = monitoring(train_minibatches, "train", val_fn, monitor_labels,
-                            prec_recall_cutoff)
+    cm = np.zeros((26, 26))
 
-    valid_minibatches = iterate_minibatches(x_valid, y_valid,
-                                            batch_size, shuffle=False)
-    valid_err = monitoring(valid_minibatches, "valid", val_fn, monitor_labels,
-                           prec_recall_cutoff)
+    for i in range(26):
+        for j in range(26):
+            cm[i, j] = ((pred_argmax == i) * (lab == j)).sum()
 
-    # Training loop
-    start_training = time.time()
-    for epoch in range(num_epochs):
-        start_time = time.time()
-        print("Epoch {} of {}".format(epoch+1, num_epochs))
-        nb_minibatches = 0
-        loss_epoch = 0
+    np.savez(os.path.join(save_copy, 'cm.npz'), cm)
 
-        # Train pass
-        for batch in iterate_minibatches(x_train, training_labels,
-                                         batch_size,
-                                         shuffle=True):
-            loss_epoch += train_fn(*batch)
-            nb_minibatches += 1
+    print(os.path.join(save_copy, 'cm.npz'))
 
-        loss_epoch /= nb_minibatches
-        train_loss += [loss_epoch]
-
-        # Monitoring on the training set
-        train_minibatches = iterate_minibatches(x_train, y_train,
-                                                batch_size, shuffle=False)
-        train_err = monitoring(train_minibatches, "train", val_fn,
-                               monitor_labels, prec_recall_cutoff)
-        train_monitored += [train_err]
-
-        # Monitoring on the validation set
-        valid_minibatches = iterate_minibatches(x_valid, y_valid,
-                                                batch_size, shuffle=False)
-
-        valid_err = monitoring(valid_minibatches, "valid", val_fn,
-                               monitor_labels, prec_recall_cutoff)
-        valid_monitored += [valid_err]
-
-        # Monitoring on the test set
-        if y_test is not None:
-            test_minibatches = iterate_minibatches(x_test, y_test, batch_size,
-                                                   shuffle=False)
-            test_err = monitoring(test_minibatches, "test", val_fn,
-                                  monitor_labels, prec_recall_cutoff)
-
-        try:
-            early_stop_val = valid_err[monitor_labels.index(early_stop_criterion)]
-        except:
-            raise ValueError("There is no monitored value by the name of %s" %
-                             early_stop_criterion)
-
-        # Early stopping
-        if epoch == 0:
-            best_valid = early_stop_val
-        elif early_stop_val > best_valid: # be careful with that!!
-            best_valid = early_stop_val
-            patience = 0
-
-            # Save stuff
-            np.savez(os.path.join(save_path, 'model_feat_sel.npz'),
-                     *lasagne.layers.get_all_param_values([reconst_net,
-                                                           discrim_net]))
-            np.savez(save_path + "errors_supervised.npz",
-                     zip(*train_monitored), zip(*valid_monitored))
-        else:
-            patience += 1
-
-        # End training
-        if patience == max_patience or epoch == num_epochs-1:
-            print("Ending training")
-            # print "Patience %i" % (patience)
-            # print "Max patience %i" % (max_patience)
-            # print "Epoch %i" % (epoch)
-            # print "Num epochs %i" % (num_epochs)
-
-            # Load best model
-            with np.load(os.path.join(save_path, 'model_feat_sel.npz')) as f:
-                param_values = [f['arr_%d' % i]
-                                for i in range(len(f.files))]
-            nlayers = len(lasagne.layers.get_all_params([reconst_net,
-                                                        discrim_net]))
-            lasagne.layers.set_all_param_values([reconst_net,
-                                                discrim_net],
-                                                param_values[:nlayers])
-            if embedding_source is None:
-                # Save embedding
-                pred = pred_feat_emb()
-                np.savez(os.path.join(save_path, 'feature_embedding.npz'), pred)
-
-            # Test
-            if y_test is not None:
-                test_minibatches = iterate_minibatches(x_test, y_test,
-                                                       batch_size,
-                                                       shuffle=False)
-
-                test_err = monitoring(test_minibatches, "test", val_fn,
-                                      monitor_labels, prec_recall_cutoff)
-            else:
-                for minibatch in iterate_testbatches(x_test,
-                                                     batch_size,
-                                                     shuffle=False):
-                    test_predictions = []
-                    test_predictions += [predict(minibatch)]
-                np.savez(os.path.join(save_path, 'test_predictions.npz'),
-                                      test_predictions)
-
-            train_minibatches = iterate_minibatches(x_train, y_train,
-                                                    batch_size,
-                                                    shuffle=False)
-            train_err = monitoring(train_minibatches, "train", val_fn,
-                                   monitor_labels, prec_recall_cutoff)
-
-            valid_minibatches = iterate_minibatches(x_valid, y_valid,
-                                                    batch_size,
-                                                    shuffle=False)
-            valid_err = monitoring(valid_minibatches, "valid", val_fn,
-                                   monitor_labels, prec_recall_cutoff)
-            # Stop
-            print("  epoch time:\t\t\t{:.3f}s \n".format(time.time() -
-                                                         start_time))
-            break
-
-        print("  epoch time:\t\t\t{:.3f}s \n".format(time.time() - start_time))
-
-        # Anneal the learning rate
-        lr.set_value(float(lr.get_value() * learning_rate_annealing))
-
-    # Print all final errors for train, validation and test
-    print("Training time:\t\t\t{:.3f}s".format(time.time() - start_training))
-
-    # Copy files to loadpath
-    if save_path != save_copy:
-        print('Copying model and other training files to {}'.format(save_copy))
-        copy_tree(save_path, save_copy)
-
+    # plt.imshow(cm)
+    # plt.show()
 
 def parse_int_list_arg(arg):
     if isinstance(arg, str):
@@ -605,16 +331,16 @@ def main():
                         default='1000_genomes',
                         help='Dataset.')
     parser.add_argument('--n_hidden_u',
-                        default=[30],
+                        default=[100],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--n_hidden_t_enc',
-                        default=[30],
+                        default=[100],
                         help='List of theta transformation hidden units.')
     parser.add_argument('--n_hidden_t_dec',
-                        default=[30],
+                        default=[100],
                         help='List of theta_prime transformation hidden units')
     parser.add_argument('--n_hidden_s',
-                        default=[30],
+                        default=[100],
                         help='List of supervised hidden units.')
     parser.add_argument('--embedding_source',
                         default=None, # 'our_model_aux/feature_embedding.npz',
@@ -664,19 +390,11 @@ def main():
                         help='Fraction of training labels to keep')
     parser.add_argument('--prec_recall_cutoff',
                         type=int,
-                        default=0,
                         help='Whether to compute the precision-recall cutoff' +
                              'or not')
-    parser.add_argument('--which_fold',
-                        type=int,
-                        default=0,
-                        help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--early_stop_criterion',
                         default='accuracy',
                         help='What monitored variable to use for early-stopping')
-    parser.add_argument('--save_tmp',
-                        default='/Tmp/'+ os.environ["USER"]+'/feature_selection/',
-                        help='Path to save results.')
     parser.add_argument('--save_perm',
                         default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/',
                         help='Path to save results.')
@@ -703,9 +421,7 @@ def main():
             args.decoder_net_init,
             args.keep_labels,
             args.prec_recall_cutoff != 0, -1,
-            args.which_fold,
             args.early_stop_criterion,
-            args.save_tmp,
             args.save_perm,
             args.dataset_path)
 

@@ -158,21 +158,40 @@ def load_iric_molecules(transpose=False, splits=None):
         return train, valid, test, None
 
 
-def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None):
-    
-    user = os.getenv("USER")
-    path = "/Tmp/%s/Genomics_Datasets/1000_Genome_project/" % user
+def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
+                      fold=0):
+
+    # user = os.getenv("USER")
+    path = "/data/lisatmp4/romerosa/datasets/1000_Genome_project/"  # % user
     x, y = thousand_genomes.load_data(path)
     x = x.astype("float32")
-    
+
+    x = (x - x.mean(axis=0)[None, :]) / x.std(axis=0)[None, :]
+
     (x, y) = shuffle((x, y))
-    train, valid, test = split([x, y], label_splits)
-    
+
     if transpose:
-        import pdb; pdb.set_trace()
+        # This will only be used for unsupervised pretraining
+        assert len(feature_splits) == 1 # train/valid split
+        train, valid = split([x, y], label_splits)
         (transposed,) = shuffle((train[0].transpose(),))
         return split([train[0].transpose()], feature_splits)
     else:
+        # This will only be used for supervised training
+        assert len(label_splits) == 1 # train/valid split
+        # 5-fold cross validation: this means that test will always be 20%
+        all_folds = split([x, y], [.2, .2, .2, .2])
+        assert fold >= 0
+        assert fold < 5
+
+        # Separate choosen test set
+        test = all_folds[fold]
+        all_folds = all_folds[:fold] + all_folds[(fold + 1):]
+
+        # Prepare training and validation sets
+        x = numpy.concatenate([el[0] for el in all_folds])
+        y = numpy.concatenate([el[1] for el in all_folds])
+        train, valid = split([x, y], label_splits)
         return train, valid, test, None
 
 

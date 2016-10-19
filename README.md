@@ -8,6 +8,16 @@
 
 What we would like to see: regular-AE MLP overfits whereas weight-aux-model does not.
 
+**TODO:**
+- [x] 5-fold cross-validation code
+- [ ] Reduce number of free parameters on our model
+- [ ] Change N values coming from N subjects (feature representation input) and use some stat information instead (mean, var, min, max...) to reduce the number of parameters of the auxiliary network.
+- [ ] Add hierarchical softmax to take into account continental ethnicities
+- [ ] Literature review from ML perspective, what has been done so far to address this problem?
+- [ ] Add skip connections?
+- [ ] BN
+- [ ] L2 reg
+
 **IMBD comparison:**
 - [x] Run experiments on https://github.com/mesnilgr/nbsvm using uni/bi/tri grams.
 - [x] Run experiments on https://github.com/libofang/DV-ngram using uni/bi/tri grams (results non-reproducible).
@@ -16,7 +26,7 @@ What we would like to see: regular-AE MLP overfits whereas weight-aux-model does
 **1000 genomes:**
 - [x] Wrap dataset
 - [ ] Run experiments with different number of labeled samples
-- [ ] Run PCA/k-means baselines (ongoing)
+- [x] Run PCA/k-means baselines (ongoing)
 
 # Results
 
@@ -39,12 +49,20 @@ Partial subset|Our model uni|nbsvm uni|nbsvm uni+bi|nbsvm uni+bi+tri|
 
 **100 Genomes:**
 
-|Model|Acc.|
-|-----|----|
-|Ours|88.91%|
-|PCA||
-|K-means hard||
-|K-means soft||
+|Model|Acc.train|Acc.val|Acc.test| Params | # free params |
+|-----|---------|-------|--------|--------|---------------|
+|Ours sup |100.%|90.63%|90%| 100(hu) 100(tenc) 100(tdec) 100-26(hsup)| |
+|Ours sup |100.%|89.69%|88.91%| 50(hu) 100(tenc) 100(tdec) 100-26(hsup)| |
+|Ours sup |99.95%|83.44%|81.56%| 10-50-100(hu) 100(tenc) 100(tdec) 100-26(hsup)| |
+|Basic sup|96.63%|56.53%|62.03% | | |
+|Basic sup+unsup|99.22%|68.44%|66.41% | | |
+|PCA +  MLP|99.5%|86.67%|83.77%|||
+|K-means soft|69.13%|64.93%|66.67%|||
+
+
+*Some results on 1000 genomes*
+
+![image](./images/cm.png)
 
 # Feature-Selection
 Ackwnoledgement: we used scikit feature (added to the repo) for some of our baselines.

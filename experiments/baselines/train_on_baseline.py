@@ -1,9 +1,11 @@
+#!/usr/bin/env python2
+
 import os
 
 from featsel_supervised import execute
 
 
-def main(embedding_path, which_method="pca"):
+def main(embedding_path, n_classes, which_method="pca", enc='triangle'):
 
     print "Starting main loop"
     embedding_methods = []
@@ -16,7 +18,7 @@ def main(embedding_path, which_method="pca"):
 
     if which_method == "kmeans":
         embedding_methods = [emb for emb in embedding_methods if
-                             "hard" in emb]
+                             enc in emb]
 
     print "Embedding methods: {}".format(embedding_methods)
     mod = 1
@@ -26,13 +28,17 @@ def main(embedding_path, which_method="pca"):
         for embedding in embedding_methods:
             print "Training model %s: lr %d out of %d" % \
                     (embedding, mod, len(lr_candidates))
-            execute(embedding, num_epochs=1000, split_valid=.2,
-                    lr_value=lr_value,
-                    save_path=embedding_path)
+            execute(embedding, num_epochs=200, lr_value=lr_value,
+                    n_classes=n_classes, save_path=embedding_path)
         mod += 1
 
 if __name__ == '__main__':
 
     # embedding_path = "/data/lisatmp4/sylvaint/data/feature_selection/"
     embedding_path = "/data/lisatmp4/romerosa/feature_selection/"
-    main(embedding_path, "kmeans")
+    dataset = '1000_genomes'
+    n_classes = 26
+
+    embedding_path = os.path.join(embedding_path, dataset)
+
+    main(embedding_path, n_classes, "kmeans", enc="hard")
