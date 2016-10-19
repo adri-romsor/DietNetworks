@@ -109,14 +109,15 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             num_epochs=500, learning_rate=.001, learning_rate_annealing=1.0,
             gamma=1, disc_nonlinearity="sigmoid", encoder_net_init=0.2,
             decoder_net_init=0.2, keep_labels=1.0, prec_recall_cutoff=True,
-            missing_labels_val=-1.0, early_stop_criterion='loss_sup_det',
+            missing_labels_val=-1.0, which_fold=0, early_stop_criterion='loss_sup_det',
             save_path='/Tmp/romerosa/feature_selection/newmodel/',
             save_copy='/Tmp/romerosa/feature_selection/',
             dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/'):
 
     # Load the dataset
     print("Loading data")
-    splits = [0.6, 0.2]  # This will split the data into [60%, 20%, 20%]
+    # This will split the training data into 60% train, 20% valid, 20% test
+    splits = [.6, .2]
 
     if dataset == 'protein_binding':
         data = dataset_utils.load_protein_binding(transpose=False,
@@ -137,8 +138,13 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         from feature_selection.experiments.common import dragonn_data
         data = dragonn_data.load_data(500, 100, 100)
     elif dataset == '1000_genomes':
+        # This will split the training data into 75% train, 25%
+        # this corresponds to the split 60/20 of the whole data,
+        # test is considered elsewhere as an extra 20% of the whole data
+        splits = [.75]
         data = dataset_utils.load_1000_genomes(transpose=False,
-                                               label_splits=splits)
+                                               label_splits=splits,
+                                               fold=which_fold)
     else:
         print("Unknown dataset")
         return
@@ -194,6 +200,20 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Preparing folder to save stuff
     exp_name = 'our_model' + str(keep_labels) + '_sup' + \
         ('_unsup' if gamma > 0 else '')
+    exp_name += '_hu'
+    for i in range(len(n_hidden_u)):
+        exp_name += ("-" + str(n_hidden_u[i]))
+    exp_name += '_tenc'
+    for i in range(len(n_hidden_t_enc)):
+        exp_name += ("-" + str(n_hidden_t_enc[i]))
+    exp_name += '_tdec'
+    for i in range(len(n_hidden_t_dec)):
+        exp_name += ("-" + str(n_hidden_t_dec[i]))
+    exp_name += '_hs'
+    for i in range(len(n_hidden_s)):
+        exp_name += ("-" + str(n_hidden_s[i]))
+    exp_name += '_fold' + str(which_fold)
+    print("Experiment: " + exp_name)
     save_path = os.path.join(save_path, dataset, exp_name)
     save_copy = os.path.join(save_copy, dataset, exp_name)
     if not os.path.exists(save_path):
@@ -551,16 +571,16 @@ def main():
                         default='1000_genomes',
                         help='Dataset.')
     parser.add_argument('--n_hidden_u',
-                        default=[10],
+                        default=[30],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--n_hidden_t_enc',
-                        default=[10],
+                        default=[30],
                         help='List of theta transformation hidden units.')
     parser.add_argument('--n_hidden_t_dec',
-                        default=[10],
+                        default=[30],
                         help='List of theta_prime transformation hidden units')
     parser.add_argument('--n_hidden_s',
-                        default=[10],
+                        default=[30],
                         help='List of supervised hidden units.')
     parser.add_argument('--embedding_source',
                         default=None, # 'our_model_aux/feature_embedding.npz',
@@ -610,8 +630,13 @@ def main():
                         help='Fraction of training labels to keep')
     parser.add_argument('--prec_recall_cutoff',
                         type=int,
+                        default=0,
                         help='Whether to compute the precision-recall cutoff' +
                              'or not')
+    parser.add_argument('--which_fold',
+                        type=int,
+                        default=0,
+                        help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--early_stop_criterion',
                         default='accuracy',
                         help='What monitored variable to use for early-stopping')
@@ -644,6 +669,7 @@ def main():
             args.decoder_net_init,
             args.keep_labels,
             args.prec_recall_cutoff != 0, -1,
+            args.which_fold,
             args.early_stop_criterion,
             args.save_tmp,
             args.save_perm,

@@ -10,7 +10,7 @@ def plot(dataset, which_set):
 
     if dataset == '1000_genomes':
         data = dataset_utils.load_1000_genomes(transpose=False,
-                                               label_splits=[.6, .2])
+                                               label_splits=[.75])
     else:
         print("Unknown dataset")
         return
