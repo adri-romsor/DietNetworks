@@ -303,6 +303,7 @@ def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
 def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
                  feat_type='BoW', use_tables=True, split=0.8):
     if not os.path.exists(path):
+        print 'making directory: {}'.format(path)
         os.makedirs(path)
     if unsupervised:
         train_data, _, unlab_data, _ = load_imdb(feat_type=feat_type)
