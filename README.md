@@ -9,6 +9,7 @@
 What we would like to see: regular-AE MLP overfits whereas weight-aux-model does not.
 
 **TODO:**
+- [x] 5-fold cross-validation code
 - [ ] Reduce number of free parameters on our model
 - [ ] Change N values coming from N subjects (feature representation input) and use some stat information instead (mean, var, min, max...) to reduce the number of parameters of the auxiliary network.
 - [ ] Add hierarchical softmax to take into account continental ethnicities
