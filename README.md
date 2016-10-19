@@ -13,6 +13,7 @@ What we would like to see: regular-AE MLP overfits whereas weight-aux-model does
 - [ ] Change N values coming from N subjects (feature representation input) and use some stat information instead (mean, var, min, max...) to reduce the number of parameters of the auxiliary network.
 - [ ] Add hierarchical softmax to take into account continental ethnicities
 - [ ] Literature review from ML perspective, what has been done so far to address this problem?
+- [ ] Add skip connections?
 
 **IMBD comparison:**
 - [x] Run experiments on https://github.com/mesnilgr/nbsvm using uni/bi/tri grams.
