@@ -1,3 +1,5 @@
+#!/usr/bin/env python2
+
 from __future__ import print_function
 import argparse
 import time
@@ -91,6 +93,11 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
 
     # Preparing folder to save stuff
     exp_name = 'our_model_aux_' + str(learning_rate)
+    exp_name += '_hu'
+    for i in range(len(n_hidden_u)):
+        exp_name += ("-" + str(n_hidden_u[i]))
+    print('Experiment: ' + exp_name)
+
     save_path = os.path.join(save_path, dataset, exp_name)
     save_copy = os.path.join(save_copy, dataset, exp_name)
     if not os.path.exists(save_path):
@@ -342,7 +349,7 @@ def main():
                         default='1000_genomes',
                         help='Dataset.')
     parser.add_argument('--n_hidden_u',
-                        default=[100],
+                        default=[10, 10, 10],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--unsupervised',
                         default=['autoencoder'],
@@ -352,7 +359,7 @@ def main():
     parser.add_argument('--num_epochs',
                         '-ne',
                         type=int,
-                        default=100,
+                        default=500,
                         help="""Int to indicate the max'
                         'number of epochs.""")
     parser.add_argument('--learning_rate',

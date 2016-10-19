@@ -41,7 +41,7 @@ def main(results_path, which_method="pca", enc='triangle', n_comps=None):
              best_err=best_res,
              n_comps=n_comps)
 
-    for m in range(3, len(metrics)):
+    for m in range(3, len(metrics)-1):
         plt.plot(n_comps, best_res[m, :], colors[m], label=metrics[m])
 
     plt.axis([0, n_comps[-1]+100, 0.4, 1.0])
@@ -53,9 +53,14 @@ if __name__ == '__main__':
     results_path = \
         "/data/lisatmp4/romerosa/feature_selection/1000_genomes/results/"
 
-    n_comps = [1, 2, 5, 10, 20, 50, 100, 200, 400, 600, 800, 1000, 1200,
-               1400, 1600, 2000, 2400, 2600, 2760]
+    which_method = 'pca'
 
-    n_comps = [1, 2, 5, 10, 20, 50, 100, 200, 500]
+    if which_method == 'pca':
+        n_comps = [1, 2, 5, 10, 20, 50, 100, 200, 400, 600, 800, 1000, 1200,
+                   1400, 1600, 2000, 2400, 2600, 2760]
+    elif which_method == 'kmeans':
+        n_comps = [1, 2, 5, 10, 20, 50, 100, 200, 500]
+    else:
+        raise ValueError('Unknown method')
 
-    main(results_path, which_method="kmeans", enc='triangle', n_comps=n_comps)
+    main(results_path, which_method=which_method, enc='triangle', n_comps=n_comps)
