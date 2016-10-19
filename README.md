@@ -48,13 +48,15 @@ Partial subset|Our model uni|nbsvm uni|nbsvm uni+bi|nbsvm uni+bi+tri|
 
 **100 Genomes:**
 
-|Model|Acc.| Model | # free params |
-|-----|----|-------|---------------|
-|Ours sup |90%| 100(hu) 100(tenc) 100(tdec) 100,26(hsup)| |
-|Basic sup|62.03% | | |
-|Basic sup+unsup|66.41% | | |
-|PCA +  MLP|83.77%|||
-|K-means soft|66.67%|||
+|Model|Acc.train|Acc.val|Acc.test| Params | # free params |
+|-----|---------|-------|--------|--------|---------------|
+|Ours sup |100.%|90.63%|90%| 100(hu) 100(tenc) 100(tdec) 100-26(hsup)| |
+|Ours sup |100.%|89.69%|88.91%| 50(hu) 100(tenc) 100(tdec) 100-26(hsup)| |
+|Ours sup |99.95%|83.44%|81.56%| 10-50-100(hu) 100(tenc) 100(tdec) 100-26(hsup)| |
+|Basic sup|96.63%|56.53%|62.03% | | |
+|Basic sup+unsup|99.22%|68.44%|66.41% | | |
+|PCA +  MLP|99.5%|86.67%|83.77%|||
+|K-means soft|69.13%|64.93%|66.67%|||
 
 
 *Some results on 1000 genomes*
