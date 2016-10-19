@@ -14,6 +14,8 @@ What we would like to see: regular-AE MLP overfits whereas weight-aux-model does
 - [ ] Add hierarchical softmax to take into account continental ethnicities
 - [ ] Literature review from ML perspective, what has been done so far to address this problem?
 - [ ] Add skip connections?
+- [ ] BN
+- [ ] L2 reg
 
 **IMBD comparison:**
 - [x] Run experiments on https://github.com/mesnilgr/nbsvm using uni/bi/tri grams.
