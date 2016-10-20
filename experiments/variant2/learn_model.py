@@ -88,7 +88,7 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels,
     monitoring_values /= global_batches
     for (label, val) in zip(monitoring_labels, monitoring_values):
         print ("  {} {}:\t\t{:.6f}".format(which_set, label, val))
-        
+
     # If needed, compute and print the precision-recall breakoff point
     if prec_recall_cutoff:
         predictions = np.vstack(predictions)
@@ -228,7 +228,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     for hid in n_hidden_s:
         discrim_net = BatchNormLayer(discrim_net)
         discrim_net = DenseLayer(discrim_net, num_units=hid)
-        
+
     assert disc_nonlinearity in ["sigmoid", "linear", "rectify"]
     discrim_net = DenseLayer(discrim_net, num_units=n_targets,
                              nonlinearity=eval(disc_nonlinearity))
@@ -326,11 +326,11 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Pre-training monitoring
     print("Epoch 0 of {}".format(num_epochs))
-    
+
     train_minibatches = iterate_minibatches(x_train, y_train,
                                             batch_size, shuffle=False)
     monitoring(train_minibatches, "train", val_fn, monitor_labels)
-    
+
     valid_minibatches = iterate_minibatches(x_valid, y_valid,
                                             batch_size, shuffle=False)
     valid_err = monitoring(valid_minibatches, "valid", val_fn, monitor_labels)
@@ -440,7 +440,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 def parse_int_list_arg(arg):
     if isinstance(arg, str):
         arg = eval(arg)
-        
+
     if isinstance(arg, list):
         return arg
     if isinstance(arg, int):

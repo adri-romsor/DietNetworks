@@ -62,6 +62,8 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         data = dataset_utils.load_reuters(transpose=True, splits=splits)
     elif dataset == 'imdb':
         # data = dataset_utils.load_imdb(transpose=True, splits=splits)
+        # train_data, _, unlab_data, _ = imdb.load_imdb(feat_type=feat_type,
+        #                                               ngram_range=ngram_range)
         data = imdb.read_from_hdf5(unsupervised=True, feat_type='tfidf')
     elif dataset == 'dragonn':
         from feature_selection.experiments.common import dragonn_data
@@ -193,7 +195,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         # Unsupervised epls functions
         val_outputs += [loss_epls_det]
         monitor_labels += ["epls. loss"]
-        
+
     # Add some monitoring on the learned feature embedding
     val_outputs += [feat_emb.min(), feat_emb.mean(),
                     feat_emb.max(), feat_emb.var()]
@@ -301,7 +303,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
 def parse_int_list_arg(arg):
     if isinstance(arg, str):
         arg = eval(arg)
-        
+
     if isinstance(arg, list):
         return arg
     if isinstance(arg, int):
