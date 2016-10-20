@@ -630,7 +630,7 @@ def main():
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=0.00005,
+                        default=0.00001,
                         help="""Float to indicate learning rate.""")
     parser.add_argument('--learning_rate_annealing',
                         '-lra',
