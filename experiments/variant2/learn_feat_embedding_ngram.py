@@ -1,17 +1,13 @@
-#!/usr/bin/env python2
-
 from __future__ import print_function
 import argparse
 import time
 import os
 import tables
-from distutils.dir_util import copy_tree
-
+import scipy
+import ipdb
 import lasagne
 from lasagne.layers import DenseLayer, InputLayer
 from lasagne.nonlinearities import sigmoid, softmax, tanh, linear, rectify
-from lasagne.regularization import apply_penalty, l2, l1
-from lasagne.init import Uniform
 import numpy as np
 import theano
 import theano.tensor as T
@@ -26,6 +22,14 @@ def iterate_minibatches(x, batch_size, shuffle=False, dataset=None):
         indices = np.random.permutation(x.shape[0])
     for i in range(0, x.shape[0]-batch_size+1, batch_size):
         yield x[indices[i:i+batch_size], :]
+
+
+def iterate_sparse_minibatches(x, batch_size, shuffle=False, dataset=None):
+    indices = np.arange(x.shape[0])
+    if shuffle:
+        indices = np.random.permutation(x.shape[0])
+    for i in range(0, x.shape[0]-batch_size+1, batch_size):
+        yield x[indices[i:i+batch_size], :].toarray().astype("float32")
 
 
 def monitoring(minibatches, which_set, error_fn, monitoring_labels):
@@ -50,10 +54,8 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels):
 
 # Main program
 def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
-            learning_rate=.001, lmd=.0001,
-            save_path='/Tmp/$USER/feature_selection/newmodel/',
-            save_copy='/Tmp/$USER/feature_selection/newmodel/',
-            dataset_path='/Tmp/$USER/feature_selection/newmodel/'):
+            learning_rate=.001, ngram_range=(1, 1),
+            save_path='/Tmp/$USER/feature_selection/newmodel/'):
 
     # Load the dataset
     print("Loading data")
@@ -69,22 +71,27 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         data = dataset_utils.load_reuters(transpose=True, splits=splits)
     elif dataset == 'imdb':
         # data = dataset_utils.load_imdb(transpose=True, splits=splits)
-        # train_data, _, unlab_data, _ = imdb.load_imdb(feat_type=feat_type,
-        #                                               ngram_range=ngram_range)
-        data = imdb.read_from_hdf5(unsupervised=True, feat_type='tfidf')
+        # ipdb.set_trace()
+        mes = 'Loading 1&'
+        mes += '2' if ngram_range[1] == '2' else '2&3'
+        mes += '-gram data'
+        print(mes)
+        train_data, _, unlab_data, _ = imdb.load_imdb(path='/Tmp/erraqaba/'
+                                                           'data/imdb/',
+                                                      ngram_range=ngram_range)
+        data = scipy.sparse.vstack([train_data, unlab_data])
+        # data = imdb.read_from_hdf5(unsupervised=True, feat_type='tfidf')
+        split_index = int((train_data.shape[0]+unlab_data.shape[0])*splits[0])
     elif dataset == 'dragonn':
         from feature_selection.experiments.common import dragonn_data
         data = dragonn_data.load_data(500, 10000, 10000)
-    elif dataset == '1000_genomes':
-        data = dataset_utils.load_1000_genomes(
-                   transpose=True, label_splits=splits, feature_splits=splits)
     else:
         print("Unknown dataset")
         return
 
     if dataset == 'imdb':
-        x_train = data.root.train
-        x_valid = data.root.val
+        x_train = data[:split_index]
+        x_valid = data[split_index:]
     else:
         x_train = data[0][0]
         x_valid = data[1][0]
@@ -93,21 +100,13 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     n_row, n_col = x_train.shape
 
     # Set some variables
-    batch_size = 100
+    batch_size = 132
 
     # Preparing folder to save stuff
-    exp_name = 'our_model_aux_glorot_' + str(learning_rate)
-    exp_name += '_hu'
-    for i in range(len(n_hidden_u)):
-        exp_name += ("-" + str(n_hidden_u[i]))
-    print('Experiment: ' + exp_name)
-    print('Data size ' + str(n_row) + 'x' + str(n_col))
-
-    save_path = os.path.join(save_path, dataset, exp_name)
-    save_copy = os.path.join(save_copy, dataset, exp_name)
+    save_path = save_path + dataset + "/ngram"+str(ngram_range[0]) + \
+        str(ngram_range[1]) + "/"
     if not os.path.exists(save_path):
         os.makedirs(save_path)
-
     # Prepare Theano variables for inputs and targets
     input_var = T.matrix('input_unsup')
     lr = theano.shared(np.float32(learning_rate), 'learning_rate')
@@ -124,8 +123,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
 
     for out in n_hidden_u:
         encoder_net = DenseLayer(encoder_net, num_units=out,
-                                 nonlinearity=linear)
-                                 # W=Uniform(0.00001))
+                                 nonlinearity=sigmoid)
     feat_emb = lasagne.layers.get_output(encoder_net)
     pred_feat_emb = theano.function([input_var], feat_emb)
 
@@ -133,11 +131,9 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         decoder_net = encoder_net
         for i in range(len(n_hidden_u)-2, -1, -1):
             decoder_net = DenseLayer(decoder_net, num_units=n_hidden_u[i],
-                                     nonlinearity=linear)
-                                     # W=Uniform(0.00001))
+                                     nonlinearity=rectify)
         decoder_net = DenseLayer(decoder_net, num_units=n_col,
-                                 nonlinearity=linear)
-                                 # W=Uniform(0.00001))
+                                 nonlinearity=rectify)
         reconstruction = lasagne.layers.get_output(decoder_net)
     if 'epls' in unsupervised:
         n_cluster = n_hidden_u[-1]
@@ -185,14 +181,10 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     loss = loss_auto + loss_epls
     loss_det = loss_auto_det + loss_epls_det
 
-    l2_penalty = apply_penalty(params, l2)
-    loss = loss + lmd*l2_penalty
-    los_det = loss_det + lmd*l2_penalty
-
     # Compute network updates
-    updates = lasagne.updates.adam(loss,
-                                    params,
-                                    learning_rate=lr)
+    updates = lasagne.updates.rmsprop(loss,
+                                      params,
+                                      learning_rate=lr)
     # updates = lasagne.updates.sgd(loss,
     #                              params,
     #                              learning_rate=lr)
@@ -240,8 +232,6 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     patience = 0
 
     train_loss = []
-    train_loss_auto = []
-    train_loss_epls = []
     valid_loss = []
     valid_loss_auto = []
     valid_loss_epls = []
@@ -255,25 +245,21 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         loss_epoch = 0
 
         # Train pass
-        for batch in iterate_minibatches(x_train, batch_size,
-                                         dataset=dataset, shuffle=True):
+        for batch in iterate_sparse_minibatches(x_train, batch_size,
+                                                dataset=dataset, shuffle=True):
             loss_epoch += train_fn(batch)
 
-        train_minibatches = iterate_minibatches(x_train, batch_size,
-                                                dataset=dataset, shuffle=True)
-        train_err = monitoring(train_minibatches, "train", val_fn,
-                               monitor_labels)
-        train_loss += [train_err[0]]
-        pos = 1
-        if 'autoencoder' in unsupervised:
-            train_loss_auto += [train_err[pos]]
-            pos += 1
-        if 'epls' in unsupervised:
-            train_loss_epls += [train_err[pos]]
+        loss_epoch /= nb_minibatches
+        train_loss += [loss_epoch]
 
+        train_minibatches = iterate_sparse_minibatches(x_train, batch_size,
+                                                       dataset=dataset,
+                                                       shuffle=True)
+        monitoring(train_minibatches, "train", val_fn, monitor_labels)
         # Validation pass
-        valid_minibatches = iterate_minibatches(x_valid, batch_size,
-                                                dataset=dataset, shuffle=True)
+        valid_minibatches = iterate_sparse_minibatches(x_valid, batch_size,
+                                                       dataset=dataset,
+                                                       shuffle=True)
 
         valid_err = monitoring(valid_minibatches, "valid", val_fn,
                                monitor_labels)
@@ -294,11 +280,10 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
             patience = 0
 
             # Save stuff
-            np.savez(os.path.join(save_path, 'model_unsupervised.npz'),
+            np.savez(save_path+'model_unsupervised.npz',
                      *lasagne.layers.get_all_param_values(encoder_net))
-            np.savez(os.path.join(save_path, "errors_unsupervised.npz"),
-                     train_loss, train_loss_auto, train_loss_epls,
-                     valid_loss, valid_loss_auto, valid_loss_epls)
+            np.savez(save_path + "errors_unsupervised.npz",
+                     valid_loss_auto, valid_loss_epls)
         else:
             patience += 1
 
@@ -306,8 +291,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         if patience == max_patience or epoch == num_epochs-1:
             print("   Ending training")
             # Load unsupervised best model
-            with np.load(os.path.join(save_path,
-                                      'model_unsupervised.npz')) as f:
+            with np.load(save_path + 'model_unsupervised.npz',) as f:
                 param_values = [f['arr_%d' % i]
                                 for i in range(len(f.files))]
                 nlayers = len(lasagne.layers.get_all_params(encoder_net))
@@ -323,8 +307,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
                                                  shuffle=False):
                     preds.append(pred_feat_emb(batch))
                 preds = np.vstack(preds)
-                np.savez(os.path.join(save_path, 'feature_embedding.npz'),
-                         preds)
+                np.savez(save_path+'feature_embedding.npz', preds)
 
             # Stop
             print(" epoch time:\t\t\t{:.3f}s".format(time.time() - start_time))
@@ -334,11 +317,6 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
 
     # Print all final errors for train, validation and test
     print("Training time:\t\t\t{:.3f}s".format(time.time() - start_training))
-
-    # Copy files to loadpath
-    if save_path != save_copy:
-        print('Copying model and other training files to {}'.format(save_copy))
-        copy_tree(save_path, save_copy)
 
 
 def parse_int_list_arg(arg):
@@ -358,10 +336,10 @@ def main():
     parser = argparse.ArgumentParser(description="""Implementation of the
                                      feature selection v4""")
     parser.add_argument('--dataset',
-                        default='1000_genomes',
+                        default='imdb',
                         help='Dataset.')
     parser.add_argument('--n_hidden_u',
-                        default=[100],
+                        default=[50],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--unsupervised',
                         default=['autoencoder'],
@@ -371,7 +349,7 @@ def main():
     parser.add_argument('--num_epochs',
                         '-ne',
                         type=int,
-                        default=500,
+                        default=5,
                         help="""Int to indicate the max'
                         'number of epochs.""")
     parser.add_argument('--learning_rate',
@@ -379,21 +357,13 @@ def main():
                         type=float,
                         default=.0001,
                         help="""Float to indicate learning rate.""")
-    parser.add_argument('--lmd',
-                        '-l',
-                        type=float,
-                        default=.0001,
-                        help="""Float to indicate weight decay coeff.""")
-    parser.add_argument('--save_tmp',
-                        default='/Tmp/'+ os.environ["USER"]+'/feature_selection/',
+    parser.add_argument('--ngram_range',
+                        default=(1, 1),
+                        help="""Float to indicate learning rate.""")
+    parser.add_argument('--save',
+                        default='/Tmp/$USER/feature_selection/' +
+                                'feat_embeddings/',
                         help='Path to save results.')
-    parser.add_argument('--save_perm',
-                        default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/',
-                        help='Path to save results.')
-    parser.add_argument('--dataset_path',
-                        default='/data/lisatmp4/romerosa/datasets/',
-                        help='Path to dataset')
-
 
     args = parser.parse_args()
 
@@ -404,10 +374,8 @@ def main():
             args.unsupervised,
             int(args.num_epochs),
             args.learning_rate,
-            args.lmd,
-            args.save_tmp,
-            args.save_perm,
-            args.dataset_path)
+            args.ngram_range,
+            args.save)
 
 
 if __name__ == '__main__':

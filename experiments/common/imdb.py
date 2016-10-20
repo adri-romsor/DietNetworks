@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import h5py
 import tables
+import ipdb
 
 import argparse
 
@@ -69,7 +70,7 @@ def getCleanReviews(reviews):
 
 
 def build_imdb_BoW(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
-                   max_features=None, use_unlab=True):
+                   max_features=None, use_unlab=True, ngram_range=(1, 1)):
     # load data
     train = pd.read_csv(os.path.join(path_to_data,
                                      'labeledTrainData.tsv'),
@@ -107,7 +108,8 @@ def build_imdb_BoW(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
                                  tokenizer=None,
                                  preprocessor=None,
                                  stop_words=None,
-                                 max_features=max_features)
+                                 max_features=max_features,
+                                 ngram_range=ngram_range)
 
     # fit_transform() does two functions: First, it fits the model
     # and learns the vocabulary; second, it transforms our training data
@@ -199,9 +201,34 @@ def build_imdb_tfidf(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
         test_data_features
 
 
-def load_imdb(path_to_files='/data/lisatmp4/erraqabi/data/imdb_reviews/',
-              feat_type='BoW', shuffle=False, seed=0):
-    data = np.load(os.path.join(path_to_files, 'imdb_'+feat_type+'.npz'))
+def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
+                        feat_type='BoW', ngram_range=(1, 1)):
+    if feat_type == 'BoW':
+        train_data_features, train_labels, unlab_data_features,\
+            test_data_features = build_imdb_BoW(ngram_range=ngram_range)
+        file_to_save = os.path.join(path, 'imdb_'+feat_type+'_ngram' +
+                                    str(ngram_range[0]) + str(ngram_range[1]) +
+                                    '.npz')
+    if feat_type == 'tfidf':
+        train_data_features, train_labels, unlab_data_features,\
+            test_data_features = build_imdb_tfidf()
+        file_to_save = os.path.join(path, 'imdb_'+feat_type+'.npz')
+    np.savez(file_to_save,
+             train_data_features=train_data_features,
+             train_labels=train_labels,
+             test_data_features=test_data_features,
+             unlab_data_features=unlab_data_features)
+
+
+def load_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
+              feat_type='BoW', shuffle=False, seed=0, ngram_range=(1, 1)):
+    if feat_type == 'BoW':
+        file_to_load = os.path.join(path, 'imdb_'+feat_type+'_ngram' +
+                                    str(ngram_range[0])+str(ngram_range[1]) +
+                                    '.npz')
+    else:
+        file_to_load = os.path.join(path, 'imdb_'+feat_type+'.npz')
+    data = np.load(file_to_load)
     train_data_features = data['train_data_features'].item()
     train_labels = data['train_labels']
     unlab_data_features = data['unlab_data_features'].item()
@@ -285,33 +312,21 @@ def load_imdb_word2vec(path_to_data, model_path=None, use_unlab=True):
     return train_data_features, train_labels, test_data_features
 
 
-def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
-                        feat_type='BoW'):
-    if feat_type == 'BoW':
-        train_data_features, train_labels, unlab_data_features,\
-            test_data_features = build_imdb_BoW()
-    if feat_type == 'tfidf':
-        train_data_features, train_labels, unlab_data_features,\
-            test_data_features = build_imdb_tfidf()
-    np.savez(os.path.join(path, 'imdb_'+feat_type+'.npz'),
-             train_data_features=train_data_features,
-             train_labels=train_labels,
-             test_data_features=test_data_features,
-             unlab_data_features=unlab_data_features)
-
-
 def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
-                 feat_type='BoW', use_tables=True, split=0.8):
+                 feat_type='BoW', use_tables=True, split=0.8,
+                 ngram_range=(1, 1)):
     if not os.path.exists(path):
+        print 'making directory: {}'.format(path)
         os.makedirs(path)
     if unsupervised:
-        train_data, _, unlab_data, _ = load_imdb(feat_type=feat_type)
+        train_data, _, unlab_data, _ = load_imdb(feat_type=feat_type,
+                                                 ngram_range=ngram_range)
         if use_tables:
-            f = tables.openFile(os.path.join(path,
-                                             'unsupervised_IMDB_'+feat_type +
-                                             '_table'
-                                             '_split80.hdf5'),
-                                mode='w')
+            f = tables.open_file(os.path.join(path,
+                                              'unsupervised_IMDB_'+feat_type +
+                                              '_table'
+                                              '_split80.hdf5'),
+                                 mode='w')
             features = np.empty((train_data.shape[1],
                                  train_data.shape[0]+unlab_data.shape[0]),
                                 dtype='float32')
@@ -377,22 +392,26 @@ def read_from_hdf5(path='/Tmp/carriepl/datasets/imdb/', unsupervised=True,
     return read_file
 
 if __name__ == '__main__':
-    # build_and_save_imdb()
+    # for i in range(3):
+    #     print 'building & saving ' + str(i+1)+'-grams'
+    #     build_and_save_imdb(ngram_range=(1, i+1))
+    # save_as_hdf5(unsupervised=False, ngram_range=(1, 2))
+    for i in range(1, 3):
+        print 'saving to hdf5 ' + str(i+1)+'-grams'
+        # save_as_hdf5(unsupervised=True, use_tables=False, ngram_range=(1, i+1))
+        save_as_hdf5(unsupervised=True, ngram_range=(1, i+1))
+        save_as_hdf5(unsupervised=False, ngram_range=(1, i+1))
 
-    parser = argparse.ArgumentParser(description=
-            """Creating the imdb datasets""")
-    parser.add_argument('--save',
-                        default='/Tmp/sylvaint/datasets/imdb',
-                        help='Path to save results.')
-    args = parser.parse_args()
-    print ("Printing args")
-    print (args)
-
-    #save_as_hdf5(unsupervised=True, use_tables=False)
-    #save_as_hdf5(unsupervised=True)
-    #save_as_hdf5(unsupervised=False)
+    # parser = argparse.ArgumentParser(description=
+    #         """Creating the imdb datasets""")
+    # parser.add_argument('--save',
+    #                     default='/Tmp/sylvaint/datasets/imdb',
+    #                     help='Path to save results.')
+    # args = parser.parse_args()
+    # print ("Printing args")
+    # print (args)
 
     # build_and_save_imdb(feat_type='tfidf')
-    save_as_hdf5(unsupervised=True, feat_type='tfidf', use_tables=False)
-    save_as_hdf5(unsupervised=True, feat_type='tfidf')
-    save_as_hdf5(unsupervised=False, feat_type='tfidf')
+    # save_as_hdf5(unsupervised=True, feat_type='tfidf', use_tables=False)
+    # save_as_hdf5(unsupervised=True, feat_type='tfidf')
+    # save_as_hdf5(unsupervised=False, feat_type='tfidf')
