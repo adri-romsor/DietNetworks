@@ -29,7 +29,7 @@ def main(results_path, which_method="pca", enc='triangle', n_comps=None):
             loaded_res = np.load(results_path+comp_results[res])
 
             # Choose best result according to validation score
-            if res == 0 or loaded_res["valid_err"] < best_res[1, comp]:
+            if res == 0 or loaded_res["valid_acc"] > best_res[4, comp]:
                 best_res[0, comp] = loaded_res[metrics[0]]
                 best_res[1, comp] = loaded_res[metrics[1]]
                 best_res[2, comp] = loaded_res[metrics[2]]
@@ -37,7 +37,7 @@ def main(results_path, which_method="pca", enc='triangle', n_comps=None):
                 best_res[4, comp] = loaded_res[metrics[4]]
                 best_res[5, comp] = loaded_res[metrics[5]]
 
-    np.savez(results_path+which_method+"_to_plot",
+    np.savez(results_path+which_method+"_to_plot_acc",
              best_err=best_res,
              n_comps=n_comps)
 
@@ -47,6 +47,9 @@ def main(results_path, which_method="pca", enc='triangle', n_comps=None):
     plt.axis([0, n_comps[-1]+100, 0.4, 1.0])
     plt.legend()
     plt.show()
+
+    import pdb
+    pdb.set_trace()
 
 
 if __name__ == '__main__':

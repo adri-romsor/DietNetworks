@@ -10,6 +10,8 @@ from distutils.dir_util import copy_tree
 import lasagne
 from lasagne.layers import DenseLayer, InputLayer
 from lasagne.nonlinearities import sigmoid, softmax, tanh, linear, rectify
+from lasagne.regularization import apply_penalty, l2, l1
+from lasagne.init import Uniform
 import numpy as np
 import theano
 import theano.tensor as T
@@ -48,7 +50,7 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels):
 
 # Main program
 def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
-            learning_rate=.001,
+            learning_rate=.001, lmd=.0001,
             save_path='/Tmp/$USER/feature_selection/newmodel/',
             save_copy='/Tmp/$USER/feature_selection/newmodel/',
             dataset_path='/Tmp/$USER/feature_selection/newmodel/'):
@@ -92,11 +94,12 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     batch_size = 100
 
     # Preparing folder to save stuff
-    exp_name = 'our_model_aux_' + str(learning_rate)
+    exp_name = 'our_model_aux_glorot_' + str(learning_rate)
     exp_name += '_hu'
     for i in range(len(n_hidden_u)):
         exp_name += ("-" + str(n_hidden_u[i]))
     print('Experiment: ' + exp_name)
+    print('Data size ' + str(n_row) + 'x' + str(n_col))
 
     save_path = os.path.join(save_path, dataset, exp_name)
     save_copy = os.path.join(save_copy, dataset, exp_name)
@@ -119,7 +122,8 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
 
     for out in n_hidden_u:
         encoder_net = DenseLayer(encoder_net, num_units=out,
-                                 nonlinearity=sigmoid)
+                                 nonlinearity=linear)
+                                 # W=Uniform(0.00001))
     feat_emb = lasagne.layers.get_output(encoder_net)
     pred_feat_emb = theano.function([input_var], feat_emb)
 
@@ -127,9 +131,11 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         decoder_net = encoder_net
         for i in range(len(n_hidden_u)-2, -1, -1):
             decoder_net = DenseLayer(decoder_net, num_units=n_hidden_u[i],
-                                     nonlinearity=rectify)
+                                     nonlinearity=linear)
+                                     # W=Uniform(0.00001))
         decoder_net = DenseLayer(decoder_net, num_units=n_col,
-                                 nonlinearity=rectify)
+                                 nonlinearity=linear)
+                                 # W=Uniform(0.00001))
         reconstruction = lasagne.layers.get_output(decoder_net)
     if 'epls' in unsupervised:
         n_cluster = n_hidden_u[-1]
@@ -177,10 +183,14 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     loss = loss_auto + loss_epls
     loss_det = loss_auto_det + loss_epls_det
 
+    l2_penalty = apply_penalty(params, l2)
+    loss = loss + lmd*l2_penalty
+    los_det = loss_det + lmd*l2_penalty
+
     # Compute network updates
-    updates = lasagne.updates.rmsprop(loss,
-                                      params,
-                                      learning_rate=lr)
+    updates = lasagne.updates.adam(loss,
+                                    params,
+                                    learning_rate=lr)
     # updates = lasagne.updates.sgd(loss,
     #                              params,
     #                              learning_rate=lr)
@@ -349,7 +359,7 @@ def main():
                         default='1000_genomes',
                         help='Dataset.')
     parser.add_argument('--n_hidden_u',
-                        default=[10, 10, 10],
+                        default=[100],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--unsupervised',
                         default=['autoencoder'],
@@ -367,6 +377,11 @@ def main():
                         type=float,
                         default=.0001,
                         help="""Float to indicate learning rate.""")
+    parser.add_argument('--lmd',
+                        '-l',
+                        type=float,
+                        default=.0001,
+                        help="""Float to indicate weight decay coeff.""")
     parser.add_argument('--save_tmp',
                         default='/Tmp/'+ os.environ["USER"]+'/feature_selection/',
                         help='Path to save results.')
@@ -387,6 +402,7 @@ def main():
             args.unsupervised,
             int(args.num_epochs),
             args.learning_rate,
+            args.lmd,
             args.save_tmp,
             args.save_perm,
             args.dataset_path)
