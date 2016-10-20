@@ -10,7 +10,10 @@ What we would like to see: regular-AE MLP overfits whereas weight-aux-model does
 
 **TODO:**
 - [x] 5-fold cross-validation code
-- [ ] Reduce number of free parameters on our model (ongoing)
+- [ ] Reduce overfitting on our model (ongoing)
+ - [ ] Pre-training or add auxnet loss
+ - [ ] Add regularization
+ - [ ] Play with different architectures (less free parameters)
 - [ ] Change N values coming from N subjects (feature representation input) and use some stat information instead (mean, var, min, max...) to reduce the number of parameters of the auxiliary network.
 - [ ] Add hierarchical softmax to take into account continental ethnicities
 - [ ] Very deep aux net - Add skip connections?
