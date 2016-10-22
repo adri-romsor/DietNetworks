@@ -8,7 +8,7 @@ import tables
 from distutils.dir_util import copy_tree
 
 import lasagne
-from lasagne.layers import DenseLayer, InputLayer
+from lasagne.layers import DenseLayer, InputLayer, DropoutLayer
 from lasagne.nonlinearities import sigmoid, softmax, tanh, linear, rectify
 from lasagne.regularization import apply_penalty, l2, l1
 from lasagne.init import Uniform
@@ -126,6 +126,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         encoder_net = DenseLayer(encoder_net, num_units=out,
                                  nonlinearity=linear)
                                  # W=Uniform(0.00001))
+        encoder_net = DropoutLayer(encoder_net)
     feat_emb = lasagne.layers.get_output(encoder_net)
     pred_feat_emb = theano.function([input_var], feat_emb)
 
@@ -135,6 +136,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
             decoder_net = DenseLayer(decoder_net, num_units=n_hidden_u[i],
                                      nonlinearity=linear)
                                      # W=Uniform(0.00001))
+            decoder_net = DropoutLayer(decoder_net)
         decoder_net = DenseLayer(decoder_net, num_units=n_col,
                                  nonlinearity=linear)
                                  # W=Uniform(0.00001))
@@ -361,7 +363,7 @@ def main():
                         default='1000_genomes',
                         help='Dataset.')
     parser.add_argument('--n_hidden_u',
-                        default=[100],
+                        default=[500],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--unsupervised',
                         default=['autoencoder'],

@@ -1,225 +1,44 @@
 #!/usr/bin/env python
-
-
 from __future__ import print_function
 import argparse
 import time
 import os
-import random
 from distutils.dir_util import copy_tree
 
 import lasagne
-from lasagne.layers import DenseLayer, InputLayer, DropoutLayer, BatchNormLayer
-from lasagne.nonlinearities import (sigmoid, softmax, tanh, linear, rectify,
-                                    leaky_rectify, very_leaky_rectify)
-from lasagne.init import Uniform
+from lasagne.regularization import apply_penalty, l2
 import numpy as np
 import theano
 from theano import config
 import theano.tensor as T
 
-from feature_selection.experiments.common import dataset_utils, imdb
+import mainloop_helpers as mlh
+import model_helpers as mh
 
 print ("config floatX: {}".format(config.floatX))
-
-
-# Mini-batch iterator function
-def iterate_minibatches(inputs, targets, batchsize,
-                        shuffle=False):
-    assert inputs.shape[0] == targets.shape[0]
-    indices = np.arange(inputs.shape[0])
-    if shuffle:
-        indices = np.random.permutation(inputs.shape[0])
-    for i in range(0, inputs.shape[0]-batchsize+1, batchsize):
-        yield inputs[indices[i:i+batchsize], :],\
-            targets[indices[i:i+batchsize]]
-
-
-def iterate_testbatches(inputs, batchsize, shuffle=False):
-    indices = np.arange(inputs.shape[0])
-    if shuffle:
-        indices = np.random.permutation(inputs.shape[0])
-    for i in range(0, inputs.shape[0]-batchsize+1, batchsize):
-        yield inputs[indices[i:i+batchsize], :]
-
-
-def get_precision_recall_cutoff(predictions, targets):
-
-    prev_threshold = 0.00
-    threshold_inc = 0.10
-
-    while True:
-        if prev_threshold > 1.000:
-            cutoff = 0.0
-            break
-
-        threshold = prev_threshold + threshold_inc
-        tp = ((predictions >= threshold) * (targets == 1)).sum()
-        fp = ((predictions >= threshold) * (targets == 0)).sum()
-        fn = ((predictions < threshold) * (targets == 1)).sum()
-
-        precision = float(tp) / (tp + fp + 1e-20)
-        recall = float(tp) / (tp + fn + 1e-20)
-
-        if precision > recall:
-            if threshold_inc < 0.001:
-                cutoff = recall
-                break
-            else:
-                threshold_inc /= 10
-        else:
-            prev_threshold += threshold_inc
-
-    return cutoff
-
-
-# Monitoring function
-def monitoring(minibatches, which_set, error_fn, monitoring_labels,
-               prec_recall_cutoff=True):
-    print('-'*20 + which_set + ' monit.' + '-'*20)
-    monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
-    global_batches = 0
-
-    targets = []
-    predictions = []
-
-    for batch in minibatches:
-        # Update monitored values
-        out = error_fn(*batch)
-
-        monitoring_values = monitoring_values + out[1:]
-        predictions.append(out[0])
-        targets.append(batch[1])
-        global_batches += 1
-
-    # Print monitored values
-    monitoring_values /= global_batches
-    for (label, val) in zip(monitoring_labels, monitoring_values):
-        print ("  {} {}:\t\t{:.6f}".format(which_set, label, val))
-
-    # If needed, compute and print the precision-recall breakoff point
-    if prec_recall_cutoff:
-        predictions = np.vstack(predictions)
-        targets = np.vstack(targets)
-        cutoff = get_precision_recall_cutoff(predictions, targets)
-        print ("  {} precis/recall cutoff:\t{:.6f}".format(which_set, cutoff))
-
-    return monitoring_values
 
 
 # Main program
 def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             embedding_source=None,
             num_epochs=500, learning_rate=.001, learning_rate_annealing=1.0,
-            gamma=1, disc_nonlinearity="sigmoid", encoder_net_init=0.2,
-            decoder_net_init=0.2, keep_labels=1.0, prec_recall_cutoff=True,
-            missing_labels_val=-1.0, which_fold=0, early_stop_criterion='loss_sup_det',
+            alpha=1, beta=1, gamma=1, lmd=.0001, disc_nonlinearity="sigmoid",
+            encoder_net_init=0.2, decoder_net_init=0.2, keep_labels=1.0,
+            prec_recall_cutoff=True, missing_labels_val=-1.0, which_fold=0,
+            early_stop_criterion='loss_sup_det',
             save_path='/Tmp/romerosa/feature_selection/newmodel/',
             save_copy='/Tmp/romerosa/feature_selection/',
             dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/'):
 
     # Load the dataset
     print("Loading data")
-    # This will split the training data into 60% train, 20% valid, 20% test
-    splits = [.6, .2]
-
-    if dataset == 'protein_binding':
-        data = dataset_utils.load_protein_binding(transpose=False,
-                                                  splits=splits)
-    elif dataset == 'dorothea':
-        data = dataset_utils.load_dorothea(transpose=False, splits=None)
-    elif dataset == 'opensnp':
-        data = dataset_utils.load_opensnp(transpose=False, splits=splits)
-    elif dataset == 'reuters':
-        data = dataset_utils.load_reuters(transpose=False, splits=splits)
-    elif dataset == 'iric_molecule':
-        data = dataset_utils.load_iric_molecules(
-            transpose=False, splits=splits)
-    elif dataset == 'imdb':
-        dataset_path = os.path.join(dataset_path, "imdb")
-        feat_type = "tfidf"
-        unsupervised = False
-
-        print ("Loading imdb")
-        if unsupervised:
-            file_name = os.path.join(
-                dataset_path,
-                'unsupervised_IMDB_' + feat_type + '_table_split80.hdf5')
-        else:
-            file_name = os.path.join(
-                dataset_path,
-                'supervised_IMDB_' + feat_type + '_table_split80.hdf5')
-
-        # This is in order to copy dataset if it doesn't exist
-        # import ipdb; ipdb.set_trace()
-        print (file_name)
-        print (os.path.isfile(file_name))
-
-        if not os.path.isfile(file_name):
-            print ("Saving dataset to path")
-            imdb.save_as_hdf5(
-                path=dataset_path,
-                unsupervised=unsupervised,
-                feat_type=feat_type,
-                use_tables=False)
-            print ("Done saving dataset")
-        # use feat_type='tfidf' to load tfidf features
-        data = imdb.read_from_hdf5(
-            path=dataset_path, unsupervised=unsupervised, feat_type=feat_type)
-
-    elif dataset == 'dragonn':
-        from feature_selection.experiments.common import dragonn_data
-        data = dragonn_data.load_data(500, 100, 100)
-    elif dataset == '1000_genomes':
-        # This will split the training data into 75% train, 25%
-        # this corresponds to the split 60/20 of the whole data,
-        # test is considered elsewhere as an extra 20% of the whole data
-        splits = [.75]
-        data = dataset_utils.load_1000_genomes(transpose=False,
-                                               label_splits=splits,
-                                               fold=which_fold)
-    else:
-        print("Unknown dataset")
-        return
-
-    if dataset == 'imdb':
-        x_train = data.root.train_features
-        y_train = data.root.train_labels[:][:, None].astype("float32")
-        x_valid = data.root.val_features
-        y_valid = data.root.val_labels[:][:, None].astype("float32")
-        x_test = data.root.test_features
-        y_test = None
-        x_nolabel = None
-    else:
-        (x_train, y_train), (x_valid, y_valid), (x_test, y_test),\
-            x_nolabel = data
-
-    if not embedding_source:
-        if x_nolabel is None:
-            if dataset == 'imdb':
-                x_unsup = x_train[:5000].transpose()
-            else:
-                x_unsup = x_train.transpose()
-        else:
-            x_unsup = np.vstack((x_train, x_nolabel)).transpose()
+    x_train, y_train, x_valid, y_valid, x_test, y_test, \
+        x_unsup, training_labels = mlh.load_data(
+            dataset, dataset_path, embedding_source,
+            which_fold=which_fold, keep_labels=keep_labels,
+            missing_labels_val=missing_labels_val)
+    if x_unsup is not None:
         n_samples_unsup = x_unsup.shape[1]
-    else:
-        x_unsup = None
-
-    # If needed, remove some of the training labels
-    if keep_labels <= 1.0:
-        training_labels = y_train.copy()
-        random.seed(23)
-        nb_train = len(training_labels)
-
-        indices = range(nb_train)
-        random.shuffle(indices)
-
-        indices_discard = indices[:int(nb_train * (1 - keep_labels))]
-        for idx in indices_discard:
-            training_labels[idx] = missing_labels_val
-    else:
-        training_labels = y_train
 
     # Extract required information from data
     n_samples, n_feats = x_train.shape
@@ -229,23 +48,12 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Set some variables
     batch_size = 128
+    beta = gamma if (gamma == 0) else beta
 
     # Preparing folder to save stuff
-    exp_name = 'our_model' + str(keep_labels) + '_sup' + \
-        ('_unsup' if gamma > 0 else '')
-    exp_name += '_hu'
-    for i in range(len(n_hidden_u)):
-        exp_name += ("-" + str(n_hidden_u[i]))
-    exp_name += '_tenc'
-    for i in range(len(n_hidden_t_enc)):
-        exp_name += ("-" + str(n_hidden_t_enc[i]))
-    exp_name += '_tdec'
-    for i in range(len(n_hidden_t_dec)):
-        exp_name += ("-" + str(n_hidden_t_dec[i]))
-    exp_name += '_hs'
-    for i in range(len(n_hidden_s)):
-        exp_name += ("-" + str(n_hidden_s[i]))
-    exp_name += '_fold' + str(which_fold)
+    exp_name = mlh.define_exp_name(keep_labels, alpha, beta, gamma, lmd,
+                                   n_hidden_u, n_hidden_t_enc, n_hidden_t_dec,
+                                   n_hidden_s, which_fold)
     print("Experiment: " + exp_name)
     save_path = os.path.join(save_path, dataset, exp_name)
     save_copy = os.path.join(save_copy, dataset, exp_name)
@@ -258,6 +66,16 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     target_var_sup = T.matrix('target_sup')
     lr = theano.shared(np.float32(learning_rate), 'learning_rate')
 
+    # For debugging purposes only
+    test_values = False
+    if test_values:
+        theano.config.compute_test_value = 'raise'
+        input_var_sup.tag.test_value = np.zeros((128, n_feats),
+                                                dtype="float32")
+        target_var_sup.tag.test_value = np.zeros((128, 26), dtype="float32")
+        input_var_unsup.tag.test_value = np.zeros((n_feats, n_samples),
+                                                  dtype="float32")
+
     # Build model
     print("Building model")
 
@@ -268,119 +86,63 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     assert len(n_hidden_u) > 0
     assert n_hidden_t_dec[-1] == n_hidden_t_enc[-1]
 
-    # Build unsupervised network
-    if not embedding_source:
-        encoder_net = InputLayer((n_feats, n_samples_unsup), input_var_unsup)
-        for i, out in enumerate(n_hidden_u):
-            encoder_net = DenseLayer(encoder_net, num_units=out,
-                                     nonlinearity=rectify)
-        feat_emb = lasagne.layers.get_output(encoder_net)
-        pred_feat_emb = theano.function([], feat_emb)
-    else:
-        feat_emb_val = np.load(os.path.join(save_path.rsplit('/', 1)[0],
-                                            embedding_source)).items()[0][1]
-        feat_emb = theano.shared(feat_emb_val, 'feat_emb')
-        encoder_net = InputLayer((n_feats, n_hidden_u[-1]), feat_emb)
+    # Build feature embedding networks (encoding and decoding if gamma > 0)
+    nets, embeddings, pred_feat_emb = mh.build_feat_emb_nets(
+        embedding_source, n_feats, n_samples_unsup,
+        input_var_unsup, n_hidden_u, n_hidden_t_enc,
+        n_hidden_t_dec, gamma, encoder_net_init,
+        decoder_net_init, save_path)
 
-    # Build transformations (f_theta, f_theta') network and supervised network
-    # f_theta (ou W_enc)
-    encoder_net_W_enc = encoder_net
-    for hid in n_hidden_t_enc:
-        encoder_net_W_enc = DenseLayer(encoder_net_W_enc, num_units=hid,
-                                       nonlinearity=tanh,
-                                       W=Uniform(encoder_net_init)
-                                       )
-    enc_feat_emb = lasagne.layers.get_output(encoder_net_W_enc)
-
-    # f_theta' (ou W_dec)
-    encoder_net_W_dec = encoder_net
-    for hid in n_hidden_t_dec:
-        encoder_net_W_dec = DenseLayer(encoder_net_W_dec, num_units=hid,
-                                       nonlinearity=tanh,
-                                       W=Uniform(decoder_net_init)
-                                       )
-    dec_feat_emb = lasagne.layers.get_output(encoder_net_W_dec)
+    # Build feature embedding reconstruction networks (if alpha > 0, beta > 0)
+    nets += mh.build_feat_emb_reconst_nets(
+            [alpha, beta], n_samples, n_hidden_u,
+            [n_hidden_t_enc, n_hidden_t_dec],
+            nets, [encoder_net_init, decoder_net_init])
 
     # Supervised network
-    discrim_net = InputLayer((batch_size, n_feats), input_var_sup)
-    discrim_net = DenseLayer(discrim_net, num_units=n_hidden_t_enc[-1],
-                             W=enc_feat_emb, nonlinearity=rectify)
+    discrim_net = mh.build_discrim_net(
+        batch_size, n_feats, input_var_sup, n_hidden_t_enc,
+        n_hidden_s, embeddings[0], disc_nonlinearity, n_targets)
 
-    # reconstruct the input using dec_feat_emb
-    reconst_net = DenseLayer(discrim_net, num_units=n_feats,
-                             W=dec_feat_emb.T)
-
-    # predicting labels
-    for hid in n_hidden_s:
-        discrim_net = DropoutLayer(discrim_net)
-        discrim_net = DenseLayer(discrim_net, num_units=hid)
-
-    assert disc_nonlinearity in ["sigmoid", "linear", "rectify", "softmax"]
-    discrim_net = DropoutLayer(discrim_net)
-    discrim_net = DenseLayer(discrim_net, num_units=n_targets,
-                             nonlinearity=eval(disc_nonlinearity))
+    # Reconstruct network
+    nets += [mh.build_reconst_net(discrim_net, embeddings[1] if
+                                  len(embeddings) > 1
+                                  else None, n_feats, gamma)]
 
     print("Building and compiling training functions")
-    # Some variables
-    loss_sup = 0
-    loss_sup_det = 0
 
     # Build and compile training functions
+    predictions, predictions_det = mh.define_predictions(nets, start=2)
+    prediction_sup, prediction_sup_det = mh.define_predictions([discrim_net])
+    prediction_sup = prediction_sup[0]
+    prediction_sup_det = prediction_sup_det[0]
 
-    prediction = lasagne.layers.get_output(discrim_net)
-    prediction_det = lasagne.layers.get_output(discrim_net,
-                                               deterministic=True)
+    # Define losses
+    # reconstruction losses
+    reconst_losses, reconst_losses_det = mh.define_reconst_losses(
+        predictions, predictions_det, [input_var_unsup, input_var_unsup,
+                                       input_var_sup])
+    # supervised loss
+    sup_loss, sup_loss_det = mh.define_sup_loss(
+        disc_nonlinearity, prediction_sup, prediction_sup_det, keep_labels,
+        target_var_sup, missing_labels_val)
 
-    # Supervised loss
-    if disc_nonlinearity == "sigmoid":
-        loss_sup = lasagne.objectives.binary_crossentropy(
-            prediction, target_var_sup)
-        loss_sup_det = lasagne.objectives.binary_crossentropy(
-            prediction_det, target_var_sup)
-    elif disc_nonlinearity == "softmax":
-        loss_sup = lasagne.objectives.categorical_crossentropy(prediction,
-                                                               target_var_sup)
-        loss_sup_det = lasagne.objectives.categorical_crossentropy(prediction_det,
-                                                                   target_var_sup)
-    elif disc_nonlinearity in ["linear", "rectify"]:
-        loss_sup = lasagne.objectives.squared_error(
-            prediction, target_var_sup)
-        loss_sup_det = lasagne.objectives.squared_error(
-            prediction_det, target_var_sup)
-    else:
-        raise ValueError("Unsupported non-linearity")
-
-    # If some labels are missing, mask the appropriate losses before taking
-    # the mean.
-    if keep_labels < 1.0:
-        mask = T.neq(target_var_sup, missing_labels_val)
-        scale_factor = 1.0 / mask.mean()
-        loss_sup = (loss_sup * mask) * scale_factor
-        loss_sup_det = (loss_sup_det * mask) * scale_factor
-    loss_sup = loss_sup.mean()
-    loss_sup_det = loss_sup_det.mean()
-
+    # Define inputs
     inputs = [input_var_sup, target_var_sup]
 
-    # Unsupervised reconstruction loss
-    reconstruction = lasagne.layers.get_output(reconst_net)
-    reconstruction_det = lasagne.layers.get_output(reconst_net,
-                                                   deterministic=True)
-    reconst_loss = lasagne.objectives.squared_error(
-        reconstruction,
-        input_var_sup).mean()
-    reconst_loss_det = lasagne.objectives.squared_error(
-        reconstruction_det,
-        input_var_sup).mean()
-
-    params = lasagne.layers.get_all_params([discrim_net, reconst_net,
-                                            encoder_net_W_dec,
-                                            encoder_net_W_enc],
-                                           trainable=True)
+    # Define parameters
+    params = lasagne.layers.get_all_params(
+        [discrim_net] + filter(None, nets[2:]), trainable=True)
 
     # Combine losses
-    loss = loss_sup + gamma*reconst_loss
-    loss_det = loss_sup_det + gamma*reconst_loss_det
+    loss = sup_loss + alpha*reconst_losses[0] + beta*reconst_losses[1] + \
+        gamma*reconst_losses[2]
+    loss_det = sup_loss_det + alpha*reconst_losses_det[0] + \
+        beta*reconst_losses_det[1] + gamma*reconst_losses_det[2]
+
+    l2_penalty = apply_penalty(params, l2)
+    loss = loss + lmd*l2_penalty
+    loss_det = loss_det + lmd*l2_penalty
 
     # Compute network updates
     updates = lasagne.updates.rmsprop(loss,
@@ -401,32 +163,36 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     train_fn = theano.function(inputs, loss, updates=updates,
                                on_unused_input='ignore')
 
-    # Expressions required for test
-    monitor_labels = ["total_loss_det", "loss_sup_det", "recon. loss",
-                      "enc_w_mean", "enc_w_var"]
-    val_outputs = [loss_det, loss_sup_det, reconst_loss_det,
-                   enc_feat_emb.mean(), enc_feat_emb.var()]
+    # Monitoring Labels
+    monitor_labels = ["reconst. feat. W_enc",
+                      "reconst. feat. W_dec",
+                      "reconst. loss"]
+    monitor_labels = [i for i, j in zip(monitor_labels, reconst_losses)
+                      if j != 0]
+    monitor_labels += ["feat. W_enc. mean", "feat. W_enc var"]
+    monitor_labels += ["feat. W_dec. mean", "feat. W_dec var"] if \
+        (embeddings[1] is not None) else []
+    monitor_labels += ["loss. sup. ", "total loss"]
 
-    if disc_nonlinearity in ["sigmoid", "softmax"]:
-        if disc_nonlinearity == "sigmoid":
-            test_pred = T.gt(prediction_det, 0.5)
-            test_acc = T.mean(T.eq(test_pred, target_var_sup),
-                            dtype=theano.config.floatX) * 100.
+    # Build and compile test function
+    val_outputs = reconst_losses_det
+    val_outputs = [i for i, j in zip(val_outputs, reconst_losses) if j != 0]
+    val_outputs += [embeddings[0].mean(), embeddings[0].var()]
+    val_outputs += [embeddings[1].mean(), embeddings[1].var()] if \
+        (embeddings[1] is not None) else []
+    val_outputs += [sup_loss_det, loss_det]
 
-        elif disc_nonlinearity == "softmax":
-            test_pred = prediction_det.argmax(1)
-            test_acc = T.mean(T.eq(test_pred, target_var_sup.argmax(1)),
-                            dtype=theano.config.floatX) * 100
-
-        monitor_labels.append("accuracy")
-        val_outputs.append(test_acc)
+    test_acc, test_pred = mh.definte_test_functions(
+        disc_nonlinearity, prediction_sup, prediction_sup_det, target_var_sup)
+    monitor_labels.append("accuracy")
+    val_outputs.append(test_acc)
 
     # Compile prediction function
     predict = theano.function([input_var_sup], test_pred)
 
     # Compile validation function
     val_fn = theano.function(inputs,
-                             [prediction_det] + val_outputs,
+                             [prediction_sup_det] + val_outputs,
                              on_unused_input='ignore')
 
     # Finally, launch the training loop.
@@ -443,15 +209,15 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Pre-training monitoring
     print("Epoch 0 of {}".format(num_epochs))
 
-    train_minibatches = iterate_minibatches(x_train, y_train,
-                                            batch_size, shuffle=False)
-    train_errr = monitoring(train_minibatches, "train", val_fn, monitor_labels,
-                            prec_recall_cutoff)
+    train_minibatches = mlh.iterate_minibatches(x_train, y_train,
+                                                batch_size, shuffle=False)
+    train_err = mlh.monitoring(train_minibatches, "train", val_fn,
+                               monitor_labels, prec_recall_cutoff)
 
-    valid_minibatches = iterate_minibatches(x_valid, y_valid,
-                                            batch_size, shuffle=False)
-    valid_err = monitoring(valid_minibatches, "valid", val_fn, monitor_labels,
-                           prec_recall_cutoff)
+    valid_minibatches = mlh.iterate_minibatches(x_valid, y_valid,
+                                                batch_size, shuffle=False)
+    valid_err = mlh.monitoring(valid_minibatches, "valid", val_fn,
+                               monitor_labels, prec_recall_cutoff)
 
     # Training loop
     start_training = time.time()
@@ -462,9 +228,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         loss_epoch = 0
 
         # Train pass
-        for batch in iterate_minibatches(x_train, training_labels,
-                                         batch_size,
-                                         shuffle=True):
+        for batch in mlh.iterate_minibatches(x_train, training_labels,
+                                             batch_size,
+                                             shuffle=True):
             loss_epoch += train_fn(*batch)
             nb_minibatches += 1
 
@@ -472,29 +238,31 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         train_loss += [loss_epoch]
 
         # Monitoring on the training set
-        train_minibatches = iterate_minibatches(x_train, y_train,
-                                                batch_size, shuffle=False)
-        train_err = monitoring(train_minibatches, "train", val_fn,
-                               monitor_labels, prec_recall_cutoff)
+        train_minibatches = mlh.iterate_minibatches(x_train, y_train,
+                                                    batch_size, shuffle=False)
+        train_err = mlh.monitoring(train_minibatches, "train", val_fn,
+                                   monitor_labels, prec_recall_cutoff)
         train_monitored += [train_err]
 
         # Monitoring on the validation set
-        valid_minibatches = iterate_minibatches(x_valid, y_valid,
-                                                batch_size, shuffle=False)
+        valid_minibatches = mlh.iterate_minibatches(x_valid, y_valid,
+                                                    batch_size, shuffle=False)
 
-        valid_err = monitoring(valid_minibatches, "valid", val_fn,
-                               monitor_labels, prec_recall_cutoff)
+        valid_err = mlh.monitoring(valid_minibatches, "valid", val_fn,
+                                   monitor_labels, prec_recall_cutoff)
         valid_monitored += [valid_err]
 
         # Monitoring on the test set
         if y_test is not None:
-            test_minibatches = iterate_minibatches(x_test, y_test, batch_size,
-                                                   shuffle=False)
-            test_err = monitoring(test_minibatches, "test", val_fn,
-                                  monitor_labels, prec_recall_cutoff)
+            test_minibatches = mlh.iterate_minibatches(x_test, y_test,
+                                                       batch_size,
+                                                       shuffle=False)
+            test_err = mlh.monitoring(test_minibatches, "test", val_fn,
+                                      monitor_labels, prec_recall_cutoff)
 
         try:
-            early_stop_val = valid_err[monitor_labels.index(early_stop_criterion)]
+            early_stop_val = valid_err[
+                monitor_labels.index(early_stop_criterion)]
         except:
             raise ValueError("There is no monitored value by the name of %s" %
                              early_stop_criterion)
@@ -502,14 +270,15 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         # Early stopping
         if epoch == 0:
             best_valid = early_stop_val
-        elif early_stop_val > best_valid: # be careful with that!!
+        elif (early_stop_val > best_valid and early_stop_criterion == 'accuracy') or \
+             (early_stop_val < best_valid and early_stop_criterion == 'loss'):
             best_valid = early_stop_val
             patience = 0
 
             # Save stuff
             np.savez(os.path.join(save_path, 'model_feat_sel.npz'),
-                     *lasagne.layers.get_all_param_values([reconst_net,
-                                                           discrim_net]))
+                     *lasagne.layers.get_all_param_values(filter(None, nets) +
+                                                          [discrim_net]))
             np.savez(save_path + "errors_supervised.npz",
                      zip(*train_monitored), zip(*valid_monitored))
         else:
@@ -518,53 +287,49 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         # End training
         if patience == max_patience or epoch == num_epochs-1:
             print("Ending training")
-            # print "Patience %i" % (patience)
-            # print "Max patience %i" % (max_patience)
-            # print "Epoch %i" % (epoch)
-            # print "Num epochs %i" % (num_epochs)
-
             # Load best model
             with np.load(os.path.join(save_path, 'model_feat_sel.npz')) as f:
                 param_values = [f['arr_%d' % i]
                                 for i in range(len(f.files))]
-            nlayers = len(lasagne.layers.get_all_params([reconst_net,
-                                                        discrim_net]))
-            lasagne.layers.set_all_param_values([reconst_net,
-                                                discrim_net],
+            nlayers = len(lasagne.layers.get_all_params(filter(None, nets) +
+                                                        [discrim_net]))
+            lasagne.layers.set_all_param_values(filter(None, nets) +
+                                                [discrim_net],
                                                 param_values[:nlayers])
             if embedding_source is None:
                 # Save embedding
                 pred = pred_feat_emb()
-                np.savez(os.path.join(save_path, 'feature_embedding.npz'), pred)
+                np.savez(os.path.join(save_path, 'feature_embedding.npz'),
+                         pred)
 
             # Test
             if y_test is not None:
-                test_minibatches = iterate_minibatches(x_test, y_test,
-                                                       batch_size,
-                                                       shuffle=False)
+                test_minibatches = mlh.iterate_minibatches(x_test, y_test,
+                                                           batch_size,
+                                                           shuffle=False)
 
-                test_err = monitoring(test_minibatches, "test", val_fn,
-                                      monitor_labels, prec_recall_cutoff)
+                test_err = mlh.monitoring(test_minibatches, "test", val_fn,
+                                          monitor_labels, prec_recall_cutoff)
             else:
-                for minibatch in iterate_testbatches(x_test,
-                                                     batch_size,
-                                                     shuffle=False):
+                for minibatch in mlh.iterate_testbatches(x_test,
+                                                         batch_size,
+                                                         shuffle=False):
                     test_predictions = []
                     test_predictions += [predict(minibatch)]
                 np.savez(os.path.join(save_path, 'test_predictions.npz'),
-                                      test_predictions)
+                         test_predictions)
 
-            train_minibatches = iterate_minibatches(x_train, y_train,
-                                                    batch_size,
-                                                    shuffle=False)
-            train_err = monitoring(train_minibatches, "train", val_fn,
-                                   monitor_labels, prec_recall_cutoff)
+            train_minibatches = mlh.iterate_minibatches(x_train, y_train,
+                                                        batch_size,
+                                                        shuffle=False)
+            train_err = mlh.monitoring(train_minibatches, "train", val_fn,
+                                       monitor_labels, prec_recall_cutoff)
 
-            valid_minibatches = iterate_minibatches(x_valid, y_valid,
-                                                    batch_size,
-                                                    shuffle=False)
-            valid_err = monitoring(valid_minibatches, "valid", val_fn,
-                                   monitor_labels, prec_recall_cutoff)
+            valid_minibatches = mlh.iterate_minibatches(x_valid, y_valid,
+                                                        batch_size,
+                                                        shuffle=False)
+            valid_err = mlh.monitoring(valid_minibatches, "valid", val_fn,
+                                       monitor_labels, prec_recall_cutoff)
             # Stop
             print("  epoch time:\t\t\t{:.3f}s \n".format(time.time() -
                                                          start_time))
@@ -604,19 +369,19 @@ def main():
                         default='1000_genomes',
                         help='Dataset.')
     parser.add_argument('--n_hidden_u',
-                        default=[30],
+                        default=[2],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--n_hidden_t_enc',
-                        default=[30],
+                        default=[2],
                         help='List of theta transformation hidden units.')
     parser.add_argument('--n_hidden_t_dec',
-                        default=[30],
+                        default=[2],
                         help='List of theta_prime transformation hidden units')
     parser.add_argument('--n_hidden_s',
-                        default=[30],
+                        default=[2],
                         help='List of supervised hidden units.')
     parser.add_argument('--embedding_source',
-                        default=None, # 'our_model_aux/feature_embedding.npz',
+                        default=None,  # 'our_model_aux/feature_embedding.npz',
                         help='Source for the feature embedding. Either' +
                              'None or the name of a file from which' +
                              'to load a learned embedding')
@@ -636,11 +401,26 @@ def main():
                         type=float,
                         default=1.0,
                         help="Float to indicate learning rate annealing rate.")
+    parser.add_argument('--alpha',
+                        '-a',
+                        type=float,
+                        default=0.25,
+                        help="""reconst_loss coeff. for auxiliary net W_enc""")
+    parser.add_argument('--beta',
+                        '-b',
+                        type=float,
+                        default=0.25,
+                        help="""reconst_loss coeff. for auxiliary net W_dec""")
     parser.add_argument('--gamma',
                         '-g',
                         type=float,
-                        default=0.0,
-                        help="""reconst_loss coeff.""")
+                        default=0.25,
+                        help="""reconst_loss coeff. (used for aux net W-dec as well)""")
+    parser.add_argument('--lmd',
+                        '-l',
+                        type=float,
+                        default=0.0001,
+                        help="""Weight decay coeff.""")
     parser.add_argument('--disc_nonlinearity',
                         '-nl',
                         default="softmax",
@@ -668,7 +448,7 @@ def main():
                              'or not')
     parser.add_argument('--which_fold',
                         type=int,
-                        default=0,
+                        default=1,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--early_stop_criterion',
                         default='accuracy',
@@ -696,7 +476,10 @@ def main():
             int(args.num_epochs),
             args.learning_rate,
             args.learning_rate_annealing,
+            args.alpha,
+            args.beta,
             args.gamma,
+            args.lmd,
             args.disc_nonlinearity,
             args.encoder_net_init,
             args.decoder_net_init,
