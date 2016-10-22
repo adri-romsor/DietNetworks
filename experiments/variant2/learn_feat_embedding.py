@@ -50,7 +50,7 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels):
 
 # Main program
 def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
-            learning_rate=.001, lmd=.0001,
+            learning_rate=.001, learning_rate_annealing=1.0, lmd=.0001,
             save_path='/Tmp/$USER/feature_selection/newmodel/',
             save_copy='/Tmp/$USER/feature_selection/newmodel/',
             dataset_path='/Tmp/$USER/feature_selection/newmodel/'):
@@ -124,8 +124,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
 
     for out in n_hidden_u:
         encoder_net = DenseLayer(encoder_net, num_units=out,
-                                 nonlinearity=linear)
-                                 # W=Uniform(0.00001))
+                                 nonlinearity=rectify)
         encoder_net = DropoutLayer(encoder_net)
     feat_emb = lasagne.layers.get_output(encoder_net)
     pred_feat_emb = theano.function([input_var], feat_emb)
@@ -135,11 +134,9 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         for i in range(len(n_hidden_u)-2, -1, -1):
             decoder_net = DenseLayer(decoder_net, num_units=n_hidden_u[i],
                                      nonlinearity=linear)
-                                     # W=Uniform(0.00001))
             decoder_net = DropoutLayer(decoder_net)
         decoder_net = DenseLayer(decoder_net, num_units=n_col,
                                  nonlinearity=linear)
-                                 # W=Uniform(0.00001))
         reconstruction = lasagne.layers.get_output(decoder_net)
     if 'epls' in unsupervised:
         n_cluster = n_hidden_u[-1]
@@ -189,12 +186,12 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
 
     l2_penalty = apply_penalty(params, l2)
     loss = loss + lmd*l2_penalty
-    los_det = loss_det + lmd*l2_penalty
+    loss_det = loss_det + lmd*l2_penalty
 
     # Compute network updates
     updates = lasagne.updates.adam(loss,
-                                    params,
-                                    learning_rate=lr)
+                                   params,
+                                   learning_rate=lr)
     # updates = lasagne.updates.sgd(loss,
     #                              params,
     #                              learning_rate=lr)
@@ -249,6 +246,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     valid_loss_epls = []
 
     nb_minibatches = n_row/batch_size
+    print("Nb of minibatches: " + str(nb_minibatches))
     start_training = time.time()
     for epoch in range(num_epochs):
         start_time = time.time()
@@ -333,6 +331,8 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
             break
 
         print("  epoch time:\t\t\t{:.3f}s".format(time.time() - start_time))
+        # Anneal the learning rate
+        lr.set_value(float(lr.get_value() * learning_rate_annealing))
 
     # Print all final errors for train, validation and test
     print("Training time:\t\t\t{:.3f}s".format(time.time() - start_training))
@@ -363,7 +363,7 @@ def main():
                         default='1000_genomes',
                         help='Dataset.')
     parser.add_argument('--n_hidden_u',
-                        default=[500],
+                        default=[100],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--unsupervised',
                         default=['autoencoder'],
@@ -379,8 +379,13 @@ def main():
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=.0001,
+                        default=.00001,
                         help="""Float to indicate learning rate.""")
+    parser.add_argument('--learning_rate_annealing',
+                        '-lra',
+                        type=float,
+                        default=.99,
+                        help="Float to indicate learning rate annealing rate.")
     parser.add_argument('--lmd',
                         '-l',
                         type=float,
@@ -406,6 +411,7 @@ def main():
             args.unsupervised,
             int(args.num_epochs),
             args.learning_rate,
+            args.learning_rate_annealing,
             args.lmd,
             args.save_tmp,
             args.save_perm,

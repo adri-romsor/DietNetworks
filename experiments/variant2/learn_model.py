@@ -369,16 +369,16 @@ def main():
                         default='1000_genomes',
                         help='Dataset.')
     parser.add_argument('--n_hidden_u',
-                        default=[2],
+                        default=[100],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--n_hidden_t_enc',
-                        default=[2],
+                        default=[100],
                         help='List of theta transformation hidden units.')
     parser.add_argument('--n_hidden_t_dec',
-                        default=[2],
+                        default=[100],
                         help='List of theta_prime transformation hidden units')
     parser.add_argument('--n_hidden_s',
-                        default=[2],
+                        default=[100],
                         help='List of supervised hidden units.')
     parser.add_argument('--embedding_source',
                         default=None,  # 'our_model_aux/feature_embedding.npz',
