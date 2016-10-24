@@ -15,8 +15,6 @@ import theano.tensor as T
 import mainloop_helpers as mlh
 import model_helpers as mh
 
-import ipdb
-
 print ("config floatX: {}".format(config.floatX))
 
 
@@ -41,7 +39,6 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             which_fold=which_fold, keep_labels=keep_labels,
             missing_labels_val=missing_labels_val)
 
-    ipdb.set_trace()
     if x_unsup is not None:
         n_samples_unsup = x_unsup.shape[1]
     else:
@@ -429,7 +426,7 @@ def main():
     parser.add_argument('--alpha',
                         '-a',
                         type=float,
-                        default=0.5,
+                        default=0.,
                         help="""reconst_loss coeff. for auxiliary net W_enc""")
     parser.add_argument('--beta',
                         '-b',
@@ -489,7 +486,7 @@ def main():
                         help='Path to dataset')
     parser.add_argument('-resume',
                         type=bool,
-                        default=True,
+                        default=False,
                         help='Whether to resume job')
 
     args = parser.parse_args()
