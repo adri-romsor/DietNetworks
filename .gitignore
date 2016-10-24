@@ -3,3 +3,5 @@ skfeature
 
 *.pyc
 slurm*
+
+imdb/*

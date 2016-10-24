@@ -15,6 +15,8 @@ import theano.tensor as T
 import mainloop_helpers as mlh
 import model_helpers as mh
 
+import ipdb
+
 print ("config floatX: {}".format(config.floatX))
 
 
@@ -37,8 +39,12 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             dataset, dataset_path, embedding_source,
             which_fold=which_fold, keep_labels=keep_labels,
             missing_labels_val=missing_labels_val)
+
+    ipdb.set_trace()
     if x_unsup is not None:
         n_samples_unsup = x_unsup.shape[1]
+    else:
+        n_samples_unsup = 0
 
     # Extract required information from data
     n_samples, n_feats = x_train.shape
@@ -381,7 +387,7 @@ def main():
                         default=[100],
                         help='List of supervised hidden units.')
     parser.add_argument('--embedding_source',
-                        default=None,  # 'our_model_aux/feature_embedding.npz',
+                        default=None,
                         help='Source for the feature embedding. Either' +
                              'None or the name of a file from which' +
                              'to load a learned embedding')
@@ -404,17 +410,17 @@ def main():
     parser.add_argument('--alpha',
                         '-a',
                         type=float,
-                        default=0.25,
+                        default=0.5,
                         help="""reconst_loss coeff. for auxiliary net W_enc""")
     parser.add_argument('--beta',
                         '-b',
                         type=float,
-                        default=0.25,
+                        default=0.,
                         help="""reconst_loss coeff. for auxiliary net W_dec""")
     parser.add_argument('--gamma',
                         '-g',
                         type=float,
-                        default=0.25,
+                        default=0.,
                         help="""reconst_loss coeff. (used for aux net W-dec as well)""")
     parser.add_argument('--lmd',
                         '-l',
