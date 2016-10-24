@@ -11,6 +11,8 @@ def generate_1000_genomes_hist(transpose=False, label_splits=None,
                                                  feature_splits, fold,
                                                  norm=False)
 
+    import ipdb; ipdb.set_trace()
+
     # Generate no_label: fuse train and valid sets
     nolabel_orig = (np.vstack([train[0], valid[0]])).transpose()
     nolabel_y = np.vstack([train[1], valid[1]])
@@ -39,10 +41,8 @@ def generate_1000_genomes_hist(transpose=False, label_splits=None,
 
     np.save(os.path.join(path, filename), nolabel_x)
 
-    return
-
 
 if __name__ == '__main__':
-    train, valid, test, nolabel_x = generate_1000_genomes_hist(
-        transpose=False, label_splits=[.75], feature_splits=None, fold=0,
+    generate_1000_genomes_hist(
+        transpose=False, label_splits=[.75], feature_splits=[.8], fold=0,
         perclass=False, norm=True)
