@@ -173,13 +173,13 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
 
     if transpose:
         # This will only be used for unsupervised pretraining
-        assert len(feature_splits) == 1 # train/valid split
+        assert len(feature_splits) == 1# train/valid split
         train, valid = split([x, y], label_splits)
         (transposed,) = shuffle((train[0].transpose(),))
         return split([train[0].transpose()], feature_splits)
     else:
         # This will only be used for supervised training
-        assert len(label_splits) == 1 # train/valid split
+        assert len(label_splits) == 1# train/valid split
         # 5-fold cross validation: this means that test will always be 20%
         all_folds = split([x, y], [.2, .2, .2, .2])
         assert fold >= 0
@@ -194,7 +194,6 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
         y = numpy.concatenate([el[1] for el in all_folds])
         train, valid = split([x, y], label_splits)
         return train, valid, test, None
-
 
 def load_imdb(transpose=False, splits=None, unlabeled=False, shuffle=False):
     '''
