@@ -30,7 +30,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             early_stop_criterion='loss_sup_det',
             save_path='/Tmp/romerosa/feature_selection/newmodel/',
             save_copy='/Tmp/romerosa/feature_selection/',
-            dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/'):
+            dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/',
+            resume=False):
 
     # Load the dataset
     print("Loading data")
@@ -114,6 +115,18 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     nets += [mh.build_reconst_net(discrim_net, embeddings[1] if
                                   len(embeddings) > 1
                                   else None, n_feats, gamma)]
+
+    # Load weights if we are resuming job
+    if resume:
+        # Load best model
+        with np.load(os.path.join(save_path, 'model_feat_sel_last.npz')) as f:
+            param_values = [f['arr_%d' % i]
+                            for i in range(len(f.files))]
+        nlayers = len(lasagne.layers.get_all_params(filter(None, nets) +
+                                                    [discrim_net]))
+        lasagne.layers.set_all_param_values(filter(None, nets) +
+                                            [discrim_net],
+                                            param_values[:nlayers])
 
     print("Building and compiling training functions")
 
@@ -282,19 +295,25 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             patience = 0
 
             # Save stuff
-            np.savez(os.path.join(save_path, 'model_feat_sel.npz'),
+            np.savez(os.path.join(save_path, 'model_feat_sel_best.npz'),
                      *lasagne.layers.get_all_param_values(filter(None, nets) +
                                                           [discrim_net]))
-            np.savez(save_path + "errors_supervised.npz",
+            np.savez(save_path + "errors_supervised_best.npz",
                      zip(*train_monitored), zip(*valid_monitored))
         else:
             patience += 1
+            # Save stuff
+            np.savez(os.path.join(save_path, 'model_feat_sel_last.npz'),
+                     *lasagne.layers.get_all_param_values(filter(None, nets) +
+                                                          [discrim_net]))
+            np.savez(save_path + "errors_supervised_last.npz",
+                     zip(*train_monitored), zip(*valid_monitored))
 
         # End training
         if patience == max_patience or epoch == num_epochs-1:
             print("Ending training")
             # Load best model
-            with np.load(os.path.join(save_path, 'model_feat_sel.npz')) as f:
+            with np.load(os.path.join(save_path, 'model_feat_sel_best.npz')) as f:
                 param_values = [f['arr_%d' % i]
                                 for i in range(len(f.files))]
             nlayers = len(lasagne.layers.get_all_params(filter(None, nets) +
@@ -468,6 +487,10 @@ def main():
     parser.add_argument('--dataset_path',
                         default='/data/lisatmp4/romerosa/datasets/',
                         help='Path to dataset')
+    parser.add_argument('-resume',
+                        type=bool,
+                        default=True,
+                        help='Whether to resume job')
 
     args = parser.parse_args()
     print ("Printing args")
@@ -495,7 +518,8 @@ def main():
             args.early_stop_criterion,
             args.save_tmp,
             args.save_perm,
-            args.dataset_path)
+            args.dataset_path,
+            args.resume)
 
 
 if __name__ == '__main__':
