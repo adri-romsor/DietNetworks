@@ -9,7 +9,8 @@ from feature_selection.experiments.common import imdb, dragonn_data
 
 # Function to load data
 def load_data(dataset, dataset_path, embedding_source,
-              which_fold=0, keep_labels=1., missing_labels_val=1.):
+              which_fold=0, keep_labels=1., missing_labels_val=1.,
+              embedding_input='raw'):
 
     # Load data from specified dataset
     splits = [.6, .2]  # this will split the data into [60%, 20%, 20%]
@@ -63,7 +64,8 @@ def load_data(dataset, dataset_path, embedding_source,
         splits = [.75]
         data = du.load_1000_genomes(transpose=False,
                                     label_splits=splits,
-                                    fold=which_fold)
+                                    fold=which_fold,
+                                    nolabels=embedding_input)
     else:
         print("Unknown dataset")
         return
@@ -87,7 +89,10 @@ def load_data(dataset, dataset_path, embedding_source,
             else:
                 x_unsup = x_train.transpose()
         else:
-            x_unsup = np.vstack((x_train, x_nolabel)).transpose()
+            if dataset != '1000_genomes':
+                x_unsup = np.vstack((x_train, x_nolabel)).transpose()
+            else:
+                x_unsup = x_nolabel
     else:
         x_unsup = None
 
@@ -111,9 +116,11 @@ def load_data(dataset, dataset_path, embedding_source,
 
 
 def define_exp_name(keep_labels, alpha, beta, gamma, lmd, n_hidden_u,
-                    n_hidden_t_enc, n_hidden_t_dec, n_hidden_s, which_fold):
+                    n_hidden_t_enc, n_hidden_t_dec, n_hidden_s, which_fold,
+                    embedding_input):
     # Define experiment name from parameters
     exp_name = 'our_model' + str(keep_labels) + \
+        '_' + embedding_input + \
         ('_Ri' if gamma > 0 else '') + ('_Rwenc' if alpha > 0 else '') + \
         ('_Rwdec' if beta > 0 else '') + \
         (('_l2-' + str(lmd)) if lmd > 0. else '')

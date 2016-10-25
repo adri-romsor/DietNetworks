@@ -202,8 +202,6 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
     # user = os.getenv("USER")
     path = "/data/lisatmp4/romerosa/datasets/1000_Genome_project/"  # % user
 
-    rvals = []
-
     if nolabels == 'raw' or not transpose:
         # Load raw data either for supervised or unsupervised part
         x, y = thousand_genomes.load_data(path)
@@ -231,18 +229,18 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
     # Data used for supervised training
     if not transpose:
         train, valid = split([x, y], label_splits)
-        rvals += train
-        rvals += valid
-        rvals += test
+        rvals = [train, valid, test]
+    else:
+        rvals = []
 
     # Data used for tranpose part or unsupervised training
     if nolabels == 'raw':
         unsupervised_data = x.transpose()
     elif nolabels == 'histo3':
-        unsupervised_data = np.load(os.path.join(path, 'unsupervised_hist_3_fold' +
+        unsupervised_data = numpy.load(os.path.join(path, 'unsupervised_hist_3_fold' +
                                     str(fold) + '.npy'))
     elif nolabels == 'histo3x26':
-        unsupervised_data = np.load(os.path.join(path, 'unsupervised_hist_3x26_fold' +
+        unsupervised_data = numpy.load(os.path.join(path, 'unsupervised_hist_3x26_fold' +
                                     str(fold) + '.npy'))
     elif nolabels == 'w2v':
         raise NotImplementedError
@@ -253,7 +251,6 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
         assert len(feature_splits) == 1  # train/valid split feature-wise
         (unsupervised_data, ) = shuffle((unsupervised_data,))
         rvals += split([unsupervised_data], feature_splits)
-        print len(rvals)
     else:
         rvals += [unsupervised_data]
 

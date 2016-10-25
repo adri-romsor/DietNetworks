@@ -78,9 +78,12 @@ def build_feat_emb_reconst_nets(coeffs, n_feats, n_hidden_u,
 
     for i, c in enumerate(coeffs):
         if c > 0:
-            units = [n_feats] + n_hidden_u + n_hidden_t[i][:-1]
+            units = [n_feats] + n_hidden_u[:-1]
             units.reverse()
             W_net = enc_nets[i]
+            lays = lasagne.layers.get_all_layers(W_net)
+            lays_dense = [el for el in lays if isinstance(el, DenseLayer)]
+            W_net = lays_dense[len(n_hidden_u)-1]
             for u in units:
                 # Add reconstruction of the feature embedding
                 W_net = DenseLayer(W_net, num_units=u,

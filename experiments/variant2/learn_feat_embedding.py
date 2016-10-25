@@ -51,6 +51,7 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels):
 # Main program
 def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
             learning_rate=.001, learning_rate_annealing=1.0, lmd=.0001,
+            embedding_input='raw',
             save_path='/Tmp/$USER/feature_selection/newmodel/',
             save_copy='/Tmp/$USER/feature_selection/newmodel/',
             dataset_path='/Tmp/$USER/feature_selection/newmodel/'):
@@ -77,7 +78,8 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         data = dragonn_data.load_data(500, 10000, 10000)
     elif dataset == '1000_genomes':
         data = dataset_utils.load_1000_genomes(
-                   transpose=True, label_splits=splits, feature_splits=splits)
+                   transpose=True, label_splits=splits, feature_splits=splits,
+                   nolabels=embedding_input)
     else:
         print("Unknown dataset")
         return
@@ -93,7 +95,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     n_row, n_col = x_train.shape
 
     # Set some variables
-    batch_size = 100
+    batch_size = 256
 
     # Preparing folder to save stuff
     exp_name = 'our_model_aux_glorot_' + str(learning_rate)
@@ -120,11 +122,11 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     assert len(n_hidden_u) > 0
 
     # Build unsupervised network
-    encoder_net = InputLayer((batch_size, n_col), input_var)
+    encoder_net = InputLayer((None, n_col), input_var)
 
     for out in n_hidden_u:
         encoder_net = DenseLayer(encoder_net, num_units=out,
-                                 nonlinearity=rectify)
+                                 nonlinearity=tanh)
         encoder_net = DropoutLayer(encoder_net)
     feat_emb = lasagne.layers.get_output(encoder_net)
     pred_feat_emb = theano.function([input_var], feat_emb)
@@ -133,7 +135,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
         decoder_net = encoder_net
         for i in range(len(n_hidden_u)-2, -1, -1):
             decoder_net = DenseLayer(decoder_net, num_units=n_hidden_u[i],
-                                     nonlinearity=linear)
+                                     nonlinearity=tanh)
             decoder_net = DropoutLayer(decoder_net)
         decoder_net = DenseLayer(decoder_net, num_units=n_col,
                                  nonlinearity=linear)
@@ -373,13 +375,13 @@ def main():
     parser.add_argument('--num_epochs',
                         '-ne',
                         type=int,
-                        default=500,
+                        default=1000,
                         help="""Int to indicate the max'
                         'number of epochs.""")
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=.00001,
+                        default=.05,
                         help="""Float to indicate learning rate.""")
     parser.add_argument('--learning_rate_annealing',
                         '-lra',
@@ -391,6 +393,10 @@ def main():
                         type=float,
                         default=.0001,
                         help="""Float to indicate weight decay coeff.""")
+    parser.add_argument('-embedding_input',
+                        type=str,
+                        default='raw',
+                        help='The kind of input we will use for the feat. emb. nets')
     parser.add_argument('--save_tmp',
                         default='/Tmp/'+ os.environ["USER"]+'/feature_selection/',
                         help='Path to save results.')
@@ -413,6 +419,7 @@ def main():
             args.learning_rate,
             args.learning_rate_annealing,
             args.lmd,
+            args.embedding_input,
             args.save_tmp,
             args.save_perm,
             args.dataset_path)
