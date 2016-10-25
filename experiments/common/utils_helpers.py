@@ -7,11 +7,9 @@ def generate_1000_genomes_hist(transpose=False, label_splits=None,
                                feature_splits=None, fold=0, perclass=False,
                                norm=True):
 
-    train, valid, test, _ = du.load_1000_genomes(transpose, label_splits,
-                                                 feature_splits, fold,
-                                                 norm=False)
-
-    import ipdb; ipdb.set_trace()
+    train, valid, test, _ = du.load_1000_genomes_old(transpose, label_splits,
+                                                     feature_splits, fold,
+                                                     norm=False)
 
     # Generate no_label: fuse train and valid sets
     nolabel_orig = (np.vstack([train[0], valid[0]])).transpose()
@@ -21,8 +19,9 @@ def generate_1000_genomes_hist(transpose=False, label_splits=None,
 
     path = '/data/lisatmp4/romerosa/datasets/1000_Genome_project/'
 
-    filename = 'unsupervised_hist_3x26.npy' if perclass else \
-        'unsupervised_hist_3.npy'
+    filename = 'unsupervised_hist_3x26' if perclass else \
+        'unsupervised_hist_3'
+    filename += '_fold' + str(fold) + '.npy'
 
     if perclass:
         nolabel_x = np.zeros((nolabel_orig.shape[0], 3*26))
@@ -43,6 +42,9 @@ def generate_1000_genomes_hist(transpose=False, label_splits=None,
 
 
 if __name__ == '__main__':
-    generate_1000_genomes_hist(
-        transpose=False, label_splits=[.75], feature_splits=[.8], fold=0,
-        perclass=False, norm=True)
+
+    for f in range(5):
+        print(str(f))
+        generate_1000_genomes_hist(
+            transpose=False, label_splits=[.75], feature_splits=[.8], fold=f,
+            perclass=True, norm=False)

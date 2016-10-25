@@ -158,8 +158,8 @@ def load_iric_molecules(transpose=False, splits=None):
         return train, valid, test, None
 
 
-def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
-                      fold=0, norm=True):
+def load_1000_genomes_old(transpose=False, label_splits=None, feature_splits=None,
+                          fold=0, norm=True):
 
     # user = os.getenv("USER")
     path = "/data/lisatmp4/romerosa/datasets/1000_Genome_project/"  # % user
@@ -194,6 +194,71 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
         y = numpy.concatenate([el[1] for el in all_folds])
         train, valid = split([x, y], label_splits)
         return train, valid, test, None
+
+
+def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
+                      nolabels='raw', fold=0, norm=True):
+
+    # user = os.getenv("USER")
+    path = "/data/lisatmp4/romerosa/datasets/1000_Genome_project/"  # % user
+
+    rvals = []
+
+    if nolabels == 'raw' or not transpose:
+        # Load raw data either for supervised or unsupervised part
+        x, y = thousand_genomes.load_data(path)
+        x = x.astype("float32")
+
+        if norm:
+            x = (x - x.mean(axis=0)[None, :]) / x.std(axis=0)[None, :]
+
+        (x, y) = shuffle((x, y))
+
+        # Prepare training and validation sets
+        assert len(label_splits) == 1  # train/valid split
+        # 5-fold cross validation: this means that test will always be 20%
+        all_folds = split([x, y], [.2, .2, .2, .2])
+        assert fold >= 0
+        assert fold < 5
+
+        # Separate choosen test set
+        test = all_folds[fold]
+        all_folds = all_folds[:fold] + all_folds[(fold + 1):]
+
+        x = numpy.concatenate([el[0] for el in all_folds])
+        y = numpy.concatenate([el[1] for el in all_folds])
+
+    # Data used for supervised training
+    if not transpose:
+        train, valid = split([x, y], label_splits)
+        rvals += train
+        rvals += valid
+        rvals += test
+
+    # Data used for tranpose part or unsupervised training
+    if nolabels == 'raw':
+        unsupervised_data = x.transpose()
+    elif nolabels == 'histo3':
+        unsupervised_data = np.load(os.path.join(path, 'unsupervised_hist_3_fold' +
+                                    str(fold) + '.npy'))
+    elif nolabels == 'histo3x26':
+        unsupervised_data = np.load(os.path.join(path, 'unsupervised_hist_3x26_fold' +
+                                    str(fold) + '.npy'))
+    elif nolabels == 'w2v':
+        raise NotImplementedError
+    else:
+        raise ValueError('Unknown nolabels method')
+
+    if transpose:
+        assert len(feature_splits) == 1  # train/valid split feature-wise
+        (unsupervised_data, ) = shuffle((unsupervised_data,))
+        rvals += split([unsupervised_data], feature_splits)
+        print len(rvals)
+    else:
+        rvals += [unsupervised_data]
+
+    return rvals
+
 
 def load_imdb(transpose=False, splits=None, unlabeled=False, shuffle=False):
     '''
