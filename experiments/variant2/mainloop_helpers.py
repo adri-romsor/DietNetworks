@@ -117,10 +117,11 @@ def load_data(dataset, dataset_path, embedding_source,
 
 def define_exp_name(keep_labels, alpha, beta, gamma, lmd, n_hidden_u,
                     n_hidden_t_enc, n_hidden_t_dec, n_hidden_s, which_fold,
-                    embedding_input):
+                    embedding_input, lr, dni, eni, earlystop, anneal):
     # Define experiment name from parameters
     exp_name = 'our_model' + str(keep_labels) + \
-        '_' + embedding_input + \
+        '_' + embedding_input + '_lr-' + str(lr) + '_anneal-' + str(anneal)  +\
+        '_eni-' + str(eni) + '_dni-' + str(dni) + '_' + earlystop + \
         ('_Ri' if gamma > 0 else '') + ('_Rwenc' if alpha > 0 else '') + \
         ('_Rwdec' if beta > 0 else '') + \
         (('_l2-' + str(lmd)) if lmd > 0. else '')

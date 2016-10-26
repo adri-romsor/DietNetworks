@@ -98,7 +98,7 @@ def execute(dataset, n_hidden_u, unsupervised=[], num_epochs=500,
     batch_size = 256
 
     # Preparing folder to save stuff
-    exp_name = 'our_model_aux_glorot_' + str(learning_rate)
+    exp_name = 'our_model_aux_' + embedding_input + '_lr-' + str(learning_rate)
     exp_name += '_hu'
     for i in range(len(n_hidden_u)):
         exp_name += ("-" + str(n_hidden_u[i]))

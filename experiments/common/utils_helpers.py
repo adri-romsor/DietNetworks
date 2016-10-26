@@ -40,7 +40,7 @@ def generate_1000_genomes_hist(transpose=False, label_splits=None,
     np.save(os.path.join(path, filename), nolabel_x)
 
 
-def generate_1000_genomes_snp_bin(transpose=False, label_splits=None,
+def generate_1000_genomes_snp2bin(transpose=False, label_splits=None,
                                   feature_splits=None, fold=0):
 
     train, valid, test, _ = du.load_1000_genomes_old(transpose, label_splits,
@@ -49,22 +49,16 @@ def generate_1000_genomes_snp_bin(transpose=False, label_splits=None,
 
     # Generate no_label: fuse train and valid sets
     nolabel_orig = (np.vstack([train[0], valid[0]]))
-    nolabel_x = np.zeros((nolabel_orig.shape[0], nolabel_orig.shape[1]*2))
+    nolabel_x = np.zeros((nolabel_orig.shape[0], nolabel_orig.shape[1]*2),
+                         dtype='uint8')
 
     path = '/data/lisatmp4/romerosa/datasets/1000_Genome_project/'
     filename = 'unsupervised_snp_bin_fold' + str(fold) + '.npy'
 
     # SNP to bin
-    r, c = np.where(nolabel_orig == 1)
-    c = 2*c+1
-    nolabel_x[r, c] = 1
-
-    r, c = np.where(x == 2)
-    c = 2*c
-    nolabel_x[r, c] = 1
-    c = c+1
-    nolabel_x[r, c] = 1
-
+    nolabel_x[:, ::2] += (nolabel_orig == 2)
+    nolabel_x[:, 1::2] += (nolabel_orig >= 1)
+    
     np.save(os.path.join(path, filename), nolabel_x)
 
 
@@ -72,5 +66,5 @@ if __name__ == '__main__':
 
     for f in range(5):
         print(str(f))
-        generate_1000_genomes_snp_bin(
+        generate_1000_genomes_snp2bin(
             transpose=False, label_splits=[.75], feature_splits=[.8], fold=f)

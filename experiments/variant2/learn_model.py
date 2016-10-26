@@ -58,7 +58,10 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Preparing folder to save stuff
     exp_name += mlh.define_exp_name(keep_labels, alpha, beta, gamma, lmd,
                                     n_hidden_u, n_hidden_t_enc, n_hidden_t_dec,
-                                    n_hidden_s, which_fold, embedding_input)
+                                    n_hidden_s, which_fold, embedding_input,
+                                    learning_rate, decoder_net_init,
+                                    encoder_net_init,early_stop_criterion,
+                                    learning_rate_annealing)
     print("Experiment: " + exp_name)
     save_path = os.path.join(save_path, dataset, exp_name)
     save_copy = os.path.join(save_copy, dataset, exp_name)
@@ -70,16 +73,6 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     input_var_unsup = theano.shared(x_unsup, 'input_unsup')  # x_unsup TBD
     target_var_sup = T.matrix('target_sup')
     lr = theano.shared(np.float32(learning_rate), 'learning_rate')
-
-    # For debugging purposes only
-    test_values = False
-    if test_values:
-        theano.config.compute_test_value = 'raise'
-        input_var_sup.tag.test_value = np.zeros((128, n_feats),
-                                                dtype="float32")
-        target_var_sup.tag.test_value = np.zeros((128, 26), dtype="float32")
-        input_var_unsup.tag.test_value = np.zeros((n_feats, n_samples),
-                                                  dtype="float32")
 
     # Build model
     print("Building model")
@@ -269,14 +262,6 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                    monitor_labels, prec_recall_cutoff)
         valid_monitored += [valid_err]
 
-        # Monitoring on the test set
-        if y_test is not None:
-            test_minibatches = mlh.iterate_minibatches(x_test, y_test,
-                                                       batch_size,
-                                                       shuffle=False)
-            test_err = mlh.monitoring(test_minibatches, "test", val_fn,
-                                      monitor_labels, prec_recall_cutoff)
-
         try:
             early_stop_val = valid_err[
                 monitor_labels.index(early_stop_criterion)]
@@ -325,7 +310,21 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                 np.savez(os.path.join(save_path, 'feature_embedding.npz'),
                          pred)
 
-            # Test
+            # Training set results
+            train_minibatches = mlh.iterate_minibatches(x_train, y_train,
+                                                        batch_size,
+                                                        shuffle=False)
+            train_err = mlh.monitoring(train_minibatches, "train", val_fn,
+                                       monitor_labels, prec_recall_cutoff)
+
+            # Validation set results
+            valid_minibatches = mlh.iterate_minibatches(x_valid, y_valid,
+                                                        batch_size,
+                                                        shuffle=False)
+            valid_err = mlh.monitoring(valid_minibatches, "valid", val_fn,
+                                       monitor_labels, prec_recall_cutoff)
+
+            # Test set results
             if y_test is not None:
                 test_minibatches = mlh.iterate_minibatches(x_test, y_test,
                                                            batch_size,
@@ -342,17 +341,6 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                 np.savez(os.path.join(save_path, 'test_predictions.npz'),
                          test_predictions)
 
-            train_minibatches = mlh.iterate_minibatches(x_train, y_train,
-                                                        batch_size,
-                                                        shuffle=False)
-            train_err = mlh.monitoring(train_minibatches, "train", val_fn,
-                                       monitor_labels, prec_recall_cutoff)
-
-            valid_minibatches = mlh.iterate_minibatches(x_valid, y_valid,
-                                                        batch_size,
-                                                        shuffle=False)
-            valid_err = mlh.monitoring(valid_minibatches, "valid", val_fn,
-                                       monitor_labels, prec_recall_cutoff)
             # Stop
             print("  epoch time:\t\t\t{:.3f}s \n".format(time.time() -
                                                          start_time))
@@ -411,7 +399,7 @@ def main():
     parser.add_argument('--num_epochs',
                         '-ne',
                         type=int,
-                        default=500,
+                        default=1000,
                         help="""Int to indicate the max'
                         'number of epochs.""")
     parser.add_argument('--learning_rate',
@@ -442,7 +430,7 @@ def main():
     parser.add_argument('--lmd',
                         '-l',
                         type=float,
-                        default=0.0001,
+                        default=.0001,
                         help="""Weight decay coeff.""")
     parser.add_argument('--disc_nonlinearity',
                         '-nl',
@@ -474,7 +462,7 @@ def main():
                         default=1,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--early_stop_criterion',
-                        default='accuracy',
+                        default='loss. sup.',
                         help='What monitored variable to use for early-stopping')
     parser.add_argument('-embedding_input',
                         type=str,
