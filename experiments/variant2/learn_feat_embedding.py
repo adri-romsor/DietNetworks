@@ -87,8 +87,16 @@ def execute(dataset, n_hidden_u, num_epochs=500,
         decoder_net = DenseLayer(decoder_net, num_units=n_hidden_u[i],
                                  nonlinearity=tanh)
         decoder_net = DropoutLayer(decoder_net)
+
+    if embedding_input == 'raw' or embedding_input == 'w2v':
+        final_nonlin = linear
+    elif embedding_input == 'bin':
+        final_nonlin = sigmoid
+    elif 'histo' in embedding_input:
+        final_nonlin = softmax
+        
     decoder_net = DenseLayer(decoder_net, num_units=n_col,
-                             nonlinearity=linear)
+                             nonlinearity=final_nonlin)
 
     # if 'epls' in unsupervised:
     #     n_cluster = n_hidden_u[-1]
@@ -181,7 +189,7 @@ def execute(dataset, n_hidden_u, num_epochs=500,
         loss_epoch = 0
 
         # Train pass
-        for batch in mlh.iterate_minibatches_unsup(x_train, batch_size, 
+        for batch in mlh.iterate_minibatches_unsup(x_train, batch_size,
                                                    shuffle=True):
             loss_epoch += train_fn(batch)
 
