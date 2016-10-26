@@ -233,9 +233,11 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
     else:
         rvals = []
 
-    # Data used for tranpose part or unsupervised training
-    if nolabels == 'raw':
+    # Data used for transpose part or unsupervised training
+    if nolabels == 'raw' and not transpose:
         unsupervised_data = None  # x.transpose()
+    elif nolabels == 'raw' and transpose:
+        unsupervised_data = x.transpose()
     elif nolabels == 'histo3':
         unsupervised_data = numpy.load(os.path.join(path, 'unsupervised_hist_3_fold' +
                                     str(fold) + '.npy'))

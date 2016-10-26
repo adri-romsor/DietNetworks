@@ -29,11 +29,14 @@ def generate_1000_genomes_hist(transpose=False, label_splits=None,
                 nolabel_x[i, nolabel_y[j]*3:nolabel_y[j]*3+3] += \
                     np.bincount(nolabel_orig[i, :].astype('int32'),
                                 minlength=3)
+                nolabel_x[i, nolabel_y[j]*3:nolabel_y[j]*3+3] /= \
+                    nolabel_x[i, nolabel_y[j]*3:nolabel_y[j]*3+3].sum()
     else:
         nolabel_x = np.zeros((nolabel_orig.shape[0], 3))
         for i in range(nolabel_x.shape[0]):
             nolabel_x[i, :] += np.bincount(nolabel_orig[i, :].astype('int32'),
                                            minlength=3)
+            nolabel_x[i, :] /= nolabel_x[i, :].sum()
 
     nolabel_x = nolabel_x.astype('float32')
 
@@ -58,7 +61,7 @@ def generate_1000_genomes_snp2bin(transpose=False, label_splits=None,
     # SNP to bin
     nolabel_x[:, ::2] += (nolabel_orig == 2)
     nolabel_x[:, 1::2] += (nolabel_orig >= 1)
-    
+
     np.save(os.path.join(path, filename), nolabel_x)
 
 
@@ -66,5 +69,5 @@ if __name__ == '__main__':
 
     for f in range(5):
         print(str(f))
-        generate_1000_genomes_snp2bin(
-            transpose=False, label_splits=[.75], feature_splits=[.8], fold=f)
+        generate_1000_genomes_hist(transpose=False, label_splits=[.75],
+                                   feature_splits=[1.], fold=f, perclass=True)

@@ -182,7 +182,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     monitor_labels += ["feat. W_enc. mean", "feat. W_enc var"]
     monitor_labels += ["feat. W_dec. mean", "feat. W_dec var"] if \
         (embeddings[1] is not None) else []
-    monitor_labels += ["loss. sup. ", "total loss"]
+    monitor_labels += ["loss. sup.", "total loss"]
 
     # Build and compile test function
     val_outputs = reconst_losses_det
@@ -192,6 +192,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         (embeddings[1] is not None) else []
     val_outputs += [sup_loss_det, loss_det]
 
+    # Compute accuracy and add it to monitoring list
     test_acc, test_pred = mh.definte_test_functions(
         disc_nonlinearity, prediction_sup, prediction_sup_det, target_var_sup)
     monitor_labels.append("accuracy")
@@ -273,7 +274,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         if epoch == 0:
             best_valid = early_stop_val
         elif (early_stop_val > best_valid and early_stop_criterion == 'accuracy') or \
-             (early_stop_val < best_valid and early_stop_criterion == 'loss'):
+             (early_stop_val < best_valid and early_stop_criterion == 'loss. sup.'):
             best_valid = early_stop_val
             patience = 0
 
@@ -358,19 +359,6 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     if save_path != save_copy:
         print('Copying model and other training files to {}'.format(save_copy))
         copy_tree(save_path, save_copy)
-
-
-def parse_int_list_arg(arg):
-    if isinstance(arg, str):
-        arg = eval(arg)
-
-    if isinstance(arg, list):
-        return arg
-    if isinstance(arg, int):
-        return [arg]
-    else:
-        raise ValueError("Following arg value could not be cast as a list of"
-                         "integer values : " % arg)
 
 
 def main():
@@ -491,10 +479,10 @@ def main():
     print (args)
 
     execute(args.dataset,
-            parse_int_list_arg(args.n_hidden_u),
-            parse_int_list_arg(args.n_hidden_t_enc),
-            parse_int_list_arg(args.n_hidden_t_dec),
-            parse_int_list_arg(args.n_hidden_s),
+            mlh.parse_int_list_arg(args.n_hidden_u),
+            mlh.parse_int_list_arg(args.n_hidden_t_enc),
+            mlh.parse_int_list_arg(args.n_hidden_t_dec),
+            mlh.parse_int_list_arg(args.n_hidden_s),
             args.embedding_source,
             int(args.num_epochs),
             args.learning_rate,
