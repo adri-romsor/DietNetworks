@@ -111,6 +111,7 @@ def build_discrim_net(batch_size, n_feats, input_var_sup, n_hidden_t_enc,
     discrim_net = InputLayer((batch_size, n_feats), input_var_sup)
     discrim_net = DenseLayer(discrim_net, num_units=n_hidden_t_enc[-1],
                              W=embedding, nonlinearity=rectify)
+    hidden_rep = discrim_net
 
     # Supervised hidden layers
     for hid in n_hidden_s:
@@ -123,17 +124,14 @@ def build_discrim_net(batch_size, n_feats, input_var_sup, n_hidden_t_enc,
     discrim_net = DenseLayer(discrim_net, num_units=n_targets,
                              nonlinearity=eval(disc_nonlinearity))
 
-    return discrim_net
+    return discrim_net, hidden_rep
 
 
-def build_reconst_net(discrim_net, embedding, n_feats, gamma):
+def build_reconst_net(hidden_rep, embedding, n_feats, gamma):
     # Reconstruct the input using dec_feat_emb
     if gamma > 0:
-        lays = lasagne.layers.get_all_layers(discrim_net)
-        reconst_net = lays[-3]
-
-        reconst_net = DenseLayer(reconst_net, num_units=n_feats,
-                                 W=embedding.T, nonlinearity=linear)
+        reconst_net = DenseLayer(hidden_rep, num_units=n_feats,
+                                 W=embedding.T)
     else:
         reconst_net = None
 
