@@ -56,7 +56,7 @@ if __name__ == '__main__':
     results_path = \
         "/data/lisatmp4/romerosa/feature_selection/1000_genomes/results/"
 
-    which_method = 'pca'
+    which_method = 'kmeans'
 
     if which_method == 'pca':
         n_comps = [1, 2, 5, 10, 20, 50, 100, 200, 400, 600, 800, 1000, 1200,

@@ -9,7 +9,8 @@ from feature_selection.experiments.common import imdb
 
 # Function to load data
 def load_data(dataset, dataset_path, embedding_source,
-              which_fold=0, keep_labels=1., missing_labels_val=1.):
+              which_fold=0, keep_labels=1., missing_labels_val=1.,
+              embedding_input='raw', transpose=False):
 
     # Load data from specified dataset
     splits = [.6, .2]  # this will split the data into [60%, 20%, 20%]
@@ -62,9 +63,11 @@ def load_data(dataset, dataset_path, embedding_source,
         # this corresponds to the split 60/20 of the whole data,
         # test is considered elsewhere as an extra 20% of the whole data
         splits = [.75]
-        data = du.load_1000_genomes(transpose=False,
+        data = du.load_1000_genomes(transpose=transpose,
                                     label_splits=splits,
-                                    fold=which_fold)
+                                    feature_splits=[.8],
+                                    fold=which_fold,
+                                    nolabels=embedding_input)
     else:
         print("Unknown dataset")
         return
@@ -78,8 +81,11 @@ def load_data(dataset, dataset_path, embedding_source,
         y_test = None
         x_nolabel = None
     else:
-        (x_train, y_train), (x_valid, y_valid), (x_test, y_test),\
-            x_nolabel = data
+        if not transpose:
+            (x_train, y_train), (x_valid, y_valid), (x_test, y_test),\
+                x_nolabel = data
+        else:
+            return data
 
     if not embedding_source:
         if x_nolabel is None:
@@ -88,7 +94,10 @@ def load_data(dataset, dataset_path, embedding_source,
             else:
                 x_unsup = x_train.transpose()
         else:
-            x_unsup = np.vstack((x_train, x_nolabel)).transpose()
+            if dataset != '1000_genomes':
+                x_unsup = np.vstack((x_train, x_nolabel)).transpose()
+            else:
+                x_unsup = x_nolabel
     else:
         x_unsup = None
 
@@ -113,9 +122,13 @@ def load_data(dataset, dataset_path, embedding_source,
 
 def define_exp_name(keep_labels, alpha, beta, gamma, lmd, n_hidden_u,
                     n_hidden_t_enc, n_hidden_t_dec, n_hidden_s, which_fold,
-                    embedding):
+                    embedding_input, lr, dni, eni, earlystop, anneal):
     # Define experiment name from parameters
     exp_name = 'our_model' + str(keep_labels) + \
+        '_' + embedding_input + '_lr-' + str(lr) + '_anneal-' + str(anneal)  +\
+        ('_eni-' + str(eni) if eni > 0 else '') + \
+        ('_dni-' + str(dni) if dni > 0 else '') + \
+        '_' + earlystop + \
         ('_Ri' if gamma > 0 else '') + ('_Rwenc' if alpha > 0 else '') + \
         ('_Rwdec' if beta > 0 else '') + \
         (('_l2-' + str(lmd)) if lmd > 0. else '')
@@ -132,7 +145,6 @@ def define_exp_name(keep_labels, alpha, beta, gamma, lmd, n_hidden_u,
     for i in range(len(n_hidden_s)):
         exp_name += ("-" + str(n_hidden_s[i]))
     exp_name += '_fold' + str(which_fold)
-    exp_name += '_emb' + embedding
 
     return exp_name
 
@@ -144,9 +156,17 @@ def iterate_minibatches(inputs, targets, batchsize,
     indices = np.arange(inputs.shape[0])
     if shuffle:
         indices = np.random.permutation(inputs.shape[0])
+
     for i in range(0, inputs.shape[0]-batchsize+1, batchsize):
         yield inputs[indices[i:i+batchsize], :],\
             targets[indices[i:i+batchsize]]
+
+def iterate_minibatches_unsup(x, batch_size, shuffle=False):
+    indices = np.arange(x.shape[0])
+    if shuffle:
+        indices = np.random.permutation(x.shape[0])
+    for i in range(0, x.shape[0]-batch_size+1, batch_size):
+        yield x[indices[i:i+batch_size], :]
 
 
 def iterate_testbatches(inputs, batchsize, shuffle=False):
@@ -189,8 +209,9 @@ def get_precision_recall_cutoff(predictions, targets):
 
 # Monitoring function
 def monitoring(minibatches, which_set, error_fn, monitoring_labels,
-               prec_recall_cutoff=True):
+               prec_recall_cutoff=True, start=1):
     print('-'*20 + which_set + ' monit.' + '-'*20)
+    prec_recall_cutoff = False if start == 0 else prec_recall_cutoff
     monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
     global_batches = 0
 
@@ -199,10 +220,14 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels,
 
     for batch in minibatches:
         # Update monitored values
-        out = error_fn(*batch)
+        if start == 0:
+            out = error_fn(batch)
+        else:
+            out = error_fn(*batch)
 
-        monitoring_values = monitoring_values + out[1:]
-        predictions.append(out[0])
+        monitoring_values = monitoring_values + out[start:]
+        if start == 1:
+            predictions.append(out[0])
         targets.append(batch[1])
         global_batches += 1
 
@@ -219,3 +244,16 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels,
         print ("  {} precis/recall cutoff:\t{:.6f}".format(which_set, cutoff))
 
     return monitoring_values
+
+
+def parse_int_list_arg(arg):
+    if isinstance(arg, str):
+        arg = eval(arg)
+
+    if isinstance(arg, list):
+        return arg
+    if isinstance(arg, int):
+        return [arg]
+    else:
+        raise ValueError("Following arg value could not be cast as a list of"
+                         "integer values : " % arg)

@@ -83,9 +83,12 @@ def build_feat_emb_reconst_nets(coeffs, n_feats, n_hidden_u,
 
     for i, c in enumerate(coeffs):
         if c > 0:
-            units = [n_feats] + n_hidden_u + n_hidden_t[i][:-1]
+            units = [n_feats] + n_hidden_u[:-1]
             units.reverse()
             W_net = enc_nets[i]
+            lays = lasagne.layers.get_all_layers(W_net)
+            lays_dense = [el for el in lays if isinstance(el, DenseLayer)]
+            W_net = lays_dense[len(n_hidden_u)-1]
             for u in units:
                 # Add reconstruction of the feature embedding
                 W_net = DenseLayer(W_net, num_units=u,
@@ -127,7 +130,7 @@ def build_reconst_net(discrim_net, embedding, n_feats, gamma):
         reconst_net = lays[-3]
 
         reconst_net = DenseLayer(reconst_net, num_units=n_feats,
-                                 W=embedding.T)
+                                 W=embedding.T, nonlinearity=linear)
     else:
         reconst_net = None
 
@@ -165,6 +168,34 @@ def define_reconst_losses(preds, preds_det, input_vars_list):
                 preds_det[i], input_vars_list[i]).mean()]
 
     return reconst_losses, reconst_losses_det
+
+
+def define_loss(pred, pred_det, target_var, output_type):
+
+    if output_type == 'raw' or output_type == 'w2v':  # loss is MSE
+        loss = lasagne.objectives.squared_error(pred, target_var).mean()
+        loss_det = \
+            lasagne.objectives.squared_error(pred_det, target_var).mean()
+    elif 'histo' in output_type:  # loss is crossentropy
+        loss = crossentropy(pred, target_var).mean()
+        loss_det = crossentropy(pred_det, target_var).mean()
+    elif output_type == 'bin':  # loss is binary_crossentropy
+        loss = lasagne.objectives.binary_crossentropy(pred, target_var).mean()
+        loss_det = \
+            lasagne.objectives.binary_crossentropy(pred_det, target_var).mean()
+
+    return loss, loss_det
+
+
+def crossentropy(y_pred, y_true):
+    # Clip probs
+    y_pred = T.clip(y_pred, _EPSILON, 1.0 - _EPSILON)
+    y_true = T.clip(y_true, _EPSILON, 1.0 - _EPSILON)
+
+    # Compute cross-entropy
+    loss = T.nnet.categorical_crossentropy(y_pred, y_true)
+
+    return loss
 
 
 def define_sup_loss(disc_nonlinearity, prediction, prediction_det, keep_labels,
