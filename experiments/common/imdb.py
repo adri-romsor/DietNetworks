@@ -120,6 +120,9 @@ def build_imdb_BoW(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
     else:
         train_data_features = vectorizer.fit_transform(clean_train_reviews)
 
+    # Obtain the words associated with each feature
+    word_list = vectorizer.get_feature_names()
+
     unlab_data_features = vectorizer.transform(clean_unlab_train_reviews)
     # For the test set, we use the same vocab as for the train set
     test_data_features = vectorizer.transform(clean_test_reviews)
@@ -129,8 +132,8 @@ def build_imdb_BoW(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
     train_labels = np.array(train['sentiment'])
     # test_data_features = test_data_features
 
-    return train_data_features, train_labels, unlab_data_features,\
-        test_data_features
+    return (train_data_features, train_labels, unlab_data_features,
+            test_data_features, word_list)
 
 
 def build_imdb_tfidf(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
@@ -182,6 +185,10 @@ def build_imdb_tfidf(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
         train_data_features = vectorizer.transform(clean_train_reviews)
     else:
         train_data_features = vectorizer.fit_transform(clean_train_reviews)
+
+    # Obtain the words associated with each feature
+    word_list = vectorizer.get_feature_names()
+
     # build the tf-idf transformer
     tf_transformer = TfidfTransformer(use_idf=False).fit(train_data_features)
     # transform the counts to tf-idf
@@ -197,16 +204,16 @@ def build_imdb_tfidf(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
     train_labels = np.array(train['sentiment'])
     # test_data_features = test_data_features
 
-    return train_data_features, train_labels, unlab_data_features,\
-        test_data_features
+    return (train_data_features, train_labels, unlab_data_features,
+            test_data_features, word_list)
 
 
 def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
                         feat_type='BoW', use_unlab=True, ngram_range=(1, 1)):
     if feat_type == 'BoW':
         train_data_features, train_labels, unlab_data_features,\
-            test_data_features = build_imdb_BoW(use_unlab=use_unlab,
-                                                ngram_range=ngram_range)
+            test_data_features, word_list = \
+            build_imdb_BoW(use_unlab=use_unlab, ngram_range=ngram_range)
         file_to_save = os.path.join(path, 'imdb_'+feat_type+'_ngram' +
                                     str(ngram_range[0]) + str(ngram_range[1]))
         if not use_unlab:
@@ -215,13 +222,131 @@ def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
 
     if feat_type == 'tfidf':
         train_data_features, train_labels, unlab_data_features,\
-            test_data_features = build_imdb_tfidf()
+            test_data_features, word_list = build_imdb_tfidf()
+
         file_to_save = os.path.join(path, 'imdb_'+feat_type+'.npz')
     np.savez(file_to_save,
              train_data_features=train_data_features,
              train_labels=train_labels,
              test_data_features=test_data_features,
-             unlab_data_features=unlab_data_features)
+             unlab_data_features=unlab_data_features,
+             word_list=word_list)
+
+    # Obtain a word2vec embedding for every word in the dataset
+    #print("Generating word2vec embedding")
+    #data_path = "/data/lisatmp4/erraqabi/data/imdb_reviews"
+    #word2vec_model = train_word2vec(data_path, use_unlabeled_data=True)
+    #word_embeddings = get_word2vec_embeddings(word2vec_model, word_list)
+    #np.save(os.path.join(path, 'imdb_word2vec.pny'), word_embeddings)
+
+    # Generate an embedding for each feature using histograms on the whole
+    # training set
+    print("Generating histogram embedding")
+    nb_bins = 10
+    histo_embedding = get_histogram_embeddings(nb_bins, train_data_features)
+    save_path = os.path.join(path, 'imdb_%s_%ihisto_emb.pny' %
+                             (feat_type, nb_bins))
+    np.save(save_path, histo_embedding)
+
+    # Generate an embedding for each feature using per-class histograms.
+    print("Generating per-class histogram embeddings")
+    histo_class_embedding = get_histogram_embeddings(nb_bins,
+                                                     train_data_features,
+                                                     train_labels)
+    save_path = os.path.join(path, 'imdb_%s_%ihisto_perclass_emb.pny' %
+                             (feat_type, nb_bins))
+    np.save(save_path, histo_class_embedding)
+
+
+def get_histogram_embeddings(nb_bins, data, labels=None):
+
+    bins = np.linspace(data.min() - 1e-6, data.max() + 1e-6, nb_bins+1)
+    print(bins)
+
+    if labels is not None:
+        # Partition the training examples by class so statistics can be
+        # taken independantly for each class
+        pos_examples_idx = np.where(labels)
+        neg_examples_idx = np.where(1-labels)
+        data_subsets = [data[pos_examples_idx], data[neg_examples_idx]]
+    else:
+        data_subsets = [data]
+
+    nb_features = data.shape[1]
+    embeddings = []
+
+    for subset in data_subsets:
+        nb_examples = subset.shape[0]
+        embedding = np.zeros((nb_features, nb_bins), dtype="float32")
+
+        for i in range(nb_features):
+            if i % 10000 == 0:
+                print(i, nb_features)
+
+            # Compute the proportion of examples that fall in that bin for that
+            # feature
+            feature = subset[:,i].toarray()
+            for j in range(nb_bins):
+                examples_in_bin = (feature >= bins[j]) * (feature < bins[j+1])
+                embedding[i, j] = examples_in_bin.sum() / float(nb_examples)
+
+        embeddings.append(embedding)
+
+    return np.hstack(embeddings)
+
+
+
+def get_word2vec_embeddings(model, word_list):
+    word_embeddings = []
+
+    for word in word_list:
+        if word in model:
+            word_embeddings.append(model[word])
+        else:
+            # Temporary solution : since the word is unknown, use a
+            # null-embedding.
+            word_embeddings.append(word_embeddings[-1] * 0 )
+
+    return np.vstack(word_embeddings)
+
+
+def train_word2vec(path_to_data, use_unlabeled_data=True):
+    # load data
+    train = pd.read_csv(os.path.join(path_to_data,
+                                     'labeledTrainData.tsv'),
+                        header=0, delimiter="\t", quoting=3)
+    unlabeled_data = pd.read_csv(os.path.join(path_to_data,
+                                              'unlabeledTrainData.tsv'),
+                                 header=0, delimiter="\t", quoting=3)
+
+    # Tokenize the data into sentences
+    tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+    sentences = []  # Initialize an empty list of sentences
+
+    for review in train["review"]:
+        sentences += Word2VecUtility.review_to_sentences(review, tokenizer)
+    if use_unlabeled_data:
+        for review in unlabeled_data["review"]:
+            sentences += Word2VecUtility.review_to_sentences(review, tokenizer)
+
+    # Train the word2vec model on the sentences
+    num_features = 300    # Word vector dimensionality
+    min_word_count = 1   # Minimum word count
+    num_workers = 4       # Number of threads to run in parallel
+    context = 10          # Context window size
+    downsampling = 1e-3   # Downsample setting for frequent words
+
+    # Initialize and train the model (this will take some time)
+    model = Word2Vec(sentences, workers=num_workers, size=num_features,
+                     min_count=min_word_count, window=context,
+                     sample=downsampling, seed=1)
+
+    # Save the word2vec model
+    model_name = ("%ifeatures_%iminwords_%icontext" %
+                  (num_features, min_word_count, context))
+    model.save(model_name)
+
+    return model
 
 
 def load_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
@@ -321,6 +446,7 @@ def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
                  feat_type='BoW', use_tables=True, split=0.8,
                  ngram_range=(1, 1)):
     if not os.path.exists(path):
+        print 'making directory: {}'.format(path)
         os.makedirs(path)
     if unsupervised:
         train_data, _, unlab_data, _ = load_imdb(feat_type=feat_type,

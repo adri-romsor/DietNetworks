@@ -22,6 +22,8 @@ import numpy as np
 import theano
 import theano.tensor as T
 
+from lasagne.nonlinearities import sigmoid, softmax
+
 sys.path.append('/data/lisatmp4/dejoieti/feature_selection')
 
 
@@ -86,7 +88,7 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels):
 
         # Update monitored values
         out = val_fn(inputs, targets.astype("float32"))
-        monitoring_values = monitoring_values + out[0]
+        monitoring_values += out
         global_batches += 1
 
     # Print monitored values
@@ -100,7 +102,7 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels):
 
 # Main program
 def execute(samp_embedding_source, num_epochs=500,
-            lr_value=1e-5, split_valid=.2,
+            lr_value=1e-5, n_classes=1,
             save_path='/data/lisatmp4/dejoieti/feature_selection/'):
     """
     Execute a supervised learning.
@@ -120,27 +122,15 @@ def execute(samp_embedding_source, num_epochs=500,
 
     # Load the dataset
     print("Loading data")
-    f = np.load(save_path + samp_embedding_source)
+    f = np.load(os.path.join(save_path, samp_embedding_source))
 
     print (f.files)
     x_train = np.array(f['x_train_supervised'], dtype=np.float32)
     y_train = np.array(f['y_train_supervised'])
+    x_valid = np.array(f['x_valid_supervised'], dtype=np.float32)
+    y_valid = np.array(f['y_valid_supervised'])
     x_test = np.array(f['x_test_supervised'], dtype=np.float32)
     y_test = np.array(f['y_test_supervised'])
-
-    # x_train = np.array(f['x_train'], dtype=np.float32)
-    # y_train = np.array(f['y_train'])
-    # x_test = np.array(f['x_valid'], dtype=np.float32)
-    # y_test = np.array(f['y_valid'])
-
-    n_data = x_train.shape[0] + x_test.shape[0]
-    end_train = int(round(split_valid*n_data))
-
-    x_valid = x_train[-end_train:]
-    y_valid = y_train[-end_train:]
-
-    x_train = x_train[:-end_train]
-    y_train = y_train[:-end_train]
 
     n_samples, n_feats = x_train.shape
     n_batch = 10
@@ -148,22 +138,28 @@ def execute(samp_embedding_source, num_epochs=500,
     print("Building model")
     # Prepare Theano variables for inputs and targets
     input_var = T.matrix('inputs')
-    target_var = T.vector('targets',  dtype="float32")
+    target_var = T.matrix('targets')
     lr = theano.shared(np.float32(lr_value), 'learning_rate')
 
+    test_values = False
+    if test_values:
+        theano.config.compute_test_value = 'raise'
+        input_var.tag.test_value = np.zeros((10, 2760), dtype="float32")
+        target_var.tag.test_value = np.ones((10, 26), dtype="float32")
+
     # Build model
-    regression_net = InputLayer((n_batch, n_feats), input_var)
-    regression_net = DenseLayer(
-        regression_net, num_units=1,
-        nonlinearity=lasagne.nonlinearities.very_leaky_rectify)
+    discrim_net = InputLayer((n_batch, n_feats), input_var)
+    discrim_net = DenseLayer(
+        discrim_net, num_units=n_classes,
+        nonlinearity=(softmax if n_classes > 1 else sigmoid))
 
     # Create a loss expression for training
     print("Building and compiling training functions")
 
     # Expressions required for training
-    prediction = lasagne.layers.get_output(regression_net)[:, 0]
-    loss = lasagne.objectives.squared_error(prediction, target_var).mean()
-    params = lasagne.layers.get_all_params(regression_net, trainable=True)
+    prediction = lasagne.layers.get_output(discrim_net)
+    loss = lasagne.objectives.categorical_crossentropy(prediction, target_var).mean()
+    params = lasagne.layers.get_all_params(discrim_net, trainable=True)
 
     updates = lasagne.updates.rmsprop(loss,
                                       params,
@@ -179,16 +175,19 @@ def execute(samp_embedding_source, num_epochs=500,
 
     # Expressions required for test
     test_prediction = \
-        lasagne.layers.get_output(regression_net,
-                                  deterministic=True)[:, 0]
-    test_predictions_loss = lasagne.objectives.squared_error(
+        lasagne.layers.get_output(discrim_net,
+                                  deterministic=True)
+    test_predictions_loss = lasagne.objectives.categorical_crossentropy(
+        test_prediction, target_var).mean()
+    test_prediction_acc = lasagne.objectives.categorical_accuracy(
         test_prediction, target_var).mean()
 
     val_fn = theano.function([input_var, target_var],
                              [test_predictions_loss,
-                              test_prediction],
+                              test_prediction_acc],
                              on_unused_input='ignore')
-    monitor_labels = ["pred. loss"]
+
+    monitor_labels = ["pred. loss", "pred. acc"]
 
     # Finally, launch the training loop.
     print("Starting training...")
@@ -197,11 +196,6 @@ def execute(samp_embedding_source, num_epochs=500,
         # In each epoch, we do a full pass over the training data to updates
         # the parameters:
         start_time = time.time()
-        #
-        # print ("shapes")
-        # print (x_train.shape)
-        # print (y_train.shape)
-
 
         for batch in iterate_minibatches(x_train, y_train, n_batch,
                                          shuffle=True):
@@ -253,12 +247,15 @@ def execute(samp_embedding_source, num_epochs=500,
              samp_embedding_source,
              test_err=test_mon["pred. loss"],
              valid_err=valid_mon["pred. loss"],
-             train_err=train_mon["pred. loss"])
+             train_err=train_mon["pred. loss"],
+             test_acc=test_mon["pred. acc"],
+             valid_acc=valid_mon["pred. acc"],
+             train_acc=train_mon["pred. acc"])
 
     # Save network weights to a file
-    np.savez(save_path+"/regression_" + str(lr_value) + "_" +
+    np.savez(save_path+"/classification_" + str(lr_value) + "_" +
              samp_embedding_source,
-             *lasagne.layers.get_all_param_values(regression_net))
+             *lasagne.layers.get_all_param_values(discrim_net))
     # And load them again later on like this:
     # with np.load('model.npz') as f:
     #     param_values = [f['arr_%d' % i] for i in range(len(f.files))]
@@ -270,7 +267,7 @@ def main():
     parser = argparse.ArgumentParser(description="""Implementation of the
                                      feature selection v2""")
     parser.add_argument('-dataset',
-                        default='genomics',
+                        default='1000_genomes',
                         help='Dataset.')
     parser.add_argument('-feat_embedding_source',
                         '-fes',
