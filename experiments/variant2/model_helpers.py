@@ -31,8 +31,16 @@ def build_feat_emb_nets(embedding_source, n_feats, n_samples_unsup,
         feat_emb = lasagne.layers.get_output(encoder_net)
         pred_feat_emb = theano.function([], feat_emb)
     else:  # meaning we haven done some unsup pre-training
-        feat_emb_val = np.load(os.path.join(save_path.rsplit('/', 1)[0],
-                                            embedding_source)).items()[0][1]
+        if os.path.exists(embedding_source):  # embedding_source is a path itself
+            path_to_load = embedding_source
+        else:  # fetch the embedding_source file in save_path
+            path_to_load = os.path.join(save_path.rsplit('/', 1)[0],
+                                        embedding_source)
+        if embedding_source[-3:] == "npz":
+            feat_emb_val = np.load(path_to_load).items()[0][1]
+        else:
+            feat_emb_val = np.load(path_to_load)
+
         feat_emb = theano.shared(feat_emb_val, 'feat_emb')
         encoder_net = InputLayer((n_feats, n_hidden_u[-1]), feat_emb)
 
@@ -78,9 +86,12 @@ def build_feat_emb_reconst_nets(coeffs, n_feats, n_hidden_u,
 
     for i, c in enumerate(coeffs):
         if c > 0:
-            units = [n_feats] + n_hidden_u + n_hidden_t[i][:-1]
+            units = [n_feats] + n_hidden_u[:-1]
             units.reverse()
             W_net = enc_nets[i]
+            lays = lasagne.layers.get_all_layers(W_net)
+            lays_dense = [el for el in lays if isinstance(el, DenseLayer)]
+            W_net = lays_dense[len(n_hidden_u)-1]
             for u in units:
                 # Add reconstruction of the feature embedding
                 W_net = DenseLayer(W_net, num_units=u,
@@ -100,6 +111,7 @@ def build_discrim_net(batch_size, n_feats, input_var_sup, n_hidden_t_enc,
     discrim_net = InputLayer((batch_size, n_feats), input_var_sup)
     discrim_net = DenseLayer(discrim_net, num_units=n_hidden_t_enc[-1],
                              W=embedding, nonlinearity=rectify)
+    hidden_rep = discrim_net
 
     # Supervised hidden layers
     for hid in n_hidden_s:
@@ -112,16 +124,13 @@ def build_discrim_net(batch_size, n_feats, input_var_sup, n_hidden_t_enc,
     discrim_net = DenseLayer(discrim_net, num_units=n_targets,
                              nonlinearity=eval(disc_nonlinearity))
 
-    return discrim_net
+    return discrim_net, hidden_rep
 
 
-def build_reconst_net(discrim_net, embedding, n_feats, gamma):
+def build_reconst_net(hidden_rep, embedding, n_feats, gamma):
     # Reconstruct the input using dec_feat_emb
     if gamma > 0:
-        lays = lasagne.layers.get_all_layers(discrim_net)
-        reconst_net = lays[-3]
-
-        reconst_net = DenseLayer(reconst_net, num_units=n_feats,
+        reconst_net = DenseLayer(hidden_rep, num_units=n_feats,
                                  W=embedding.T)
     else:
         reconst_net = None
@@ -160,6 +169,34 @@ def define_reconst_losses(preds, preds_det, input_vars_list):
                 preds_det[i], input_vars_list[i]).mean()]
 
     return reconst_losses, reconst_losses_det
+
+
+def define_loss(pred, pred_det, target_var, output_type):
+
+    if output_type == 'raw' or output_type == 'w2v':  # loss is MSE
+        loss = lasagne.objectives.squared_error(pred, target_var).mean()
+        loss_det = \
+            lasagne.objectives.squared_error(pred_det, target_var).mean()
+    elif 'histo' in output_type:  # loss is crossentropy
+        loss = crossentropy(pred, target_var).mean()
+        loss_det = crossentropy(pred_det, target_var).mean()
+    elif output_type == 'bin':  # loss is binary_crossentropy
+        loss = lasagne.objectives.binary_crossentropy(pred, target_var).mean()
+        loss_det = \
+            lasagne.objectives.binary_crossentropy(pred_det, target_var).mean()
+
+    return loss, loss_det
+
+
+def crossentropy(y_pred, y_true):
+    # Clip probs
+    y_pred = T.clip(y_pred, _EPSILON, 1.0 - _EPSILON)
+    y_true = T.clip(y_true, _EPSILON, 1.0 - _EPSILON)
+
+    # Compute cross-entropy
+    loss = T.nnet.categorical_crossentropy(y_pred, y_true)
+
+    return loss
 
 
 def define_sup_loss(disc_nonlinearity, prediction, prediction_det, keep_labels,

@@ -25,11 +25,11 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             alpha=1, beta=1, gamma=1, lmd=.0001, disc_nonlinearity="sigmoid",
             encoder_net_init=0.2, decoder_net_init=0.2, keep_labels=1.0,
             prec_recall_cutoff=True, missing_labels_val=-1.0, which_fold=0,
-            early_stop_criterion='loss_sup_det',
+            early_stop_criterion='loss_sup_det', embedding_input='raw',
             save_path='/Tmp/romerosa/feature_selection/newmodel/',
             save_copy='/Tmp/romerosa/feature_selection/',
             dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/',
-            resume=False):
+            resume=False, exp_name=''):
 
     # Load the dataset
     print("Loading data")
@@ -37,7 +37,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         x_unsup, training_labels = mlh.load_data(
             dataset, dataset_path, embedding_source,
             which_fold=which_fold, keep_labels=keep_labels,
-            missing_labels_val=missing_labels_val)
+            missing_labels_val=missing_labels_val,
+            embedding_input=embedding_input)
 
     if x_unsup is not None:
         n_samples_unsup = x_unsup.shape[1]
@@ -55,9 +56,18 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     beta = gamma if (gamma == 0) else beta
 
     # Preparing folder to save stuff
-    exp_name = mlh.define_exp_name(keep_labels, alpha, beta, gamma, lmd,
-                                   n_hidden_u, n_hidden_t_enc, n_hidden_t_dec,
-                                   n_hidden_s, which_fold)
+    if embedding_source is None:
+        embedding_name = embedding_input
+    else:
+        embedding_name = embedding_source.replace("_", "").split(".")[0]
+
+    exp_name += mlh.define_exp_name(keep_labels, alpha, beta, gamma, lmd,
+                                    n_hidden_u, n_hidden_t_enc, n_hidden_t_dec,
+                                    n_hidden_s, which_fold, embedding_input,
+                                    learning_rate, decoder_net_init,
+                                    encoder_net_init, early_stop_criterion,
+                                    learning_rate_annealing)
+
     print("Experiment: " + exp_name)
     save_path = os.path.join(save_path, dataset, exp_name)
     save_copy = os.path.join(save_copy, dataset, exp_name)
@@ -71,16 +81,6 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     input_var_unsup = theano.shared(x_unsup, 'input_unsup')  # x_unsup TBD
     target_var_sup = T.matrix('target_sup')
     lr = theano.shared(np.float32(learning_rate), 'learning_rate')
-
-    # For debugging purposes only
-    test_values = False
-    if test_values:
-        theano.config.compute_test_value = 'raise'
-        input_var_sup.tag.test_value = np.zeros((128, n_feats),
-                                                dtype="float32")
-        target_var_sup.tag.test_value = np.zeros((128, 26), dtype="float32")
-        input_var_unsup.tag.test_value = np.zeros((n_feats, n_samples),
-                                                  dtype="float32")
 
     # Build model
     print("Building model")
@@ -101,17 +101,17 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Build feature embedding reconstruction networks (if alpha > 0, beta > 0)
     nets += mh.build_feat_emb_reconst_nets(
-            [alpha, beta], n_samples, n_hidden_u,
+            [alpha, beta], n_samples_unsup, n_hidden_u,
             [n_hidden_t_enc, n_hidden_t_dec],
             nets, [encoder_net_init, decoder_net_init])
 
     # Supervised network
-    discrim_net = mh.build_discrim_net(
+    discrim_net, hidden_rep = mh.build_discrim_net(
         batch_size, n_feats, input_var_sup, n_hidden_t_enc,
         n_hidden_s, embeddings[0], disc_nonlinearity, n_targets)
 
     # Reconstruct network
-    nets += [mh.build_reconst_net(discrim_net, embeddings[1] if
+    nets += [mh.build_reconst_net(hidden_rep, embeddings[1] if
                                   len(embeddings) > 1
                                   else None, n_feats, gamma)]
 
@@ -190,7 +190,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     monitor_labels += ["feat. W_enc. mean", "feat. W_enc var"]
     monitor_labels += ["feat. W_dec. mean", "feat. W_dec var"] if \
         (embeddings[1] is not None) else []
-    monitor_labels += ["loss. sup. ", "total loss"]
+    monitor_labels += ["loss. sup.", "total loss"]
 
     # Build and compile test function
     val_outputs = reconst_losses_det
@@ -200,6 +200,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         (embeddings[1] is not None) else []
     val_outputs += [sup_loss_det, loss_det]
 
+    # Compute accuracy and add it to monitoring list
     test_acc, test_pred = mh.definte_test_functions(
         disc_nonlinearity, prediction_sup, prediction_sup_det, target_var_sup)
     monitor_labels.append("accuracy")
@@ -270,14 +271,6 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                    monitor_labels, prec_recall_cutoff)
         valid_monitored += [valid_err]
 
-        # Monitoring on the test set
-        if y_test is not None:
-            test_minibatches = mlh.iterate_minibatches(x_test, y_test,
-                                                       batch_size,
-                                                       shuffle=False)
-            test_err = mlh.monitoring(test_minibatches, "test", val_fn,
-                                      monitor_labels, prec_recall_cutoff)
-
         try:
             early_stop_val = valid_err[
                 monitor_labels.index(early_stop_criterion)]
@@ -289,7 +282,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         if epoch == 0:
             best_valid = early_stop_val
         elif (early_stop_val > best_valid and early_stop_criterion == 'accuracy') or \
-             (early_stop_val < best_valid and early_stop_criterion == 'loss'):
+             (early_stop_val < best_valid and early_stop_criterion == 'loss. sup.'):
             best_valid = early_stop_val
             patience = 0
 
@@ -297,7 +290,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             np.savez(os.path.join(save_path, 'model_feat_sel_best.npz'),
                      *lasagne.layers.get_all_param_values(filter(None, nets) +
                                                           [discrim_net]))
-            np.savez(save_path + "errors_supervised_best.npz",
+            np.savez(save_path + "/errors_supervised_best.npz",
                      zip(*train_monitored), zip(*valid_monitored))
         else:
             patience += 1
@@ -305,7 +298,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             np.savez(os.path.join(save_path, 'model_feat_sel_last.npz'),
                      *lasagne.layers.get_all_param_values(filter(None, nets) +
                                                           [discrim_net]))
-            np.savez(save_path + "errors_supervised_last.npz",
+            np.savez(save_path + "/errors_supervised_last.npz",
                      zip(*train_monitored), zip(*valid_monitored))
 
         # End training
@@ -326,7 +319,21 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                 np.savez(os.path.join(save_path, 'feature_embedding.npz'),
                          pred)
 
-            # Test
+            # Training set results
+            train_minibatches = mlh.iterate_minibatches(x_train, y_train,
+                                                        batch_size,
+                                                        shuffle=False)
+            train_err = mlh.monitoring(train_minibatches, "train", val_fn,
+                                       monitor_labels, prec_recall_cutoff)
+
+            # Validation set results
+            valid_minibatches = mlh.iterate_minibatches(x_valid, y_valid,
+                                                        batch_size,
+                                                        shuffle=False)
+            valid_err = mlh.monitoring(valid_minibatches, "valid", val_fn,
+                                       monitor_labels, prec_recall_cutoff)
+
+            # Test set results
             if y_test is not None:
                 test_minibatches = mlh.iterate_minibatches(x_test, y_test,
                                                            batch_size,
@@ -343,17 +350,6 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                 np.savez(os.path.join(save_path, 'test_predictions.npz'),
                          test_predictions)
 
-            train_minibatches = mlh.iterate_minibatches(x_train, y_train,
-                                                        batch_size,
-                                                        shuffle=False)
-            train_err = mlh.monitoring(train_minibatches, "train", val_fn,
-                                       monitor_labels, prec_recall_cutoff)
-
-            valid_minibatches = mlh.iterate_minibatches(x_valid, y_valid,
-                                                        batch_size,
-                                                        shuffle=False)
-            valid_err = mlh.monitoring(valid_minibatches, "valid", val_fn,
-                                       monitor_labels, prec_recall_cutoff)
             # Stop
             print("  epoch time:\t\t\t{:.3f}s \n".format(time.time() -
                                                          start_time))
@@ -373,19 +369,6 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         copy_tree(save_path, save_copy)
 
 
-def parse_int_list_arg(arg):
-    if isinstance(arg, str):
-        arg = eval(arg)
-
-    if isinstance(arg, list):
-        return arg
-    if isinstance(arg, int):
-        return [arg]
-    else:
-        raise ValueError("Following arg value could not be cast as a list of"
-                         "integer values : " % arg)
-
-
 def main():
     parser = argparse.ArgumentParser(description="""Implementation of the
                                      feature selection v2""")
@@ -393,16 +376,16 @@ def main():
                         default='1000_genomes',
                         help='Dataset.')
     parser.add_argument('--n_hidden_u',
-                        default=[100],
+                        default=[48, 48],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--n_hidden_t_enc',
-                        default=[100],
+                        default=[32],
                         help='List of theta transformation hidden units.')
     parser.add_argument('--n_hidden_t_dec',
-                        default=[100],
+                        default=[32],
                         help='List of theta_prime transformation hidden units')
     parser.add_argument('--n_hidden_s',
-                        default=[100],
+                        default=[32],
                         help='List of supervised hidden units.')
     parser.add_argument('--embedding_source',
                         default=None,
@@ -412,7 +395,7 @@ def main():
     parser.add_argument('--num_epochs',
                         '-ne',
                         type=int,
-                        default=500,
+                        default=1000,
                         help="""Int to indicate the max'
                         'number of epochs.""")
     parser.add_argument('--learning_rate',
@@ -443,7 +426,7 @@ def main():
     parser.add_argument('--lmd',
                         '-l',
                         type=float,
-                        default=0.0001,
+                        default=.0001,
                         help="""Weight decay coeff.""")
     parser.add_argument('--disc_nonlinearity',
                         '-nl',
@@ -454,13 +437,13 @@ def main():
                         type=float,
                         default=0.00001,
                         help="Bounds of uniform initialization for " +
-                              "encoder_net weights")
+                             "encoder_net weights")
     parser.add_argument('--decoder_net_init',
                         '-dni',
                         type=float,
                         default=0.00001,
                         help="Bounds of uniform initialization for " +
-                              "decoder_net weights")
+                             "decoder_net weights")
     parser.add_argument('--keep_labels',
                         type=float,
                         default=1.0,
@@ -475,8 +458,12 @@ def main():
                         default=1,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--early_stop_criterion',
-                        default='accuracy',
+                        default='loss. sup.',
                         help='What monitored variable to use for early-stopping')
+    parser.add_argument('-embedding_input',
+                        type=str,
+                        default='raw',
+                        help='The kind of input we will use for the feat. emb. nets')
     parser.add_argument('--save_tmp',
                         default='/Tmp/'+ os.environ["USER"]+'/feature_selection/',
                         help='Path to save results.')
@@ -490,16 +477,20 @@ def main():
                         type=bool,
                         default=False,
                         help='Whether to resume job')
+    parser.add_argument('-exp_name',
+                        type=str,
+                        default='',
+                        help='Experiment name that will be concatenated at the beginning of the generated name')
 
     args = parser.parse_args()
     print ("Printing args")
     print (args)
 
     execute(args.dataset,
-            parse_int_list_arg(args.n_hidden_u),
-            parse_int_list_arg(args.n_hidden_t_enc),
-            parse_int_list_arg(args.n_hidden_t_dec),
-            parse_int_list_arg(args.n_hidden_s),
+            mlh.parse_int_list_arg(args.n_hidden_u),
+            mlh.parse_int_list_arg(args.n_hidden_t_enc),
+            mlh.parse_int_list_arg(args.n_hidden_t_dec),
+            mlh.parse_int_list_arg(args.n_hidden_s),
             args.embedding_source,
             int(args.num_epochs),
             args.learning_rate,
@@ -515,10 +506,12 @@ def main():
             args.prec_recall_cutoff != 0, -1,
             args.which_fold,
             args.early_stop_criterion,
+            args.embedding_input,
             args.save_tmp,
             args.save_perm,
             args.dataset_path,
-            args.resume)
+            args.resume,
+            args.exp_name)
 
 
 if __name__ == '__main__':
