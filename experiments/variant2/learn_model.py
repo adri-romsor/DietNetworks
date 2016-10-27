@@ -104,12 +104,12 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             nets, [encoder_net_init, decoder_net_init])
 
     # Supervised network
-    discrim_net = mh.build_discrim_net(
+    discrim_net, hidden_rep = mh.build_discrim_net(
         batch_size, n_feats, input_var_sup, n_hidden_t_enc,
         n_hidden_s, embeddings[0], disc_nonlinearity, n_targets)
 
     # Reconstruct network
-    nets += [mh.build_reconst_net(discrim_net, embeddings[1] if
+    nets += [mh.build_reconst_net(hidden_rep, embeddings[1] if
                                   len(embeddings) > 1
                                   else None, n_feats, gamma)]
 
