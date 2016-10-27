@@ -4,7 +4,7 @@ import os
 import random
 
 from feature_selection.experiments.common import dataset_utils as du
-from feature_selection.experiments.common import imdb, dragonn_data
+from feature_selection.experiments.common import imdb
 
 
 # Function to load data
@@ -56,6 +56,7 @@ def load_data(dataset, dataset_path, embedding_source,
         data = imdb.read_from_hdf5(
             path=dataset_path, unsupervised=unsupervised, feat_type=feat_type)
     elif dataset == 'dragonn':
+        from feature_selection.experiments.common import dragonn_data
         data = dragonn_data.load_data(500, 100, 100)
     elif dataset == '1000_genomes':
         # This will split the training data into 75% train, 25%

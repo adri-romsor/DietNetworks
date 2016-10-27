@@ -56,12 +56,18 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     beta = gamma if (gamma == 0) else beta
 
     # Preparing folder to save stuff
+    if embedding_source is None:
+        embedding_name = embedding_input
+    else:
+        embedding_name = embedding_source.replace("_", "").split(".")[0]
+
     exp_name += mlh.define_exp_name(keep_labels, alpha, beta, gamma, lmd,
                                     n_hidden_u, n_hidden_t_enc, n_hidden_t_dec,
                                     n_hidden_s, which_fold, embedding_input,
                                     learning_rate, decoder_net_init,
                                     encoder_net_init,early_stop_criterion,
                                     learning_rate_annealing)
+
     print("Experiment: " + exp_name)
     save_path = os.path.join(save_path, dataset, exp_name)
     save_copy = os.path.join(save_copy, dataset, exp_name)

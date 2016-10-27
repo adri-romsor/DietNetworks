@@ -31,8 +31,13 @@ def build_feat_emb_nets(embedding_source, n_feats, n_samples_unsup,
         feat_emb = lasagne.layers.get_output(encoder_net)
         pred_feat_emb = theano.function([], feat_emb)
     else:  # meaning we haven done some unsup pre-training
-        feat_emb_val = np.load(os.path.join(save_path.rsplit('/', 1)[0],
-                                            embedding_source)).items()[0][1]
+        if embedding_source[-3:] == "npz":
+            feat_emb_val = np.load(os.path.join(save_path.rsplit('/', 1)[0],
+                                                embedding_source)).items()[0][1]
+        else:
+            feat_emb_val = np.load(os.path.join(save_path.rsplit('/', 1)[0],
+                                                embedding_source))
+            
         feat_emb = theano.shared(feat_emb_val, 'feat_emb')
         encoder_net = InputLayer((n_feats, n_hidden_u[-1]), feat_emb)
 
