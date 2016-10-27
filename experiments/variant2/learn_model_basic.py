@@ -234,7 +234,8 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
         if epoch == 0:
             best_valid = early_stop_val
         elif (early_stop_val > best_valid and early_stop_criterion == 'accuracy') or \
-             (early_stop_val < best_valid and early_stop_criterion == 'loss'):
+             (early_stop_val < best_valid and early_stop_criterion ==
+              'loss. sup.'):
             best_valid = early_stop_val
             patience = 0
 
@@ -248,7 +249,7 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
             np.savez(os.path.join(save_path, 'model_feat_sel_last.npz'),
                      *lasagne.layers.get_all_param_values(filter(None, nets) +
                                                           [discrim_net]))
-            np.savez(save_path + "errors_supervised_last.npz",
+            np.savez(save_path + "/errors_supervised_last.npz",
                      zip(*train_monitored), zip(*valid_monitored))
 
         # End training
@@ -259,7 +260,7 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
                 print("No saved model to be tested and/or generate"
                       " the embedding !")
             else:
-                with np.load(save_path + '/model_feat_sel.npz',) as f:
+                with np.load(save_path + '/model_feat_sel_best.npz',) as f:
                     param_values = [f['arr_%d' % i]
                                     for i in range(len(f.files))]
                     nlayers = len(lasagne.layers.get_all_params(nets))
@@ -331,12 +332,12 @@ def main():
     parser.add_argument('--num_epochs',
                         '-ne',
                         type=int,
-                        default=500,
+                        default=1000,
                         help='Int to indicate the max number of epochs.')
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=0.000001,
+                        default=0.00001,
                         help='Float to indicate learning rate.')
     parser.add_argument('--learning_rate_annealing',
                         '-lra',
@@ -370,7 +371,7 @@ def main():
                         default=1,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--early_stop_criterion',
-                        default='accuracy',
+                        default='loss. sup.',
                         help='What monitored variable to use for early-stopping')
     parser.add_argument('-embedding_input',
                         type=str,

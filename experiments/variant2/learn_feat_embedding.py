@@ -94,9 +94,16 @@ def execute(dataset, n_hidden_u, num_epochs=500,
         final_nonlin = sigmoid
     elif 'histo' in embedding_input:
         final_nonlin = softmax
-        
+
+    if embedding_input == 'histo3x26':
+        laySize = lasagne.layers.get_output(decoder_net).shape
+        decoder_net = ReshapeLayer(decoder_net, (laySize[0]*26,3))
+
     decoder_net = DenseLayer(decoder_net, num_units=n_col,
                              nonlinearity=final_nonlin)
+
+    if embedding_input == 'histo3x26':
+        decoder_net = ReshapeLayer(decoder_net, (laySize[0], laySize[1])
 
     # if 'epls' in unsupervised:
     #     n_cluster = n_hidden_u[-1]
