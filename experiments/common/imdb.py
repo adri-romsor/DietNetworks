@@ -208,7 +208,7 @@ def build_imdb_tfidf(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
             test_data_features, word_list)
 
 
-def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
+def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/testing_data_generation',
                         feat_type='BoW', use_unlab=True, ngram_range=(1, 1)):
     if feat_type == 'BoW':
         train_data_features, train_labels, unlab_data_features,\
@@ -231,7 +231,6 @@ def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
              test_data_features=test_data_features,
              unlab_data_features=unlab_data_features,
              word_list=word_list)
-
     # Obtain a word2vec embedding for every word in the dataset
     #print("Generating word2vec embedding")
     #data_path = "/data/lisatmp4/erraqabi/data/imdb_reviews"
