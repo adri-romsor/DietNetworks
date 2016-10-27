@@ -288,7 +288,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             np.savez(os.path.join(save_path, 'model_feat_sel_best.npz'),
                      *lasagne.layers.get_all_param_values(filter(None, nets) +
                                                           [discrim_net]))
-            np.savez(save_path + "errors_supervised_best.npz",
+            np.savez(save_path + "/errors_supervised_best.npz",
                      zip(*train_monitored), zip(*valid_monitored))
         else:
             patience += 1
@@ -296,7 +296,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             np.savez(os.path.join(save_path, 'model_feat_sel_last.npz'),
                      *lasagne.layers.get_all_param_values(filter(None, nets) +
                                                           [discrim_net]))
-            np.savez(save_path + "errors_supervised_last.npz",
+            np.savez(save_path + "/errors_supervised_last.npz",
                      zip(*train_monitored), zip(*valid_monitored))
 
         # End training
@@ -374,16 +374,16 @@ def main():
                         default='1000_genomes',
                         help='Dataset.')
     parser.add_argument('--n_hidden_u',
-                        default=[100],
+                        default=[48, 48],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--n_hidden_t_enc',
-                        default=[100],
+                        default=[32],
                         help='List of theta transformation hidden units.')
     parser.add_argument('--n_hidden_t_dec',
-                        default=[100],
+                        default=[32],
                         help='List of theta_prime transformation hidden units')
     parser.add_argument('--n_hidden_s',
-                        default=[100],
+                        default=[32],
                         help='List of supervised hidden units.')
     parser.add_argument('--embedding_source',
                         default=None,
