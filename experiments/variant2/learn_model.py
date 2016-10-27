@@ -65,7 +65,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                     n_hidden_u, n_hidden_t_enc, n_hidden_t_dec,
                                     n_hidden_s, which_fold, embedding_input,
                                     learning_rate, decoder_net_init,
-                                    encoder_net_init,early_stop_criterion,
+                                    encoder_net_init, early_stop_criterion,
                                     learning_rate_annealing)
 
     print("Experiment: " + exp_name)
@@ -435,13 +435,13 @@ def main():
                         type=float,
                         default=0.00001,
                         help="Bounds of uniform initialization for " +
-                              "encoder_net weights")
+                             "encoder_net weights")
     parser.add_argument('--decoder_net_init',
                         '-dni',
                         type=float,
                         default=0.00001,
                         help="Bounds of uniform initialization for " +
-                              "decoder_net weights")
+                             "decoder_net weights")
     parser.add_argument('--keep_labels',
                         type=float,
                         default=1.0,
