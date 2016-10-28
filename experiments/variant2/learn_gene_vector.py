@@ -102,6 +102,7 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
     params = lasagne.layers.get_all_params(encoder, trainable=True)
     monitor_labels = []
     val_outputs = []
+    nets = [encoder]
 
     if alpha > 0:
         decoder_units = encoder_units[::-1][1:]
@@ -122,6 +123,7 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         params += lasagne.layers.get_all_params(decoder, trainable=True)
         monitor_labels += ["reconst."]
         val_outputs += [loss_reconst]
+        nets += [decoder]
 
     else:
         loss_reconst = 0
@@ -148,6 +150,7 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         params += lasagne.layers.get_all_params(predictor, trainable=True)
         monitor_labels += ["pred."]
         val_outputs += [loss_pred]
+        nets += [predictor]
     else:
         loss_pred = 0
 
