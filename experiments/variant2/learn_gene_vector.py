@@ -108,6 +108,7 @@ def main(learning_rate=0.00001, alpha=.5, save_path=None, save_copy=None):
                 nonlinearity=sigmoid)
 
     predictor_laysize = (reduction_fraction[-1]*n_features)*4
+    predictor = None
     for i in range(len(predictor_laysize)):
         predictor = DenseLayer(
                 encoder if i == 0 else predictor,
@@ -128,8 +129,9 @@ def main(learning_rate=0.00001, alpha=.5, save_path=None, save_copy=None):
         prediction_var, target_var
     )
 
+    networks = [predictor, decoder]
     params = lasagne.layers.get_all_params(
-        [predictor, decoder], trainable=True)
+        networks, trainable=True)
 
     # Combine losses
     loss = loss1 + alpha * loss2
@@ -173,9 +175,13 @@ def main(learning_rate=0.00001, alpha=.5, save_path=None, save_copy=None):
 
         # Train pass
         for batch_index in range(batches_per_epoch):
-            batch = data_generator.next()
+            x, y, mask_index = data_generator.next()
             ipdb.set_trace()
-            loss_epoch += train_fn(*batch)
+            # inputs = [input_var, target_var, target_reconst]
+            target_reconst_val = x.copy()
+            for i in range (x.shape[0]):
+                x[i, mask_index[i]: mask_index[i]+2] = [0., 0.]
+            loss_epoch += train_fn(x, y, target_reconst_val)
             nb_minibatches += 1
 
         loss_epoch /= nb_minibatches
@@ -184,13 +190,12 @@ def main(learning_rate=0.00001, alpha=.5, save_path=None, save_copy=None):
         if epoch % 5 == 0:
             # Save stuff
             np.savez(os.path.join(save_path, 'model_gene_vector_last.npz'),
-                     *lasagne.layers.get_all_param_values(filter(None, nets) +
-                                                          [discrim_net]))
+                     *lasagne.layers.get_all_param_values(networks))
             np.savez(save_path + "errors_gene_vector.npz",
                      zip(*train_monitored), zip(*valid_monitored))
 
     # Print all final errors for train, validation and test
-    print("Training time:\t\t\t{:.3f}s".format(time.time() - start_training))
+    print("Training time:\t\t\t{:.3f}s".format(time.time() - start_time))
 
     # Copy files to loadpath
     if save_path != save_copy:
