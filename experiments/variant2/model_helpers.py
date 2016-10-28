@@ -31,7 +31,7 @@ def build_feat_emb_nets(embedding_source, n_feats, n_samples_unsup,
         feat_emb = lasagne.layers.get_output(encoder_net)
         pred_feat_emb = theano.function([], feat_emb)
     else:  # meaning we haven done some unsup pre-training
-        if os.exists(embedding_source):  # embedding_source is a path itself
+        if os.path.exists(embedding_source):  # embedding_source is a path itself
             path_to_load = embedding_source
         else:  # fetch the embedding_source file in save_path
             path_to_load = os.path.join(save_path.rsplit('/', 1)[0],
