@@ -193,8 +193,12 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
 
         # Train pass
         for batch_index in range(batches_per_epoch):
-            batch = data_generator.next()
-            loss_epoch += train_fn(*batch)
+            x, y, mask_index = data_generator.next()
+            # inputs = [input_var, target_var, target_reconst]
+            target_reconst_val = x.copy()
+            for i in range (x.shape[0]):
+                x[i, mask_index[i]: mask_index[i]+2] = [0., 0.]
+            loss_epoch += train_fn(x, y, target_reconst_val)
             nb_minibatches += 1
 
         loss_epoch /= nb_minibatches
@@ -231,8 +235,6 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         else:
             patience += 1
             np.savez(os.path.join(save_path, 'model_snp2vec_last.npz'),
-                     *lasagne.layers.get_all_param_values(filter(None, nets) +
-                                                          [discrim_net]))
             np.savez(save_path + "/errors_snp2vec_last.npz",
                      zip(*train_monitored), zip(*valid_monitored))
 
