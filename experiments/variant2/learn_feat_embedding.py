@@ -8,7 +8,8 @@ import tables
 from distutils.dir_util import copy_tree
 
 import lasagne
-from lasagne.layers import DenseLayer, InputLayer, DropoutLayer
+from lasagne.layers import DenseLayer, InputLayer, DropoutLayer, ReshapeLayer, \
+    NonlinearityLayer
 from lasagne.nonlinearities import sigmoid, softmax, tanh, linear, rectify
 from lasagne.regularization import apply_penalty, l2, l1
 from lasagne.init import Uniform
@@ -85,8 +86,11 @@ def execute(dataset, n_hidden_u, num_epochs=500,
     decoder_net = encoder_net
     for i in range(len(n_hidden_u)-2, -1, -1):
         decoder_net = DenseLayer(decoder_net, num_units=n_hidden_u[i],
-                                 nonlinearity=tanh)
+                                 nonlinearity=linear)
         decoder_net = DropoutLayer(decoder_net)
+
+    decoder_net = DenseLayer(decoder_net, num_units=n_col,
+                             nonlinearity=linear)
 
     if embedding_input == 'raw' or embedding_input == 'w2v':
         final_nonlin = linear
@@ -97,27 +101,12 @@ def execute(dataset, n_hidden_u, num_epochs=500,
 
     if embedding_input == 'histo3x26':
         laySize = lasagne.layers.get_output(decoder_net).shape
-        decoder_net = ReshapeLayer(decoder_net, (laySize[0]*26,3))
+        decoder_net = ReshapeLayer(decoder_net, (laySize[0]*26, 3))
 
-    decoder_net = DenseLayer(decoder_net, num_units=n_col,
-                             nonlinearity=final_nonlin)
+    decoder_net = NonlinearityLayer(decoder_net, nonlinearity=final_nonlin)
 
     if embedding_input == 'histo3x26':
-        decoder_net = ReshapeLayer(decoder_net, (laySize[0], laySize[1])
-
-    # if 'epls' in unsupervised:
-    #     n_cluster = n_hidden_u[-1]
-    #    activation = theano.shared(np.zeros(n_cluster, dtype='float32'))
-    #    nb_activation = 1
-
-    #    # /!\ if non linearity not sigmoid, map output values to function image
-    #    hidden_unsup = T.nnet.sigmoid(feat_emb)
-
-    #    target, new_act = tensor_fun_EPLS(hidden_unsup, activation,
-    #                                      n_row, nb_activation)
-
-    #    update_epls[activation] = new_act
-    #    # h_rep = T.largest(0, h_rep - T.mean(h_rep))
+        decoder_net = ReshapeLayer(decoder_net, (laySize[0], laySize[1]))
 
     print("Building and compiling training functions")
     # Build and compile training functions
@@ -309,12 +298,12 @@ def main():
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=.05,
+                        default=.01,
                         help="""Float to indicate learning rate.""")
     parser.add_argument('--learning_rate_annealing',
                         '-lra',
                         type=float,
-                        default=.99,
+                        default=1.,
                         help="Float to indicate learning rate annealing rate.")
     parser.add_argument('--lmd',
                         '-l',
@@ -323,7 +312,7 @@ def main():
                         help="""Float to indicate weight decay coeff.""")
     parser.add_argument('-embedding_input',
                         type=str,
-                        default='histo3',
+                        default='histo3x26',
                         help='The kind of input we will use for the feat. emb. nets')
     parser.add_argument('--which_fold',
                         type=int,
