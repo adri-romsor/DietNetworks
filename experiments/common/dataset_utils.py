@@ -244,6 +244,9 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
     elif nolabels == 'histo3x26':
         unsupervised_data = numpy.load(os.path.join(path, 'unsupervised_hist_3x26_fold' +
                                     str(fold) + '.npy'))
+    elif nolabels == 'bin':
+        unsupervised_data = numpy.load(os.path.join(path, 'unsupervised_snp_bin_fold' +
+                                        str(fold) + '.npy'))
     elif nolabels == 'w2v':
         raise NotImplementedError
     else:
