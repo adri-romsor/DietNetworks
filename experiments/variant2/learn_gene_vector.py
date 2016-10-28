@@ -24,26 +24,34 @@ print ("config floatX: {}".format(config.floatX))
 
 
 # creating data generator
-def data_generator(dataset, batch_size):
-    while True:
-        x_list, y_list, mask_index = [], [], []
-        for i in range(batch_size):
-            index_feat = random.randint(0, dataset.shape[1]/2-1)
-            index_individual = random.randint(0, dataset.shape[0]/2-1)
-            datamod = dataset[index_individual, :]
-            # ipdb.set_trace()
-            datamod = np.concatenate([
-                    datamod[:index_feat],
-                    np.array([0, 0]),
-                    datamod[index_feat+2:]])
+def data_generator(dataset, batch_size, shuffle=False):
+    nb_subjects = dataset.shape[0]
+    nb_feats = dataset.shape[1]
 
-            target = tuple(dataset[index_individual, index_feat:index_feat+2])
-            mask_index += np.array([index_feat, index_feat+1])
+    if shuffle:
+        indices = np.random.permutation(nb_subjects)
+    else:
+        indices = np.arange(nb_subjects)
 
-            x_list.append(datamod)
-            y_list.append(target)
+    for i in range(0, nb_subjects - batch_size + 1, batch_size):
+        inputs = dataset[indices[i:i + batch_size], :]
+        n_in_batch = inputs.shape[0]
 
-        yield(np.stack(x_list), np.stack(y_list), np.stack(mask_index))
+        # Keep a copy of the original inputs to act as a reconstruction target
+        reconstruction_targets = inputs.copy()
+
+        # Obtain the indices of the features to black-out
+        feat_indices = np.random.randint(0, nb_feats / 2, (n_in_batch, 1))
+        blacked_out_indices = np.hstack((feat_indices, feat_indices + 1))
+
+        # Keep the values to be blacked-out at targets
+        targets = inputs[np.arange(n_in_batch)[:,None], blacked_out_indices]
+
+        # Black-out the necessary features to get the final minibatch inputs
+        for batch_idx, feat_idx in zip(np.arange(n_in_batch), feat_indices[:,0]):
+            inputs[batch_idx, feat_idx:feat_idx+1] = 0
+
+        yield inputs, targets, reconstruction_targets
 
 
 def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
@@ -183,7 +191,9 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
     print "Compiling training function"
     train_fn = theano.function(inputs, loss, updates=updates,
                                on_unused_input='ignore')
-    val_fn = theano.function(inputs, loss, on_unused_input='ignore')
+    val_fn = theano.function(inputs,
+                             [val_outputs[0]] + val_outputs,
+                             on_unused_input='ignore')
     start_training = time.time()
     print "training start time: {}".format(start_training)
 
@@ -195,12 +205,7 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         loss_epoch = 0
 
         # Train pass
-        for batch_index in range(batches_per_epoch):
-            x, y, mask_index = data_generator.next()
-            # inputs = [input_var, target_var, target_reconst]
-            target_reconst_val = x.copy()
-            for i in range (x.shape[0]):
-                x[i, mask_index[i]: mask_index[i]+2] = [0., 0.]
+        for x, y, target_reconst_val in data_generator(x_train, batch_size):
             loss_epoch += train_fn(x, y, target_reconst_val)
             nb_minibatches += 1
 
@@ -238,6 +243,7 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         else:
             patience += 1
             np.savez(os.path.join(save_path, 'model_snp2vec_last.npz'),
+                     *lasagne.layers.get_all_param_values(nets))
             np.savez(save_path + "/errors_snp2vec_last.npz",
                      zip(*train_monitored), zip(*valid_monitored))
 
