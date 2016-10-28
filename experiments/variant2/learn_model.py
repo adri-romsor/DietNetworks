@@ -86,10 +86,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     print("Building model")
 
     # Some checkings
-    assert len(n_hidden_u) > 0
+    # assert len(n_hidden_u) > 0
     assert len(n_hidden_t_enc) > 0
     assert len(n_hidden_t_dec) > 0
-    assert len(n_hidden_u) > 0
     assert n_hidden_t_dec[-1] == n_hidden_t_enc[-1]
 
     # Build feature embedding networks (encoding and decoding if gamma > 0)
