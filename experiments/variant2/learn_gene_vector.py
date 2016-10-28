@@ -24,8 +24,10 @@ print ("config floatX: {}".format(config.floatX))
 
 
 # creating data generator
-def data_generator(dataset, batch_size):
-    while True:
+def data_generator(dataset, batch_size, max_number=None):
+    cnt = 0
+    while max_number is None or cnt <= max_number:
+        cnt += 1
         x_list, y_list, mask_index = [], [], []
         for i in range(batch_size):
             index_feat = random.randint(0, dataset.shape[1]/2-1)
@@ -38,7 +40,7 @@ def data_generator(dataset, batch_size):
                     datamod[index_feat+2:]])
 
             target = tuple(dataset[index_individual, index_feat:index_feat+2])
-            mask_index += np.array([index_feat, index_feat+1])
+            mask_index.append(np.array([index_feat, index_feat+1]))
 
             x_list.append(datamod)
             y_list.append(target)
@@ -157,7 +159,7 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
     # applying weight decay
     l2_penalty = apply_penalty(params, l2)
     loss = loss + lmd*l2_penalty
-    loss = loss + lmd*l2_penalty
+    # loss = loss + lmd*l2_penalty
 
     val_outputs += [loss]
     monitor_labels += ['loss']
@@ -184,6 +186,7 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
     start_training = time.time()
     print "training start time: {}".format(start_training)
 
+    data_gen = data_generator(x_train, batch_size)
     print "Starting training"
     for epoch in range(num_epochs):
         start_time = time.time()
@@ -193,11 +196,11 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
 
         # Train pass
         for batch_index in range(batches_per_epoch):
-            x, y, mask_index = data_generator.next()
+            x, y, mask_index = data_gen.next()
             # inputs = [input_var, target_var, target_reconst]
             target_reconst_val = x.copy()
-            for i in range (x.shape[0]):
-                x[i, mask_index[i]: mask_index[i]+2] = [0., 0.]
+            for i in range(x.shape[0]):
+                x[i, mask_index[i,0]: mask_index[i,0]+2] = [0., 0.]
             loss_epoch += train_fn(x, y, target_reconst_val)
             nb_minibatches += 1
 
@@ -205,13 +208,13 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         train_loss += [loss_epoch]
 
         # Monitoring on the training set
-        train_minibatches = data_generator(x_train, batch_size)
+        train_minibatches = data_generator(x_train, batch_size, max_number=100)
         train_err = mlh.monitoring(train_minibatches, "train", val_fn,
                                    monitor_labels, 0)
         train_monitored += [train_err]
 
         # Monitoring on the validation set
-        valid_minibatches = data_generator(x_valid, batch_size)
+        valid_minibatches = data_generator(x_valid, batch_size, max_number=100)
 
         valid_err = mlh.monitoring(valid_minibatches, "valid", val_fn,
                                    monitor_labels, 0)
@@ -235,11 +238,12 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         else:
             patience += 1
             np.savez(os.path.join(save_path, 'model_snp2vec_last.npz'),
+                     *lasagne.layers.get_all_param_values(nets))
             np.savez(save_path + "/errors_snp2vec_last.npz",
                      zip(*train_monitored), zip(*valid_monitored))
 
         # End training
-        if patience == max_patience or epoch == num_epochs-1:
+        if (patience == max_patience) or (epoch == num_epochs-1):
             print("Ending training")
             # Load best model
             if not os.path.exists(save_path + '/model_snp2vec_best.npz'):
@@ -257,7 +261,7 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
                                        monitor_labels, 0)
 
             # Validation set results
-            valid_minibatches =data_generator(x_valid, batch_size)
+            valid_minibatches = data_generator(x_valid, batch_size)
             valid_err = mlh.monitoring(valid_minibatches, "valid", val_fn,
                                        monitor_labels, 0)
 
