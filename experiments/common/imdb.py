@@ -8,7 +8,6 @@ import pandas as pd
 import numpy as np
 import h5py
 import tables
-import ipdb
 
 import argparse
 
@@ -126,14 +125,16 @@ def build_imdb_BoW(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
     unlab_data_features = vectorizer.transform(clean_unlab_train_reviews)
     # For the test set, we use the same vocab as for the train set
     test_data_features = vectorizer.transform(clean_test_reviews)
+    idx = np.random.permutation(train_data_features.shape[0])
+    test_data_features = test_data_features[idx]
 
     # convert the result to an array
-    # train_data_features = train_data_features
     train_labels = np.array(train['sentiment'])
-    # test_data_features = test_data_features
+    test_labels = np.array(test['sentiment'])
+    test_labels = test_labels[idx]
 
     return (train_data_features, train_labels, unlab_data_features,
-            test_data_features, word_list)
+            test_data_features, test_labels, word_list)
 
 
 def build_imdb_tfidf(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
@@ -202,17 +203,18 @@ def build_imdb_tfidf(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
     # convert the result to an array
     # train_data_features = train_data_features
     train_labels = np.array(train['sentiment'])
+    test_labels = np.array(test['sentiment'])
     # test_data_features = test_data_features
 
     return (train_data_features, train_labels, unlab_data_features,
-            test_data_features, word_list)
+            test_data_features, test_labels, word_list)
 
 
-def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/testing_data_generation',
+def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
                         feat_type='BoW', use_unlab=True, ngram_range=(1, 1)):
     if feat_type == 'BoW':
         train_data_features, train_labels, unlab_data_features,\
-            test_data_features, word_list = \
+            test_data_features, test_labels, word_list = \
             build_imdb_BoW(use_unlab=use_unlab, ngram_range=ngram_range)
         file_to_save = os.path.join(path, 'imdb_'+feat_type+'_ngram' +
                                     str(ngram_range[0]) + str(ngram_range[1]))
@@ -229,14 +231,16 @@ def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/testing_
              train_data_features=train_data_features,
              train_labels=train_labels,
              test_data_features=test_data_features,
+             test_labels=test_labels,
              unlab_data_features=unlab_data_features,
              word_list=word_list)
+
     # Obtain a word2vec embedding for every word in the dataset
     #print("Generating word2vec embedding")
-    #data_path = "/data/lisatmp4/erraqabi/data/imdb_reviews"
-    #word2vec_model = train_word2vec(data_path, use_unlabeled_data=True)
-    #word_embeddings = get_word2vec_embeddings(word2vec_model, word_list)
-    #np.save(os.path.join(path, 'imdb_word2vec.pny'), word_embeddings)
+    # data_path = "/data/lisatmp4/erraqabi/data/imdb_reviews"
+    # word2vec_model = train_word2vec(data_path, use_unlabeled_data=True)
+    # word_embeddings = get_word2vec_embeddings(word2vec_model, word_list)
+    # np.save(os.path.join(path, 'imdb_word2vec.pny'), word_embeddings)
 
     # Generate an embedding for each feature using histograms on the whole
     # training set
@@ -253,6 +257,27 @@ def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/testing_
                                                      train_data_features,
                                                      train_labels)
     save_path = os.path.join(path, 'imdb_%s_%ihisto_perclass_emb.pny' %
+                             (feat_type, nb_bins))
+    np.save(save_path, histo_class_embedding)
+
+# Recheck for test_labels if needed
+def load_imdb_save_histo(save_path, feat_type='BoW', nb_bins=10):
+    train_data, train_labels, unlab_data, _ = load_imdb(feat_type='BoW')
+    # Generate an embedding for each feature using histograms on the whole
+    # training set
+    print("Generating histogram embedding")
+
+    histo_embedding = get_histogram_embeddings(nb_bins, train_data)
+    save_path = os.path.join(save_path, 'imdb_%s_%ihisto_emb.pny' %
+                             (feat_type, nb_bins))
+    np.save(save_path, histo_embedding)
+
+    # Generate an embedding for each feature using per-class histograms.
+    print("Generating per-class histogram embeddings")
+    histo_class_embedding = get_histogram_embeddings(nb_bins,
+                                                     train_data,
+                                                     train_labels)
+    save_path = os.path.join(save_path, 'imdb_%s_%ihisto_perclass_emb.pny' %
                              (feat_type, nb_bins))
     np.save(save_path, histo_class_embedding)
 
@@ -284,7 +309,7 @@ def get_histogram_embeddings(nb_bins, data, labels=None):
 
             # Compute the proportion of examples that fall in that bin for that
             # feature
-            feature = subset[:,i].toarray()
+            feature = subset[:, i].toarray()
             for j in range(nb_bins):
                 examples_in_bin = (feature >= bins[j]) * (feature < bins[j+1])
                 embedding[i, j] = examples_in_bin.sum() / float(nb_examples)
@@ -362,6 +387,7 @@ def load_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
     train_labels = data['train_labels']
     unlab_data_features = data['unlab_data_features'].item()
     test_data_features = data['test_data_features'].item()
+    test_labels = data['test_labels'].item()
 
     if shuffle:
         np.random.seed(seed)
@@ -369,12 +395,13 @@ def load_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
         train_data_features = train_data_features[idx_shuffle]
         train_labels = train_labels[idx_shuffle]
         idx_shuffle = np.random.permutation(test_data_features.shape[0])
+        test_labels = test_labels[idx_shuffle]
         test_data_features = test_data_features[idx_shuffle]
         idx_shuffle = np.random.permutation(unlab_data_features.shape[0])
         unlab_data_features = unlab_data_features[idx_shuffle]
 
     return train_data_features, train_labels, unlab_data_features,\
-        test_data_features
+        test_data_features, test_labels
 
 
 def load_imdb_word2vec(path_to_data, model_path=None, use_unlab=True):
@@ -437,8 +464,9 @@ def load_imdb_word2vec(path_to_data, model_path=None, use_unlab=True):
     print "Creating average feature vecs for test reviews"
     test_data_features = getAvgFeatureVecs(getCleanReviews(test), model,
                                            num_features)
-
-    return train_data_features, train_labels, test_data_features
+    test_labels = np.array(test['sentiment'])
+    return train_data_features, train_labels, test_data_features, \
+        test_labels
 
 
 def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
@@ -476,7 +504,7 @@ def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
                                          train_data.shape[0] +
                                          unlab_data.shape[0]),
                                         dtype='float32')
-            train_data, _, unlab_data, _ = load_imdb(feat_type=feat_type)
+            train_data, _, unlab_data, _, _ = load_imdb(feat_type=feat_type)
             features = np.empty((train_data.shape[1],
                                  train_data.shape[0]+unlab_data.shape[0]),
                                 dtype='float32')
@@ -521,9 +549,10 @@ def read_from_hdf5(path='/Tmp/carriepl/datasets/imdb/', unsupervised=True,
     return read_file
 
 if __name__ == '__main__':
-    for i in range(3):
-        print 'building & saving ' + str(i+1)+'-grams'
-        build_and_save_imdb(use_unlab=False, ngram_range=(1, i+1))
+    build_and_save_imdb()
+    # for i in range(3):
+    #     print 'building & saving ' + str(i+1)+'-grams'
+    #     build_and_save_imdb(use_unlab=False, ngram_range=(1, i+1))
     # save_as_hdf5(unsupervised=False, ngram_range=(1, 2))
     # for i in range(1, 3):
     #     print 'saving to hdf5 ' + str(i+1)+'-grams'
