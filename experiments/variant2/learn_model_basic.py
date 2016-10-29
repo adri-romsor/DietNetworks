@@ -352,7 +352,7 @@ def main():
     parser.add_argument('--lmd',
                         '-l',
                         type=float,
-                        default=0.0001,
+                        default=0.,
                         help="""Weight decay coeff.""")
     parser.add_argument('--disc_nonlinearity',
                         '-nl',
