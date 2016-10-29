@@ -59,9 +59,9 @@ def data_generator(dataset, batch_size, shuffle=False):
 
 
 def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
-            learning_rate_annealing=1.0, encoder_units=[1024, 512, 256],
-            num_epochs=500, which_fold=1,
-            save_path=None, save_copy=None, dataset_path=None):
+            encoder_units=[1024, 512, 256], num_epochs=500, which_fold=1,
+            save_path=None, save_copy=None, dataset_path=None,
+            num_fully_connected=0):
 
     # Reading dataset
     print("Loading data")
@@ -95,8 +95,8 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
     target_var = T.matrix('target')
     target_reconst = T.matrix('target')
     lr = theano.shared(np.float32(learning_rate), 'learning_rate')
-    lmd = 0.0001  # weight decay coeff
-    num_epochs = 200
+    # lmd = 0.0001  # weight decay coeff
+    # num_epochs = 200
     # there arent really any epochs as we are using a generator with random
     # sampling from dataset. This is for compat.
     batches_per_epoch = 1000
@@ -110,7 +110,7 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         encoder = DenseLayer(
                 encoder,
                 num_units=encoder_units[i],
-                nonlinearity=tanh if i < len(encoder_units)-1 else linear)
+                nonlinearity=rectify)
 
     params = lasagne.layers.get_all_params(encoder, trainable=True)
     monitor_labels = []
@@ -123,7 +123,7 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         for i in range(len(decoder_units)):
             decoder = DenseLayer(decoder,
                                  num_units=decoder_units[i],
-                                 nonlinearity=linear)
+                                 nonlinearity=rectify)
         decoder = DenseLayer(decoder,
                              num_units=n_features,
                              nonlinearity=sigmoid)
@@ -142,12 +142,12 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         loss_reconst = 0
 
     if beta > 0:
-        predictor_laysize = [encoder_units[-1]]*4
+        predictor_laysize = [encoder_units[-1]]*num_fully_connected
         predictor = encoder
         for i in range(len(predictor_laysize)):
             predictor = DenseLayer(predictor,
                                    num_units=predictor_laysize[i],
-                                   nonlinearity=linear)
+                                   nonlinearity=rectify)
 
         predictor = DenseLayer(predictor,
                                num_units=2,
@@ -282,9 +282,6 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
 
         print("  epoch time:\t\t\t{:.3f}s \n".format(time.time() - start_time))
 
-        # Anneal the learning rate
-        lr.set_value(float(lr.get_value() * learning_rate_annealing))
-
 
     # Copy files to loadpath
     if save_path != save_copy:
@@ -318,11 +315,6 @@ def main():
                         type=float,
                         default=.0001,
                         help="""Float to indicate weight decay coeff.""")
-    parser.add_argument('--learning_rate_annealing',
-                        '-lra',
-                        type=float,
-                        default=.99,
-                        help="Float to indicate learning rate annealing rate.")
     parser.add_argument('--encoder_units',
                         default=[200, 100, 50],
                         help='List of encoder hidden units.')
@@ -337,14 +329,20 @@ def main():
                         default=0,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--save_tmp',
-                        default='/Tmp/'+ os.environ["USER"]+'/feature_selection/',
+                        default='/Tmp/'+os.environ["USER"]+\
+                            '/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
-                        default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/',
+                        default='/data/lisatmp4/'+os.environ["USER"]+\
+                            '/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
                         default='/data/lisatmp4/romerosa/datasets/',
                         help='Path to dataset')
+    parser.add_argument('--num_fully_connected',
+                        type=int,
+                        default=0,
+                        help='Number of fully connected layers in predictor')
 
     args = parser.parse_args()
     print args
@@ -354,13 +352,13 @@ def main():
             args.alpha,
             args.beta,
             args.lmd,
-            args.learning_rate_annealing,
             mlh.parse_int_list_arg(args.encoder_units),
             int(args.num_epochs),
             int(args.which_fold),
             args.save_tmp,
             args.save_perm,
-            args.dataset_path)
+            args.dataset_path,
+            args.num_fully_connected)
 
 
 if __name__ == '__main__':
