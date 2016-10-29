@@ -3,7 +3,8 @@ import os
 import numpy as np
 
 import lasagne
-from lasagne.layers import DenseLayer, InputLayer, DropoutLayer, BatchNormLayer
+from lasagne.layers import DenseLayer, InputLayer, DropoutLayer, BatchNormLayer, \
+    MergeLayer, Layer
 from lasagne.nonlinearities import (sigmoid, softmax, tanh, linear, rectify,
                                     leaky_rectify, very_leaky_rectify)
 from lasagne.regularization import apply_penalty, l2, l1
@@ -28,9 +29,10 @@ def build_feat_emb_nets(embedding_source, n_feats, n_samples_unsup,
             encoder_net = DenseLayer(encoder_net, num_units=out,
                                      nonlinearity=rectify)
             # encoder_net = DropoutLayer(encoder_net)
+            # encoder_net = BatchNormLayer(encoder_net)
         feat_emb = lasagne.layers.get_output(encoder_net)
         pred_feat_emb = theano.function([], feat_emb)
-    else:  # meaning we haven done some unsup pre-training
+    else:  # meaning we have done some unsup pre-training
         if os.path.exists(embedding_source):  # embedding_source is a path itself
             path_to_load = embedding_source
         else:  # fetch the embedding_source file in save_path
@@ -40,9 +42,15 @@ def build_feat_emb_nets(embedding_source, n_feats, n_samples_unsup,
             feat_emb_val = np.load(path_to_load).items()[0][1]
         else:
             feat_emb_val = np.load(path_to_load)
+            feat_emb_val = feat_emb_val.astype('float32')
+            # means = feat_emb_val.mean(1)
+            # stds = feat_emb_val.std(1)
+            # feat_emb_val  = feat_emb_val-means[:, None]
+            # feat_emb_val /= stds[:, None]
+
 
         feat_emb = theano.shared(feat_emb_val, 'feat_emb')
-        encoder_net = InputLayer((n_feats, n_hidden_u[-1]), feat_emb)
+        encoder_net = InputLayer((n_feats, feat_emb_val.shape[1]), feat_emb)
 
     # Build transformations (f_theta, f_theta') network and supervised network
     # f_theta (ou W_enc)
@@ -53,6 +61,7 @@ def build_feat_emb_nets(embedding_source, n_feats, n_samples_unsup,
                                        W=Uniform(encoder_net_init)
                                        )
         # encoder_net_W_enc = DropoutLayer(encoder_net_W_enc)
+        # encoder_net = BatchNormLayer(encoder_net_W_enc)
     enc_feat_emb = lasagne.layers.get_output(encoder_net_W_enc)
 
     nets.append(encoder_net_W_enc)
@@ -67,6 +76,7 @@ def build_feat_emb_nets(embedding_source, n_feats, n_samples_unsup,
                                            W=Uniform(decoder_net_init)
                                            )
             # encoder_net_W_dec = DropoutLayer(encoder_net_W_dec)
+            # encoder_net = BatchNormLayer(encoder_net_W_dec)
         dec_feat_emb = lasagne.layers.get_output(encoder_net_W_dec)
 
     else:
@@ -116,14 +126,26 @@ def build_discrim_net(batch_size, n_feats, input_var_sup, n_hidden_t_enc,
     # Supervised hidden layers
     for hid in n_hidden_s:
         discrim_net = DropoutLayer(discrim_net)
+        # discrim_net = BatchNormLayer(discrim_net)
         discrim_net = DenseLayer(discrim_net, num_units=hid)
 
     # Predicting labels
-    assert disc_nonlinearity in ["sigmoid", "linear", "rectify", "softmax"]
+    assert disc_nonlinearity in ["sigmoid", "linear", "rectify",
+                                 "softmax", "softmax_hierarchy"]
     discrim_net = DropoutLayer(discrim_net)
-    discrim_net = DenseLayer(discrim_net, num_units=n_targets,
-                             nonlinearity=eval(disc_nonlinearity))
-
+    if disc_nonlinearity != "softmax_hierarchy":
+        discrim_net = DenseLayer(discrim_net, num_units=n_targets,
+                                 nonlinearity=eval(disc_nonlinearity))
+    else:
+        cont_labels = create_1000_genomes_continent_labels()
+        hierarch_softmax_1000_genomes = HierarchicalSoftmax(cont_labels)
+        discrim_net_e= DenseLayer(discrim_net, num_units=n_targets,
+                                  nonlinearity=hierarch_softmax_1000_genomes)
+        discrim_net_c= DenseLayer(discrim_net, num_units=len(cont_labels),
+                                  nonlinearity=softmax)
+        discrim_net = HierarchicalMergeSoftmaxLayer([discrim_net_e,
+                                                     discrim_net_c],
+                                                     cont_labels)
     return discrim_net, hidden_rep
 
 
@@ -209,7 +231,7 @@ def define_sup_loss(disc_nonlinearity, prediction, prediction_det, keep_labels,
             clipped_prediction, target_var_sup)
         loss_sup_det = lasagne.objectives.binary_crossentropy(
             clipped_prediction_det, target_var_sup)
-    elif disc_nonlinearity == "softmax":
+    elif disc_nonlinearity in ["softmax", "softmax_hierarchy"]:
         clipped_prediction = T.clip(prediction, _EPSILON, 1.0 - _EPSILON)
         clipped_prediction_det = T.clip(prediction_det, _EPSILON,
                                         1.0 - _EPSILON)
@@ -240,16 +262,119 @@ def define_sup_loss(disc_nonlinearity, prediction, prediction_det, keep_labels,
     return loss_sup, loss_sup_det
 
 
-def definte_test_functions(disc_nonlinearity, prediction, prediction_det,
+def define_test_functions(disc_nonlinearity, prediction, prediction_det,
                            target_var_sup):
-    if disc_nonlinearity in ["sigmoid", "softmax"]:
+    if disc_nonlinearity in ["sigmoid", "softmax", "softmax_hierarchy"]:
         if disc_nonlinearity == "sigmoid":
             test_pred = T.gt(prediction_det, 0.5)
             test_acc = T.mean(T.eq(test_pred, target_var_sup),
                               dtype=theano.config.floatX) * 100.
 
-        elif disc_nonlinearity == "softmax":
+        elif disc_nonlinearity in ["softmax", "softmax_hierarchy"]:
             test_pred = prediction_det.argmax(1)
             test_acc = T.mean(T.eq(test_pred, target_var_sup.argmax(1)),
                               dtype=theano.config.floatX) * 100
         return test_acc, test_pred
+
+
+def create_1000_genomes_continent_labels():
+    labels = ['ACB', 'ASW', 'BEB', 'CDX', 'CEU', 'CHB', 'CHS', 'CLM', 'ESN',
+              'FIN', 'GBR', 'GIH', 'GWD', 'IBS', 'ITU', 'JPT', 'KHV', 'LWK',
+               'MSL', 'MXL', 'PEL', 'PJL', 'PUR', 'STU', 'TSI', 'YRI']
+
+    eas = []
+    eur = []
+    afr = []
+    amr = []
+    sas = []
+
+    for i, l in enumerate(labels):
+        if l in ['CHB', 'JPT', 'CHS', 'CDX', 'KHV']:
+            eas +=  [i]  # EAS
+        elif l in ['CEU', 'TSI', 'FIN', 'GBR', 'IBS']:
+            eur += [i]  # EUR
+        elif l in ['YRI', 'LWK', 'GWD', 'MSL', 'ESN', 'ASW', 'ACB']:
+            afr += [i]  # AFR
+        elif l in ['MXL', 'PUR', 'CLM', 'PEL']:
+            amr += [i]  # AMR
+        elif l in ['GIH', 'PJL', 'BEB', 'STU', 'ITU']:
+            sas += [i]  # SAS
+
+    cont_labels  = [eas, eur, afr, amr, sas]
+
+    return cont_labels
+
+class HierarchicalSoftmax(object):
+    """
+    Parameters
+    ----------
+    group_labels : list of lists of ints
+        List of lists, where each sublist represents a group.
+        Each sublist contains the indices belonging to the same subgroup.
+    Methods
+    -------
+    __call__(x)
+        Apply the hierarchical softmax function to the activation `x`.
+    """
+    def __init__(self, group_labels=[[1,2], [3,4]]):
+        self.group_labels = group_labels
+
+    def __call__(self, x):
+        softmax_hierarchy = T.zeros_like(x)
+
+        # Compute softmax output per group
+        for g in range(len(self.group_labels)):
+            mask = T.zeros_like(x,  dtype='float32')
+            for el in self.group_labels[g]:
+                mask = T.set_subtensor(mask[:, el], 1.0)
+
+            cont_x = x*mask
+            stable_cont_x = cont_x - \
+                theano.gradient.zero_grad(cont_x.max(1, keepdims=True))
+            exp_cont_x = stable_cont_x.exp() * mask
+            softmax_cont_x = exp_cont_x / exp_cont_x.sum(1)[:, None]
+
+            softmax_hierarchy = softmax_hierarchy + softmax_cont_x
+
+        return softmax_hierarchy
+
+
+class HierarchicalMergeSoftmaxLayer(MergeLayer):
+    """
+    This layer performs an elementwise merge of its input layers.
+    It requires all input layers to have the same output shape.
+    Parameters
+    ----------
+    incomings : a list of :class:`Layer` instances or tuples
+        the layers feeding into this layer
+    group_labels : a lit of lists, where each sublist contains the labels of
+        each group.
+    """
+
+    def __init__(self, incomings, group_labels, **kwargs):
+        # self.input_shapes = [incomings[0].output_shape,
+        #                      incomings[1].output_shape]
+        # self.input_layers = [None if isinstance(incoming, tuple)
+        #                      else incoming
+        #                      for incoming in incomings]
+        self.group_labels  = group_labels
+
+        self.get_output_kwargs = []
+        super(HierarchicalMergeSoftmaxLayer, self).__init__(incomings, **kwargs)
+
+    def get_output_shape_for(self, input_shapes):
+        output_shape = self.input_shapes[0]
+
+        return output_shape
+
+    def get_output_for(self, inputs, **kwargs):
+
+        # Combine 2 softmax layers
+        mask = T.zeros_like(inputs[0],  dtype='float32')
+        for c in range(len(self.group_labels)):
+            for el in self.group_labels[c]:
+                mask = T.set_subtensor(mask[:, el], inputs[1][:, c])
+
+        output = inputs[0]*mask
+
+        return output

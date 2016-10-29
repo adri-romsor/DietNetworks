@@ -60,6 +60,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         embedding_name = embedding_input
     else:
         embedding_name = embedding_source.replace("_", "").split(".")[0]
+        exp_name = embedding_name.rsplit('/', 1)[::-1][0] + '_'
 
     exp_name += mlh.define_exp_name(keep_labels, alpha, beta, gamma, lmd,
                                     n_hidden_u, n_hidden_t_enc, n_hidden_t_dec,
@@ -200,7 +201,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     val_outputs += [sup_loss_det, loss_det]
 
     # Compute accuracy and add it to monitoring list
-    test_acc, test_pred = mh.definte_test_functions(
+    test_acc, test_pred = mh.define_test_functions(
         disc_nonlinearity, prediction_sup, prediction_sup_det, target_var_sup)
     monitor_labels.append("accuracy")
     val_outputs.append(test_acc)
@@ -375,37 +376,39 @@ def main():
                         default='1000_genomes',
                         help='Dataset.')
     parser.add_argument('--n_hidden_u',
-                        default=[48, 48],
+                        default=[100],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--n_hidden_t_enc',
-                        default=[32],
+                        default=[100],
                         help='List of theta transformation hidden units.')
     parser.add_argument('--n_hidden_t_dec',
-                        default=[32],
+                        default=[100],
                         help='List of theta_prime transformation hidden units')
     parser.add_argument('--n_hidden_s',
-                        default=[32],
+                        default=[100],
                         help='List of supervised hidden units.')
     parser.add_argument('--embedding_source',
                         default=None,
+                        # '/data/lisatmp4/romerosa/datasets/1000_Genome_project/unsupervised_hist_3x26_fold1.npy',
+                        # '/data/lisatmp4/romerosa/feature_selection/1000_genomes/kmeans_10_embedding.npy',
                         help='Source for the feature embedding. Either' +
                              'None or the name of a file from which' +
                              'to load a learned embedding')
     parser.add_argument('--num_epochs',
                         '-ne',
                         type=int,
-                        default=1000,
+                        default=500,
                         help="""Int to indicate the max'
                         'number of epochs.""")
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=0.00001,
+                        default=0.0001,
                         help="""Float to indicate learning rate.""")
     parser.add_argument('--learning_rate_annealing',
                         '-lra',
                         type=float,
-                        default=1.0,
+                        default=.99,
                         help="Float to indicate learning rate annealing rate.")
     parser.add_argument('--alpha',
                         '-a',
@@ -425,7 +428,7 @@ def main():
     parser.add_argument('--lmd',
                         '-l',
                         type=float,
-                        default=.0001,
+                        default=.0,
                         help="""Weight decay coeff.""")
     parser.add_argument('--disc_nonlinearity',
                         '-nl',
@@ -434,13 +437,13 @@ def main():
     parser.add_argument('--encoder_net_init',
                         '-eni',
                         type=float,
-                        default=0.00001,
+                        default=0.01,
                         help="Bounds of uniform initialization for " +
                              "encoder_net weights")
     parser.add_argument('--decoder_net_init',
                         '-dni',
                         type=float,
-                        default=0.00001,
+                        default=0.01,
                         help="Bounds of uniform initialization for " +
                              "decoder_net weights")
     parser.add_argument('--keep_labels',
@@ -457,7 +460,7 @@ def main():
                         default=1,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--early_stop_criterion',
-                        default='loss. sup.',
+                        default='accuracy',
                         help='What monitored variable to use for early-stopping')
     parser.add_argument('-embedding_input',
                         type=str,

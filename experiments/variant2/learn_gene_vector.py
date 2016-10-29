@@ -59,7 +59,8 @@ def data_generator(dataset, batch_size, shuffle=False):
 
 
 def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
-            encoder_units=[1024, 512, 256], num_epochs=500, which_fold=1,
+            learning_rate_annealing=1.0, encoder_units=[1024, 512, 256],
+            num_epochs=500, which_fold=1,
             save_path=None, save_copy=None, dataset_path=None):
 
     # Reading dataset
@@ -281,6 +282,9 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
 
         print("  epoch time:\t\t\t{:.3f}s \n".format(time.time() - start_time))
 
+        # Anneal the learning rate
+        lr.set_value(float(lr.get_value() * learning_rate_annealing))
+
 
     # Copy files to loadpath
     if save_path != save_copy:
@@ -314,6 +318,11 @@ def main():
                         type=float,
                         default=.0001,
                         help="""Float to indicate weight decay coeff.""")
+    parser.add_argument('--learning_rate_annealing',
+                        '-lra',
+                        type=float,
+                        default=.99,
+                        help="Float to indicate learning rate annealing rate.")
     parser.add_argument('--encoder_units',
                         default=[200, 100, 50],
                         help='List of encoder hidden units.')
@@ -345,6 +354,7 @@ def main():
             args.alpha,
             args.beta,
             args.lmd,
+            args.learning_rate_annealing,
             mlh.parse_int_list_arg(args.encoder_units),
             int(args.num_epochs),
             int(args.which_fold),
