@@ -315,7 +315,7 @@ def main():
                         default=.0001,
                         help="""Float to indicate weight decay coeff.""")
     parser.add_argument('--encoder_units',
-                        default=[200, 100, 50],
+                        default=[100],
                         help='List of encoder hidden units.')
     parser.add_argument('--num_epochs',
                         '-ne',
@@ -338,7 +338,6 @@ def main():
                         help='Path to dataset')
 
     args = parser.parse_args()
-    print args
 
     execute(args.dataset,
             args.learning_rate,
