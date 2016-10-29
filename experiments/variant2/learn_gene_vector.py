@@ -106,7 +106,7 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         encoder = DenseLayer(
                 encoder,
                 num_units=encoder_units[i],
-                nonlinearity=rectify)
+                nonlinearity=tanh if i < len(encoder_units)-1 else linear)
 
     params = lasagne.layers.get_all_params(encoder, trainable=True)
     monitor_labels = []
@@ -119,7 +119,7 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         for i in range(len(decoder_units)):
             decoder = DenseLayer(decoder,
                                  num_units=decoder_units[i],
-                                 nonlinearity=rectify)
+                                 nonlinearity=linear)
         decoder = DenseLayer(decoder,
                              num_units=n_features,
                              nonlinearity=sigmoid)
@@ -143,7 +143,7 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         for i in range(len(predictor_laysize)):
             predictor = DenseLayer(predictor,
                                    num_units=predictor_laysize[i],
-                                   nonlinearity=rectify)
+                                   nonlinearity=linear)
 
         predictor = DenseLayer(predictor,
                                num_units=2,
