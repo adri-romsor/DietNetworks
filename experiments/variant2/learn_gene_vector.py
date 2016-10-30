@@ -10,6 +10,7 @@ from lasagne.layers import DenseLayer, InputLayer
 from lasagne.nonlinearities import (sigmoid, softmax, tanh, linear, rectify,
                                     leaky_rectify, very_leaky_rectify)
 from lasagne.regularization import apply_penalty, l2
+from lasagne.init import Uniform, GlorotUniform
 import numpy as np
 import theano
 from theano import config
@@ -106,6 +107,7 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         encoder = DenseLayer(
                 encoder,
                 num_units=encoder_units[i],
+                W=Uniform(0.001) if i < len(encoder_units)-1 else GlorotUniform(),
                 nonlinearity=tanh if i < len(encoder_units)-1 else linear)
 
     params = lasagne.layers.get_all_params(encoder, trainable=True)
@@ -302,12 +304,12 @@ def main():
     parser.add_argument('--alpha',
                         '-a',
                         type=float,
-                        default=0.,
+                        default=.5,
                         help="""Reconstruction weight""")
     parser.add_argument('--beta',
                         '-b',
                         type=float,
-                        default=1.,
+                        default=.5,
                         help="""Target prediction weight""")
     parser.add_argument('--lmd',
                         '-l',
@@ -320,7 +322,7 @@ def main():
                         default=.99,
                         help="Float to indicate learning rate annealing rate.")
     parser.add_argument('--encoder_units',
-                        default=[200, 100, 50],
+                        default=[300, 100],
                         help='List of encoder hidden units.')
     parser.add_argument('--num_epochs',
                         '-ne',

@@ -129,7 +129,7 @@ def define_exp_name(keep_labels, alpha, beta, gamma, lmd, n_hidden_u,
         ('_eni-' + str(eni) if eni > 0 else '') + \
         ('_dni-' + str(dni) if dni > 0 else '') + \
         '_' + earlystop + \
-        ('_Ri' if gamma > 0 else '') + ('_Rwenc' if alpha > 0 else '') + \
+        ('_Ri'+str(gamma) if gamma > 0 else '') + ('_Rwenc' if alpha > 0 else '') + \
         ('_Rwdec' if beta > 0 else '') + \
         (('_l2-' + str(lmd)) if lmd > 0. else '')
     exp_name += '_hu'
