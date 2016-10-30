@@ -125,7 +125,7 @@ def build_imdb_BoW(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
     unlab_data_features = vectorizer.transform(clean_unlab_train_reviews)
     # For the test set, we use the same vocab as for the train set
     test_data_features = vectorizer.transform(clean_test_reviews)
-    idx = np.random.permutation(train_data_features.shape[0])
+    idx = np.random.permutation(test_data_features.shape[0])
     test_data_features = test_data_features[idx]
 
     # convert the result to an array
@@ -199,11 +199,14 @@ def build_imdb_tfidf(path_to_data='/data/lisatmp4/erraqabi/data/imdb_reviews/',
     # For the test set, we use the same vocab as for the train set
     test_data_features = tf_transformer.transform(
         vectorizer.transform(clean_test_reviews))
+    idx = np.random.permutation(test_data_features.shape[0])
+    test_data_features = test_data_features[idx]
 
     # convert the result to an array
     # train_data_features = train_data_features
     train_labels = np.array(train['sentiment'])
     test_labels = np.array(test['sentiment'])
+    test_labels = test_labels[idx]
     # test_data_features = test_data_features
 
     return (train_data_features, train_labels, unlab_data_features,
