@@ -11,6 +11,7 @@ from lasagne.regularization import apply_penalty, l2, l1
 from lasagne.init import Uniform
 import theano
 import theano.tensor as T
+from theano.tensor.shared_randomstreams import RandomStreams
 
 _EPSILON = 10e-8
 
@@ -153,7 +154,7 @@ def build_reconst_net(hidden_rep, embedding, n_feats, gamma):
     # Reconstruct the input using dec_feat_emb
     if gamma > 0:
         reconst_net = DenseLayer(hidden_rep, num_units=n_feats,
-                                 W=embedding.T)
+                                 W=embedding.T, nonlinearity=linear)
     else:
         reconst_net = None
 
@@ -378,3 +379,38 @@ class HierarchicalMergeSoftmaxLayer(MergeLayer):
         output = inputs[0]*mask
 
         return output
+
+
+def define_sampled_mean_bincrossentropy(y_pred, x, gamma=.5, one_ratio=.25,
+                                        random_stream=RandomStreams(seed=1)):
+
+    noisy_x = x + random_stream.binomial(size=x.shape, n=1,
+                                         prob=one_ratio, ndim=None)
+    p = T.switch(noisy_x > 0, 1, 0)
+    p = T.cast(p, theano.config.floatX)
+
+    # L1 penalty on activations
+    l1_penalty = T.abs_(y_pred).mean()
+
+    y_pred_p = T.clip(y_pred*p, _EPSILON, 1.0 - _EPSILON)
+    x = T.clip(x, _EPSILON, 1.0 - _EPSILON)
+
+    cost = lasagne.objectives.binary_crossentropy(y_pred_p, x)
+
+    cost = (cost * p).mean()
+
+    cost = cost + gamma*l1_penalty
+
+    return cost
+
+
+def dice_coef(y_true, y_pred):
+    smooth = 1.0
+    y_true_f = T.flatten(y_true)
+    y_pred_f = T.flatten(y_pred)
+    intersection = T.sum(y_true_f * y_pred_f)
+    return (2. * intersection + smooth) / (T.sum(y_true_f) + T.sum(y_pred_f) + smooth)
+
+
+def dice_coef_loss(y_true, y_pred):
+    return -dice_coef(y_true, y_pred)
