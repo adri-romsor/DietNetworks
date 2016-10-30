@@ -5,3 +5,7 @@ skfeature
 slurm*
 
 imdb/*
+
+# saved models and results
+feature_selection/1000_genomes*
+learn_gene_vector_*

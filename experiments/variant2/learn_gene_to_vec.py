@@ -9,8 +9,7 @@ import lasagne
 from lasagne.layers import DenseLayer, InputLayer
 from lasagne.nonlinearities import (sigmoid, softmax, tanh, linear, rectify,
                                     leaky_rectify, very_leaky_rectify)
-from lasagne.regularization import apply_penalty, l2, l1
-from lasagne.init import Uniform, GlorotUniform
+from lasagne.regularization import apply_penalty, l2
 import numpy as np
 import theano
 from theano import config
@@ -59,12 +58,9 @@ def data_generator(dataset, batch_size, shuffle=False):
         yield inputs, targets, reconstruction_targets
 
 
-def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
-            alpha=0., beta=1., lmd=0., gamma=0.5, encoder_net_init=0.01,
-            encoder_units=[1024, 512, 256],
-            num_epochs=500, which_fold=1,
-            save_path=None, save_copy=None, dataset_path=None,
-            num_fully_connected=0):
+def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
+            encoder_units=[1024, 512, 256], num_epochs=500, which_fold=1,
+            save_path=None, save_copy=None, dataset_path=None):
 
     # Reading dataset
     print("Loading data")
@@ -98,6 +94,11 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
     target_var = T.matrix('target')
     target_reconst = T.matrix('target')
     lr = theano.shared(np.float32(learning_rate), 'learning_rate')
+    lmd = 0.0001  # weight decay coeff
+    num_epochs = 200
+    # there arent really any epochs as we are using a generator with random
+    # sampling from dataset. This is for compat.
+    batches_per_epoch = 1000
     batch_size = 128
 
     # building network
@@ -108,8 +109,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         encoder = DenseLayer(
                 encoder,
                 num_units=encoder_units[i],
-                W=Uniform(encoder_net_init) if i < len(encoder_units)-1 else GlorotUniform(),
-                nonlinearity= tanh if  i < len(encoder_units)-1 else linear)
+                nonlinearity=rectify)
 
     params = lasagne.layers.get_all_params(encoder, trainable=True)
     monitor_labels = []
@@ -122,7 +122,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         for i in range(len(decoder_units)):
             decoder = DenseLayer(decoder,
                                  num_units=decoder_units[i],
-                                 nonlinearity=linear)
+                                 nonlinearity=rectify)
         decoder = DenseLayer(decoder,
                              num_units=n_features,
                              nonlinearity=sigmoid)
@@ -136,14 +136,12 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         monitor_labels += ["reconst."]
         val_outputs += [loss_reconst]
         nets += [decoder]
-        sparsity_reconst = gamma * l1(prediction_reconst)
 
     else:
         loss_reconst = 0
-        sparsity_reconst = 0
 
     if beta > 0:
-        predictor_laysize = [encoder_units[-1]]*num_fully_connected
+        predictor_laysize = [encoder_units[-1]]*4
         predictor = encoder
         for i in range(len(predictor_laysize)):
             predictor = DenseLayer(predictor,
@@ -165,14 +163,11 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         monitor_labels += ["pred."]
         val_outputs += [loss_pred]
         nets += [predictor]
-
-        sparsity_pred = gamma * l1(prediction_var)
     else:
         loss_pred = 0
-        sparsity_pred = 0
 
     # Combine losses
-    loss = alpha*loss_reconst + beta*loss_pred + sparsity_pred + sparsity_reconst
+    loss = alpha*loss_reconst + beta*loss_pred
 
     # applying weight decay
     l2_penalty = apply_penalty(params, l2)
@@ -190,13 +185,9 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
     valid_monitored = []
     train_loss = []
 
-    updates = lasagne.updates.adam(loss,
-                                   params,
-                                   learning_rate=lr)
-
-    for k in updates.keys():
-        if updates[k].ndim == 2:
-            updates[k] = lasagne.updates.norm_constraint(updates[k], 1.0)
+    updates = lasagne.updates.rmsprop(loss,
+                                      params,
+                                      learning_rate=lr)
 
     inputs = [input_var, target_var, target_reconst]
 
@@ -289,8 +280,6 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
             break
 
         print("  epoch time:\t\t\t{:.3f}s \n".format(time.time() - start_time))
-        # Anneal the learning rate
-        lr.set_value(float(lr.get_value() * learning_rate_annealing))
 
 
     # Copy files to loadpath
@@ -308,41 +297,25 @@ def main():
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=.01,
+                        default=.001,
                         help="""Float to indicate learning rate.""")
-    parser.add_argument('--learning_rate_annealing',
-                        '-lra',
-                        type=float,
-                        default=.99,
-                        help="Float to indicate learning rate annealing rate.")
     parser.add_argument('--alpha',
                         '-a',
                         type=float,
-                        default=1.,
+                        default=0.,
                         help="""Reconstruction weight""")
     parser.add_argument('--beta',
                         '-b',
                         type=float,
-                        default=.0,
+                        default=1.,
                         help="""Target prediction weight""")
     parser.add_argument('--lmd',
                         '-l',
                         type=float,
-                        default=.0,
+                        default=.0001,
                         help="""Float to indicate weight decay coeff.""")
-    parser.add_argument('--gamma',
-                        '-g',
-                        type=float,
-                        default=.5,
-                        help="""Float to indicate l1 penalty.""")
-    parser.add_argument('--encoder_net_init',
-                        '-eni',
-                        type=float,
-                        default=0.01,
-                        help="Bounds of uniform initialization for " +
-                             "encoder_net weights")
     parser.add_argument('--encoder_units',
-                        default=[300, 100],
+                        default=[100],
                         help='List of encoder hidden units.')
     parser.add_argument('--num_epochs',
                         '-ne',
@@ -355,39 +328,28 @@ def main():
                         default=0,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--save_tmp',
-                        default='/Tmp/'+os.environ["USER"]+\
-                            '/feature_selection/',
+                        default='/Tmp/'+ os.environ["USER"]+'/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
-                        default='/data/lisatmp4/'+os.environ["USER"]+\
-                            '/feature_selection/',
+                        default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
                         default='/data/lisatmp4/romerosa/datasets/',
                         help='Path to dataset')
-    parser.add_argument('--num_fully_connected',
-                        type=int,
-                        default=0,
-                        help='Number of fully connected layers in predictor')
 
     args = parser.parse_args()
-    print args
 
     execute(args.dataset,
             args.learning_rate,
-            args.learning_rate_annealing,
             args.alpha,
             args.beta,
             args.lmd,
-            args.gamma,
-            args.encoder_net_init,
             mlh.parse_int_list_arg(args.encoder_units),
             int(args.num_epochs),
             int(args.which_fold),
             args.save_tmp,
             args.save_perm,
-            args.dataset_path,
-            args.num_fully_connected)
+            args.dataset_path)
 
 
 if __name__ == '__main__':
