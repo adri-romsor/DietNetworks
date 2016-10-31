@@ -9,19 +9,24 @@ import lasagne
 from lasagne.layers import DenseLayer, InputLayer
 from lasagne.nonlinearities import (sigmoid, softmax, tanh, linear, rectify,
                                     leaky_rectify, very_leaky_rectify)
-from lasagne.regularization import apply_penalty, l2
+from lasagne.regularization import apply_penalty, l2, l1
+from lasagne.init import Uniform, GlorotUniform
 import numpy as np
 import theano
 from theano import config
 import theano.tensor as T
 
 import mainloop_helpers as mlh
+import model_helpers as mh
 
 import random
-
-import ipdb
+import getpass
+# import ipdb
 print ("config floatX: {}".format(config.floatX))
 
+username = getpass.getuser()
+if username == "sylvaint" and not os.path.isdir("/Tmp/sylvaint"):
+    os.makedirs("/Tmp/sylvaint")
 
 # creating data generator
 def data_generator(dataset, batch_size, shuffle=False):
@@ -45,18 +50,22 @@ def data_generator(dataset, batch_size, shuffle=False):
         blacked_out_indices = np.hstack((feat_indices, feat_indices + 1))
 
         # Keep the values to be blacked-out at targets
-        targets = inputs[np.arange(n_in_batch)[:,None], blacked_out_indices]
+        targets = inputs[np.arange(n_in_batch)[:, None], blacked_out_indices]
 
         # Black-out the necessary features to get the final minibatch inputs
-        for batch_idx, feat_idx in zip(np.arange(n_in_batch), feat_indices[:,0]):
+        for batch_idx, feat_idx in zip(
+                np.arange(n_in_batch), feat_indices[:, 0]):
             inputs[batch_idx, feat_idx:feat_idx+1] = 0
 
         yield inputs, targets, reconstruction_targets
 
 
-def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
-            encoder_units=[1024, 512, 256], num_epochs=500, which_fold=1,
-            save_path=None, save_copy=None, dataset_path=None):
+def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
+            alpha=0., beta=1., lmd=0., gamma=0.5, encoder_net_init=0.01,
+            encoder_units=[1024, 512, 256],
+            num_epochs=500, which_fold=1,
+            save_path=None, save_copy=None, dataset_path=None,
+            num_fully_connected=0, exp_name=''):
 
     # Reading dataset
     print("Loading data")
@@ -70,11 +79,12 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
 
     n_features = x_train.shape[1]
 
-    exp_name = "learn_gene_vector_h"
+    exp_name += "learn_gene_vector_h"
     for e in encoder_units:
         exp_name += ('-' + str(e))
     exp_name += '_a-' + str(alpha)
     exp_name += '_b-' + str(beta)
+    exp_name += '_g-' + str(gamma)
     exp_name += '_l-' + str(lmd)
     exp_name += '_lr-' + str(learning_rate)
 
@@ -90,11 +100,6 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
     target_var = T.matrix('target')
     target_reconst = T.matrix('target')
     lr = theano.shared(np.float32(learning_rate), 'learning_rate')
-    lmd = 0.0001  # weight decay coeff
-    num_epochs = 200
-    # there arent really any epochs as we are using a generator with random
-    # sampling from dataset. This is for compat.
-    batches_per_epoch = 1000
     batch_size = 128
 
     # building network
@@ -105,8 +110,8 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         encoder = DenseLayer(
                 encoder,
                 num_units=encoder_units[i],
-                nonlinearity=rectify)
-
+                # W=Uniform(encoder_net_init) if i < len(encoder_units)-1 else GlorotUniform(),
+                nonlinearity=tanh)  # if i < len(encoder_units)-1 else linear)
     params = lasagne.layers.get_all_params(encoder, trainable=True)
     monitor_labels = []
     val_outputs = []
@@ -118,26 +123,38 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         for i in range(len(decoder_units)):
             decoder = DenseLayer(decoder,
                                  num_units=decoder_units[i],
-                                 nonlinearity=rectify)
+                                 nonlinearity=tanh)
         decoder = DenseLayer(decoder,
                              num_units=n_features,
+                             # W=Uniform(encoder_net_init),
                              nonlinearity=sigmoid)
         prediction_reconst = lasagne.layers.get_output(decoder)
 
         # Reconstruction error
-        loss_reconst = lasagne.objectives.binary_crossentropy(
-            prediction_reconst, target_reconst).mean()
+        # loss_reconst = lasagne.objectives.binary_crossentropy(
+        #     prediction_reconst, target_reconst).mean()
+
+        # loss_reconst = mh.define_sampled_mean_bincrossentropy(
+        #    prediction_reconst, target_reconst, gamma=gamma)
+
+        loss_reconst = mh.dice_coef_loss(
+            target_reconst, prediction_reconst).mean()
 
         params += lasagne.layers.get_all_params(decoder, trainable=True)
         monitor_labels += ["reconst."]
         val_outputs += [loss_reconst]
         nets += [decoder]
+        # sparsity_reconst = gamma * l1(prediction_reconst)
+        # roh = input_var.mean(0)
+        # sparsity_reconst = ((roh * T.log(roh / (prediction_reconst.mean(0)+1e-8))) +\
+        #     ((1 - roh) * T.log((1 - roh) / (1 - prediction_reconst + 1e-8)))).sum()
 
     else:
         loss_reconst = 0
+        # sparsity_reconst = 0
 
     if beta > 0:
-        predictor_laysize = [encoder_units[-1]]*4
+        predictor_laysize = [encoder_units[-1]]*num_fully_connected
         predictor = encoder
         for i in range(len(predictor_laysize)):
             predictor = DenseLayer(predictor,
@@ -151,19 +168,28 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         prediction_var = lasagne.layers.get_output(predictor)
 
         # w2v error
-        loss_pred = lasagne.objectives.binary_crossentropy(
-            prediction_var, target_var
-        ).mean()
+        # loss_pred = lasagne.objectives.binary_crossentropy(
+        #     prediction_var, target_var
+        # ).mean()
+
+        loss_pred = mh.dice_coef_loss(
+            target_var, prediction_var).mean()
 
         params += lasagne.layers.get_all_params(predictor, trainable=True)
         monitor_labels += ["pred."]
         val_outputs += [loss_pred]
         nets += [predictor]
+
+        # sparsity_pred = gamma * l1(prediction_var)
+        # roh = 0.05
+        # sparsity_pred = ((roh * T.log(roh / prediction_pred.mean(0))) +\
+        #     ((1 - roh) * T.log((1 - roh) / (1 - prediction_pred)))).sum()
     else:
         loss_pred = 0
+        # sparsity_pred = 0
 
     # Combine losses
-    loss = alpha*loss_reconst + beta*loss_pred
+    loss = alpha*loss_reconst + beta*loss_pred # sparsity_pred  # + sparsity_reconst
 
     # applying weight decay
     l2_penalty = apply_penalty(params, l2)
@@ -181,9 +207,13 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
     valid_monitored = []
     train_loss = []
 
-    updates = lasagne.updates.rmsprop(loss,
-                                      params,
-                                      learning_rate=lr)
+    updates = lasagne.updates.adam(loss,
+                                   params,
+                                   learning_rate=lr)
+
+    for k in updates.keys():
+        if updates[k].ndim == 2:
+            updates[k] = lasagne.updates.norm_constraint(updates[k], 1.0)
 
     inputs = [input_var, target_var, target_reconst]
 
@@ -194,10 +224,12 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
     val_fn = theano.function(inputs,
                              [val_outputs[0]] + val_outputs,
                              on_unused_input='ignore')
-    start_training = time.time()
-    print "training start time: {}".format(start_training)
 
-    data_gen = data_generator(x_train, batch_size)
+    pred_fn = theano.function([input_var], prediction_reconst)
+
+    start_training = time.time()
+
+    # data_gen = data_generator(x_train, batch_size)
     print "Starting training"
     for epoch in range(num_epochs):
         start_time = time.time()
@@ -205,21 +237,27 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
         nb_minibatches = 0
         loss_epoch = 0
 
-        for x, y, target_reconst_val in data_generator(x_train, batch_size):
+        for x, y, target_reconst_val in data_generator(x_train, batch_size,
+                                                       shuffle=True):
             loss_epoch += train_fn(x, y, target_reconst_val)
             nb_minibatches += 1
+
+        pr = pred_fn(x)
+        print('min pr:' + str(pr.min()))
+        print('max pr:' + str(pr.max()))
+        print('mean pr:' + str(pr.mean()))
 
         loss_epoch /= nb_minibatches
         train_loss += [loss_epoch]
 
         # Monitoring on the training set
-        train_minibatches = data_generator(x_train, batch_size, max_number=100)
+        train_minibatches = data_generator(x_train, batch_size)
         train_err = mlh.monitoring(train_minibatches, "train", val_fn,
                                    monitor_labels, 0)
         train_monitored += [train_err]
 
         # Monitoring on the validation set
-        valid_minibatches = data_generator(x_valid, batch_size, max_number=100)
+        valid_minibatches = data_generator(x_valid, batch_size)
 
         valid_err = mlh.monitoring(valid_minibatches, "valid", val_fn,
                                    monitor_labels, 0)
@@ -276,6 +314,8 @@ def execute(dataset, learning_rate=0.00001, alpha=0., beta=1., lmd=0.,
             break
 
         print("  epoch time:\t\t\t{:.3f}s \n".format(time.time() - start_time))
+        # Anneal the learning rate
+        lr.set_value(float(lr.get_value() * learning_rate_annealing))
 
 
     # Copy files to loadpath
@@ -293,25 +333,41 @@ def main():
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=.01,
+                        default=.001,
                         help="""Float to indicate learning rate.""")
+    parser.add_argument('--learning_rate_annealing',
+                        '-lra',
+                        type=float,
+                        default=.99,
+                        help="Float to indicate learning rate annealing rate.")
     parser.add_argument('--alpha',
                         '-a',
                         type=float,
-                        default=0.,
+                        default=1.,
                         help="""Reconstruction weight""")
     parser.add_argument('--beta',
                         '-b',
                         type=float,
-                        default=1.,
+                        default=.0,
                         help="""Target prediction weight""")
     parser.add_argument('--lmd',
                         '-l',
                         type=float,
-                        default=.0001,
+                        default=.0,
                         help="""Float to indicate weight decay coeff.""")
+    parser.add_argument('--gamma',
+                        '-g',
+                        type=float,
+                        default=.0005,
+                        help="""Float to indicate l1 penalty.""")
+    parser.add_argument('--encoder_net_init',
+                        '-eni',
+                        type=float,
+                        default=0.01,
+                        help="Bounds of uniform initialization for " +
+                             "encoder_net weights")
     parser.add_argument('--encoder_units',
-                        default=[100],
+                        default=[300, 100],
                         help='List of encoder hidden units.')
     parser.add_argument('--num_epochs',
                         '-ne',
@@ -324,28 +380,44 @@ def main():
                         default=0,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--save_tmp',
-                        default='/Tmp/'+ os.environ["USER"]+'/feature_selection/',
+                        default='/Tmp/'+os.environ["USER"]+\
+                            '/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
-                        default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/',
+                        default='/data/lisatmp4/'+os.environ["USER"]+\
+                            '/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
                         default='/data/lisatmp4/romerosa/datasets/',
                         help='Path to dataset')
+    parser.add_argument('--num_fully_connected',
+                        type=int,
+                        default=0,
+                        help='Number of fully connected layers in predictor')
+    parser.add_argument('-exp_name',
+                        type=str,
+                        default='shuffle_',
+                        help='Experiment name that will be concatenated at the beginning of the generated name')
 
     args = parser.parse_args()
+    print args
 
     execute(args.dataset,
             args.learning_rate,
+            args.learning_rate_annealing,
             args.alpha,
             args.beta,
             args.lmd,
+            args.gamma,
+            args.encoder_net_init,
             mlh.parse_int_list_arg(args.encoder_units),
             int(args.num_epochs),
             int(args.which_fold),
             args.save_tmp,
             args.save_perm,
-            args.dataset_path)
+            args.dataset_path,
+            args.num_fully_connected,
+            args.exp_name)
 
 
 if __name__ == '__main__':
