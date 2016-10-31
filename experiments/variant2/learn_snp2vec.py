@@ -172,7 +172,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         #     prediction_var, target_var
         # ).mean()
 
-        loss_reconst = mh.dice_coef_loss(
+        loss_pred = mh.dice_coef_loss(
             target_var, prediction_var).mean()
 
         params += lasagne.layers.get_all_params(predictor, trainable=True)
