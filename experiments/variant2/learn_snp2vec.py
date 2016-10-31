@@ -17,6 +17,7 @@ from theano import config
 import theano.tensor as T
 
 import mainloop_helpers as mlh
+import model_helpers as mh
 
 import random
 import getpass
@@ -64,7 +65,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
             encoder_units=[1024, 512, 256],
             num_epochs=500, which_fold=1,
             save_path=None, save_copy=None, dataset_path=None,
-            num_fully_connected=0):
+            num_fully_connected=0, exp_name=''):
 
     # Reading dataset
     print("Loading data")
@@ -78,7 +79,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
 
     n_features = x_train.shape[1]
 
-    exp_name = "learn_gene_vector_h"
+    exp_name += "learn_gene_vector_h"
     for e in encoder_units:
         exp_name += ('-' + str(e))
     exp_name += '_a-' + str(alpha)
@@ -108,9 +109,8 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         encoder = DenseLayer(
                 encoder,
                 num_units=encoder_units[i],
-                W=Uniform(encoder_net_init) if i < len(encoder_units)-1 else GlorotUniform(),
-                nonlinearity=tanh if i < len(encoder_units)-1 else linear)
-
+                # W=Uniform(encoder_net_init) if i < len(encoder_units)-1 else GlorotUniform(),
+                nonlinearity=tanh)  # if i < len(encoder_units)-1 else linear)
     params = lasagne.layers.get_all_params(encoder, trainable=True)
     monitor_labels = []
     val_outputs = []
@@ -122,25 +122,35 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         for i in range(len(decoder_units)):
             decoder = DenseLayer(decoder,
                                  num_units=decoder_units[i],
-                                 nonlinearity=linear)
+                                 nonlinearity=tanh)
         decoder = DenseLayer(decoder,
                              num_units=n_features,
+                             # W=Uniform(encoder_net_init),
                              nonlinearity=sigmoid)
         prediction_reconst = lasagne.layers.get_output(decoder)
 
         # Reconstruction error
-        loss_reconst = lasagne.objectives.binary_crossentropy(
-            prediction_reconst, target_reconst).mean()
+        # loss_reconst = lasagne.objectives.binary_crossentropy(
+        #     prediction_reconst, target_reconst).mean()
+
+        # loss_reconst = mh.define_sampled_mean_bincrossentropy(
+        #    prediction_reconst, target_reconst, gamma=gamma)
+
+        loss_reconst = mh.dice_coef_loss(
+            target_reconst, prediction_reconst).mean()
 
         params += lasagne.layers.get_all_params(decoder, trainable=True)
         monitor_labels += ["reconst."]
         val_outputs += [loss_reconst]
         nets += [decoder]
-        sparsity_reconst = gamma * l1(prediction_reconst)
+        # sparsity_reconst = gamma * l1(prediction_reconst)
+        # roh = input_var.mean(0)
+        # sparsity_reconst = ((roh * T.log(roh / (prediction_reconst.mean(0)+1e-8))) +\
+        #     ((1 - roh) * T.log((1 - roh) / (1 - prediction_reconst + 1e-8)))).sum()
 
     else:
         loss_reconst = 0
-        sparsity_reconst = 0
+        # sparsity_reconst = 0
 
     if beta > 0:
         predictor_laysize = [encoder_units[-1]]*num_fully_connected
@@ -157,22 +167,28 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         prediction_var = lasagne.layers.get_output(predictor)
 
         # w2v error
-        loss_pred = lasagne.objectives.binary_crossentropy(
-            prediction_var, target_var
-        ).mean()
+        # loss_pred = lasagne.objectives.binary_crossentropy(
+        #     prediction_var, target_var
+        # ).mean()
+
+        loss_reconst = mh.dice_coef_loss(
+            target_var, prediction_var).mean()
 
         params += lasagne.layers.get_all_params(predictor, trainable=True)
         monitor_labels += ["pred."]
         val_outputs += [loss_pred]
         nets += [predictor]
 
-        sparsity_pred = gamma * l1(prediction_var)
+        # sparsity_pred = gamma * l1(prediction_var)
+        # roh = 0.05
+        # sparsity_pred = ((roh * T.log(roh / prediction_pred.mean(0))) +\
+        #     ((1 - roh) * T.log((1 - roh) / (1 - prediction_pred)))).sum()
     else:
         loss_pred = 0
-        sparsity_pred = 0
+        # sparsity_pred = 0
 
     # Combine losses
-    loss = alpha*loss_reconst + beta*loss_pred + sparsity_pred + sparsity_reconst
+    loss = alpha*loss_reconst + beta*loss_pred # sparsity_pred  # + sparsity_reconst
 
     # applying weight decay
     l2_penalty = apply_penalty(params, l2)
@@ -207,8 +223,10 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
     val_fn = theano.function(inputs,
                              [val_outputs[0]] + val_outputs,
                              on_unused_input='ignore')
+
+    pred_fn = theano.function([input_var], prediction_reconst)
+
     start_training = time.time()
-    print "training start time: {}".format(start_training)
 
     # data_gen = data_generator(x_train, batch_size)
     print "Starting training"
@@ -218,9 +236,15 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         nb_minibatches = 0
         loss_epoch = 0
 
-        for x, y, target_reconst_val in data_generator(x_train, batch_size):
+        for x, y, target_reconst_val in data_generator(x_train, batch_size,
+                                                       shuffle=True):
             loss_epoch += train_fn(x, y, target_reconst_val)
             nb_minibatches += 1
+
+        pr = pred_fn(x)
+        print('min pr:' + str(pr.min()))
+        print('max pr:' + str(pr.max()))
+        print('mean pr:' + str(pr.mean()))
 
         loss_epoch /= nb_minibatches
         train_loss += [loss_epoch]
@@ -308,7 +332,7 @@ def main():
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=.01,
+                        default=.001,
                         help="""Float to indicate learning rate.""")
     parser.add_argument('--learning_rate_annealing',
                         '-lra',
@@ -333,7 +357,7 @@ def main():
     parser.add_argument('--gamma',
                         '-g',
                         type=float,
-                        default=.5,
+                        default=.0005,
                         help="""Float to indicate l1 penalty.""")
     parser.add_argument('--encoder_net_init',
                         '-eni',
@@ -369,6 +393,10 @@ def main():
                         type=int,
                         default=0,
                         help='Number of fully connected layers in predictor')
+    parser.add_argument('-exp_name',
+                        type=str,
+                        default='shuffle_',
+                        help='Experiment name that will be concatenated at the beginning of the generated name')
 
     args = parser.parse_args()
     print args
@@ -387,7 +415,8 @@ def main():
             args.save_tmp,
             args.save_perm,
             args.dataset_path,
-            args.num_fully_connected)
+            args.num_fully_connected,
+            args.exp_name)
 
 
 if __name__ == '__main__':

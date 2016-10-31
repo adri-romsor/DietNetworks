@@ -209,7 +209,7 @@ def get_precision_recall_cutoff(predictions, targets):
 
 # Monitoring function
 def monitoring(minibatches, which_set, error_fn, monitoring_labels,
-               prec_recall_cutoff=True, start=1):
+               prec_recall_cutoff=True, start=1, return_pred=False):
     print('-'*20 + which_set + ' monit.' + '-'*20)
     prec_recall_cutoff = False if start == 0 else prec_recall_cutoff
     monitoring_values = np.zeros(len(monitoring_labels), dtype="float32")
@@ -243,7 +243,10 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels,
         cutoff = get_precision_recall_cutoff(predictions, targets)
         print ("  {} precis/recall cutoff:\t{:.6f}".format(which_set, cutoff))
 
-    return monitoring_values
+    if return_pred:
+        return monitoring_values, predictions
+    else:
+        return monitoring_values
 
 
 def parse_int_list_arg(arg):
