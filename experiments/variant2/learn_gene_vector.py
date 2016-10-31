@@ -109,7 +109,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
                 encoder,
                 num_units=encoder_units[i],
                 W=Uniform(encoder_net_init) if i < len(encoder_units)-1 else GlorotUniform(),
-                nonlinearity= tanh if  i < len(encoder_units)-1 else linear)
+                nonlinearity=tanh if i < len(encoder_units)-1 else linear)
 
     params = lasagne.layers.get_all_params(encoder, trainable=True)
     monitor_labels = []
