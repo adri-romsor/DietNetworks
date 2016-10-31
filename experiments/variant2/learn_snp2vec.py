@@ -137,7 +137,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
                 encoder,
                 num_units=encoder_units[i],
                 W=convert_initialization(
-                    init_args["encoder"],
+                    init_args["encoder_init"],
                     nonlinearity="tanh"),
                 nonlinearity=tanh)  # if i < len(encoder_units)-1 else linear)
     params = lasagne.layers.get_all_params(encoder, trainable=True)
@@ -152,13 +152,13 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
             decoder = DenseLayer(decoder,
                                  num_units=decoder_units[i],
                                  W=convert_initialization(
-                                        init_args["decoder"],
+                                        init_args["decoder_init"],
                                         nonlinearity="tanh"),
                                  nonlinearity=tanh)
         decoder = DenseLayer(decoder,
                              num_units=n_features,
                              W=convert_initialization(
-                                    init_args["decoder"],
+                                    init_args["decoder_init"],
                                     nonlinearity="sigmoid"),
                              nonlinearity=sigmoid)
         prediction_reconst = lasagne.layers.get_output(decoder)
@@ -194,14 +194,14 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
                                    num_units=predictor_laysize[i],
                                    nonlinearity=rectify,
                                    W=convert_initialization(
-                                        init_args["predictor"],
+                                        init_args["predictor_init"],
                                         nonlinearity="relu"))
 
         predictor = DenseLayer(predictor,
                                num_units=2,
                                nonlinearity=sigmoid,
                                W=convert_initialization(
-                                    init_args["predictor"],
+                                    init_args["predictor_init"],
                                     nonlinearity="sigmoid"))
 
         prediction_var = lasagne.layers.get_output(predictor)
@@ -450,7 +450,7 @@ def main():
 
     args = parser.parse_args()
 
-    import ipdb; ipdb.set_trace()
+    # import ipdb; ipdb.set_trace()
 
     init_args = dict([
                     parse_string_int_tuple(args.encoder_init),
