@@ -84,6 +84,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         exp_name += ('-' + str(e))
     exp_name += '_a-' + str(alpha)
     exp_name += '_b-' + str(beta)
+    exp_name += '_g-' + str(gamma)
     exp_name += '_l-' + str(lmd)
     exp_name += '_lr-' + str(learning_rate)
 
