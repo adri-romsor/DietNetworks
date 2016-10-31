@@ -224,19 +224,19 @@ def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
 
     if feat_type == 'tfidf':
         train_data_features, train_labels, unlab_data_features,\
-            test_data_features, word_list = build_imdb_tfidf()
+            test_data_features, test_labels, word_list = build_imdb_tfidf()
 
         file_to_save = os.path.join(path, 'imdb_'+feat_type+'.npz')
     np.savez(file_to_save,
              train_data_features=train_data_features,
              train_labels=train_labels,
+             unlab_data_features=unlab_data_features,
              test_data_features=test_data_features,
              test_labels=test_labels,
-             unlab_data_features=unlab_data_features,
              word_list=word_list)
 
     # Obtain a word2vec embedding for every word in the dataset
-    #print("Generating word2vec embedding")
+    # print("Generating word2vec embedding")
     # data_path = "/data/lisatmp4/erraqabi/data/imdb_reviews"
     # word2vec_model = train_word2vec(data_path, use_unlabeled_data=True)
     # word_embeddings = get_word2vec_embeddings(word2vec_model, word_list)
@@ -262,7 +262,7 @@ def build_and_save_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
 
 # Recheck for test_labels if needed
 def load_imdb_save_histo(save_path, feat_type='BoW', nb_bins=10):
-    train_data, train_labels, unlab_data, _ = load_imdb(feat_type='BoW')
+    train_data, train_labels, unlab_data, _, _, _ = load_imdb(feat_type='BoW')
     # Generate an embedding for each feature using histograms on the whole
     # training set
     print("Generating histogram embedding")
@@ -387,8 +387,8 @@ def load_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
     train_labels = data['train_labels']
     unlab_data_features = data['unlab_data_features'].item()
     test_data_features = data['test_data_features'].item()
-    test_labels = data['test_labels'].item()
-
+    test_labels = data['test_labels']
+    word_list = data['word_list']
     if shuffle:
         np.random.seed(seed)
         idx_shuffle = np.random.permutation(train_data_features.shape[0])
@@ -401,7 +401,7 @@ def load_imdb(path='/data/lisatmp4/erraqabi/data/imdb_reviews/',
         unlab_data_features = unlab_data_features[idx_shuffle]
 
     return train_data_features, train_labels, unlab_data_features,\
-        test_data_features, test_labels
+        test_data_features, test_labels, word_list
 
 
 def load_imdb_word2vec(path_to_data, model_path=None, use_unlab=True):
@@ -469,15 +469,15 @@ def load_imdb_word2vec(path_to_data, model_path=None, use_unlab=True):
         test_labels
 
 
-def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
+def save_as_hdf5(path='/Tmp/erraqaba/data/imdb/', unsupervised=True,
                  feat_type='BoW', use_tables=True, split=0.8,
                  ngram_range=(1, 1)):
     if not os.path.exists(path):
         print 'making directory: {}'.format(path)
         os.makedirs(path)
     if unsupervised:
-        train_data, _, unlab_data, _ = load_imdb(feat_type=feat_type,
-                                                 ngram_range=ngram_range)
+        train_data, _, unlab_data, _, _, _ = load_imdb(feat_type=feat_type,
+                                                       ngram_range=ngram_range)
         if use_tables:
             f = tables.open_file(os.path.join(path,
                                               'unsupervised_IMDB_'+feat_type +
@@ -504,7 +504,7 @@ def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
                                          train_data.shape[0] +
                                          unlab_data.shape[0]),
                                         dtype='float32')
-            train_data, _, unlab_data, _, _ = load_imdb(feat_type=feat_type)
+            train_data, _, unlab_data, _, _, _ = load_imdb(feat_type=feat_type)
             features = np.empty((train_data.shape[1],
                                  train_data.shape[0]+unlab_data.shape[0]),
                                 dtype='float32')
@@ -515,10 +515,11 @@ def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
             f.flush()
     else:
         train_data, train_labels, _,\
-            test_data = load_imdb(feat_type=feat_type)
+            test_data, test_labels, _ = load_imdb(feat_type=feat_type)
         train_x = train_data.toarray().astype("float32")
         train_labels = train_labels.astype("int32")
         test_x = test_data.toarray().astype("float32")
+        test_labels = test_labels.astype("int32")
         f = tables.openFile(os.path.join(path, 'supervised_IMDB_'+feat_type +
                                                '_table'
                                                '_split80.hdf5'),
@@ -532,7 +533,7 @@ def save_as_hdf5(path='/Tmp/erraqaba/datasets/imdb/', unsupervised=True,
         f.createArray(f.root, 'val_labels',
                       train_labels[int(train_x.shape[0]*split):])
         f.createArray(f.root, 'test_features', test_x)
-
+        f.createArray(f.root, 'test_labels', test_labels)
     f.close()
 
 
@@ -549,7 +550,7 @@ def read_from_hdf5(path='/Tmp/carriepl/datasets/imdb/', unsupervised=True,
     return read_file
 
 if __name__ == '__main__':
-    build_and_save_imdb()
+    # build_and_save_imdb()
     # for i in range(3):
     #     print 'building & saving ' + str(i+1)+'-grams'
     #     build_and_save_imdb(use_unlab=False, ngram_range=(1, i+1))
@@ -571,5 +572,7 @@ if __name__ == '__main__':
 
     # build_and_save_imdb(feat_type='tfidf')
     # save_as_hdf5(unsupervised=True, feat_type='tfidf', use_tables=False)
-    # save_as_hdf5(unsupervised=True, feat_type='tfidf')
-    # save_as_hdf5(unsupervised=False, feat_type='tfidf')
+    save_as_hdf5(unsupervised=True, feat_type='tfidf')
+    # save_as_hdf5(unsupervised=True, feat_type='BoW')
+    save_as_hdf5(unsupervised=False, feat_type='tfidf')
+    # save_as_hdf5(unsupervised=False, feat_type='BoW')
