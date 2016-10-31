@@ -95,10 +95,11 @@ def execute(dataset, n_hidden_u, num_epochs=500,
             mes += '&2' if ngram_range[1] == '2' else '&2&3'
         mes += '-gram data'
         print(mes)
-        train_data, _, unlab_data, _ = imdb.load_imdb(path='/Tmp/erraqaba/'
-                                                           'data/imdb/',
-                                                      use_unlab=use_unlab_for_dic,
-                                                      ngram_range=ngram_range)
+        train_data, _, unlab_data, \
+            _, _, _ = imdb.load_imdb(path='/Tmp/erraqaba/'
+                                          'data/imdb/',
+                                     use_unlab=use_unlab_for_dic,
+                                     ngram_range=ngram_range)
         if use_unlab_for_emb:
             data = scipy.sparse.vstack([train_data, unlab_data]).transpose()
         else:

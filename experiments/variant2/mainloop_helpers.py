@@ -78,7 +78,7 @@ def load_data(dataset, dataset_path, embedding_source,
         x_valid = data.root.val_features
         y_valid = data.root.val_labels[:][:, None].astype("float32")
         x_test = data.root.test_features
-        y_test = None
+        y_test = data.root.test_labels[:][:, None].astype("float32")
         x_nolabel = None
     else:
         if not transpose:
