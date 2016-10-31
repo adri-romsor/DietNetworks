@@ -29,7 +29,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             save_path='/Tmp/romerosa/feature_selection/newmodel/',
             save_copy='/Tmp/romerosa/feature_selection/',
             dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/',
-            resume=False, exp_name=''):
+            resume=False, exp_name='', random_proj=0):
 
     # Load the dataset
     print("Loading data")
@@ -60,7 +60,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         embedding_name = embedding_input
     else:
         embedding_name = embedding_source.replace("_", "").split(".")[0]
-        exp_name = embedding_name.rsplit('/', 1)[::-1][0] + '_'
+        exp_name += embedding_name.rsplit('/', 1)[::-1][0] + '_'
+
+    exp_name += '_new_'
 
     exp_name += mlh.define_exp_name(keep_labels, alpha, beta, gamma, lmd,
                                     n_hidden_u, n_hidden_t_enc, n_hidden_t_dec,
@@ -97,7 +99,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         embedding_source, n_feats, n_samples_unsup,
         input_var_unsup, n_hidden_u, n_hidden_t_enc,
         n_hidden_t_dec, gamma, encoder_net_init,
-        decoder_net_init, save_path)
+        decoder_net_init, save_path, random_proj)
 
     # Build feature embedding reconstruction networks (if alpha > 0, beta > 0)
     nets += mh.build_feat_emb_reconst_nets(
@@ -155,8 +157,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     print('Number of params: '+str(len(params)))
 
     params2 = lasagne.layers.get_all_params(
-        [discrim_net] + filter(None, nets))
-    print('Number of params: '+str(len(params2)))
+        [discrim_net] + filter(None, nets), trainable=False)
+    print('Number of params nontrain: '+str(len(params2)))
 
     # Combine losses
     loss = sup_loss + alpha*reconst_losses[0] + beta*reconst_losses[1] + \
@@ -489,6 +491,11 @@ def main():
                         type=str,
                         default='',
                         help='Experiment name that will be concatenated at the beginning of the generated name')
+    parser.add_argument('--random_proj',
+                        '-rp',
+                        type=int,
+                        default=0,
+                        help="Whether to use random projections as embedding")
 
     args = parser.parse_args()
     print ("Printing args")
@@ -519,7 +526,8 @@ def main():
             args.save_perm,
             args.dataset_path,
             args.resume,
-            args.exp_name)
+            args.exp_name,
+            int(args.random_proj))
 
 
 if __name__ == '__main__':
