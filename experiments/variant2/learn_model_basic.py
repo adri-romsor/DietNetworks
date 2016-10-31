@@ -111,8 +111,10 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
         target_var_sup, missing_labels_val)
 
     inputs = [input_var_sup, target_var_sup]
-    params = lasagne.layers.get_all_params([discrim_net] + nets[2:],
+    params = lasagne.layers.get_all_params([discrim_net] + nets,
                                            trainable=True)
+
+    print('Number of params: '+str(len(params)))
 
     # Combine losses
     loss = sup_loss + gamma*reconst_losses[0]
@@ -153,7 +155,7 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
     val_outputs += [sup_loss_det, loss_det]
 
     # Compute accuracy and add it to monitoring list
-    test_acc, test_pred = mh.definte_test_functions(
+    test_acc, test_pred = mh.define_test_functions(
         disc_nonlinearity, prediction_sup, prediction_sup_det, target_var_sup)
     monitor_labels.append("accuracy")
     val_outputs.append(test_acc)
@@ -240,8 +242,9 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
             patience = 0
 
             # Save stuff
-            np.savez(save_path+'/model_feat_sel_best.npz',
-                     *lasagne.layers.get_all_param_values(nets))
+            np.savez(os.path.join(save_path, 'model_feat_sel_best.npz'),
+                     *lasagne.layers.get_all_param_values(filter(None, nets) +
+                                                          [discrim_net]))
             np.savez(save_path + "/errors_supervised_best.npz",
                      zip(*train_monitored), zip(*valid_monitored))
         else:
@@ -263,9 +266,9 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
                 with np.load(save_path + '/model_feat_sel_best.npz',) as f:
                     param_values = [f['arr_%d' % i]
                                     for i in range(len(f.files))]
-                    nlayers = len(lasagne.layers.get_all_params(nets))
-                    lasagne.layers.set_all_param_values(nets,
-                                                        param_values[:nlayers])
+                    lasagne.layers.set_all_param_values(filter(None, nets) +
+                                                        [discrim_net],
+                                                        param_values)
 
             # Training set results
             train_minibatches = mlh.iterate_minibatches(x_train, y_train,
@@ -337,12 +340,12 @@ def main():
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=0.00001,
+                        default=0.0001,
                         help='Float to indicate learning rate.')
     parser.add_argument('--learning_rate_annealing',
                         '-lra',
                         type=float,
-                        default=1.,
+                        default=.99,
                         help='Float to indicate learning rate annealing rate.')
     parser.add_argument('--gamma',
                         '-g',
@@ -371,7 +374,7 @@ def main():
                         default=1,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--early_stop_criterion',
-                        default='loss. sup.',
+                        default='accuracy',
                         help='What monitored variable to use for early-stopping')
     parser.add_argument('-embedding_input',
                         type=str,

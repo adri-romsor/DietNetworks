@@ -65,7 +65,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
             encoder_units=[1024, 512, 256],
             num_epochs=500, which_fold=1,
             save_path=None, save_copy=None, dataset_path=None,
-            num_fully_connected=0):
+            num_fully_connected=0, exp_name=''):
 
     # Reading dataset
     print("Loading data")
@@ -79,7 +79,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
 
     n_features = x_train.shape[1]
 
-    exp_name = "learn_gene_vector_h"
+    exp_name += "learn_gene_vector_h"
     for e in encoder_units:
         exp_name += ('-' + str(e))
     exp_name += '_a-' + str(alpha)
@@ -168,9 +168,12 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         prediction_var = lasagne.layers.get_output(predictor)
 
         # w2v error
-        loss_pred = lasagne.objectives.binary_crossentropy(
-            prediction_var, target_var
-        ).mean()
+        # loss_pred = lasagne.objectives.binary_crossentropy(
+        #     prediction_var, target_var
+        # ).mean()
+
+        loss_reconst = mh.dice_coef_loss(
+            target_var, prediction_var).mean()
 
         params += lasagne.layers.get_all_params(predictor, trainable=True)
         monitor_labels += ["pred."]
@@ -234,7 +237,8 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         nb_minibatches = 0
         loss_epoch = 0
 
-        for x, y, target_reconst_val in data_generator(x_train, batch_size):
+        for x, y, target_reconst_val in data_generator(x_train, batch_size,
+                                                       shuffle=True):
             loss_epoch += train_fn(x, y, target_reconst_val)
             nb_minibatches += 1
 
@@ -390,6 +394,10 @@ def main():
                         type=int,
                         default=0,
                         help='Number of fully connected layers in predictor')
+    parser.add_argument('-exp_name',
+                        type=str,
+                        default='shuffle_',
+                        help='Experiment name that will be concatenated at the beginning of the generated name')
 
     args = parser.parse_args()
     print args
@@ -408,7 +416,8 @@ def main():
             args.save_tmp,
             args.save_perm,
             args.dataset_path,
-            args.num_fully_connected)
+            args.num_fully_connected,
+            args.exp_name)
 
 
 if __name__ == '__main__':

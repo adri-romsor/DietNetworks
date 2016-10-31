@@ -150,7 +150,13 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Define parameters
     params = lasagne.layers.get_all_params(
-        [discrim_net] + filter(None, nets[2:]), trainable=True)
+        [discrim_net] + filter(None, nets), trainable=True)
+
+    print('Number of params: '+str(len(params)))
+
+    params2 = lasagne.layers.get_all_params(
+        [discrim_net] + filter(None, nets))
+    print('Number of params: '+str(len(params2)))
 
     # Combine losses
     loss = sup_loss + alpha*reconst_losses[0] + beta*reconst_losses[1] + \

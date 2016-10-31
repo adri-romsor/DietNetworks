@@ -29,6 +29,7 @@ def build_feat_emb_nets(embedding_source, n_feats, n_samples_unsup,
         for i, out in enumerate(n_hidden_u):
             encoder_net = DenseLayer(encoder_net, num_units=out,
                                      nonlinearity=rectify)
+            # freezeParameters(encoder_net)
             # encoder_net = DropoutLayer(encoder_net)
             # encoder_net = BatchNormLayer(encoder_net)
         feat_emb = lasagne.layers.get_output(encoder_net)
@@ -414,3 +415,18 @@ def dice_coef(y_true, y_pred):
 
 def dice_coef_loss(y_true, y_pred):
     return -dice_coef(y_true, y_pred)
+
+
+def freezeParameters(net, single=True):
+    all_layers = lasagne.layers.get_all_layers(net)
+
+    if single:
+        all_layers = [all_layers[-1]]
+
+    for layer in all_layers:
+        layer_params = layer.get_params()
+        for p in layer_params:
+            try:
+                layer.params[p].remove('trainable')
+            except KeyError:
+                pass
