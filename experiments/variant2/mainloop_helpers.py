@@ -78,7 +78,7 @@ def load_data(dataset, dataset_path, embedding_source,
         x_valid = data.root.val_features
         y_valid = data.root.val_labels[:][:, None].astype("float32")
         x_test = data.root.test_features
-        y_test = None
+        y_test = data.root.test_labels[:][:, None].astype("float32")
         x_nolabel = None
     else:
         if not transpose:
@@ -260,3 +260,15 @@ def parse_int_list_arg(arg):
     else:
         raise ValueError("Following arg value could not be cast as a list of"
                          "integer values : " % arg)
+
+
+def parse_string_int_tuple(arg):
+    if isinstance(arg, str):
+        tmp = arg.strip("()[]").split(",")
+        # import ipdb; ipdb.set_trace()
+        assert (len(tmp) == 2)
+        return (tmp[0], eval(tmp[1]))
+
+
+    else:
+        raise NotImplementedError()
