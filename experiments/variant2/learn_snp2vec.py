@@ -10,7 +10,7 @@ from lasagne.layers import DenseLayer, InputLayer
 from lasagne.nonlinearities import (sigmoid, softmax, tanh, linear, rectify,
                                     leaky_rectify, very_leaky_rectify)
 from lasagne.regularization import apply_penalty, l2, l1
-from lasagne.init import Uniform, GlorotUniform
+from lasagne.init import Uniform, GlorotUniform, GlorotNormal, Normal
 import numpy as np
 import theano
 from theano import config
@@ -18,15 +18,20 @@ import theano.tensor as T
 
 import mainloop_helpers as mlh
 import model_helpers as mh
+from mainloop_helpers import parse_string_int_tuple
 
 import random
 import getpass
+
+import json
+
 # import ipdb
 print ("config floatX: {}".format(config.floatX))
 
 username = getpass.getuser()
 if username == "sylvaint" and not os.path.isdir("/Tmp/sylvaint"):
     os.makedirs("/Tmp/sylvaint")
+
 
 # creating data generator
 def data_generator(dataset, batch_size, shuffle=False):
@@ -60,12 +65,33 @@ def data_generator(dataset, batch_size, shuffle=False):
         yield inputs, targets, reconstruction_targets
 
 
+def convert_initialization(component, nonlinearity="sigmoid"):
+    # component = init_dic[component_key]
+    assert(len(component) == 2)
+    if component[0] == "uniform":
+        return Uniform(component[1])
+    elif component[0] == "glorotnormal":
+        if nonlinearity in ["linear", "sigmoid", "tanh"]:
+            return GlorotNormal(1.)
+        else:
+            return GlorotNormal("relu")
+    elif component[0] == "glorotuniform":
+        if nonlinearity in ["linear", "sigmoid", "tanh"]:
+            return GlorotUniform(1.)
+        else:
+            return GlorotUniform("relu")
+    elif component[0] == "normal":
+        return Normal(*component[1])
+    else:
+        raise NotImplementedError()
+
+
 def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
-            alpha=0., beta=1., lmd=0., gamma=0.5, encoder_net_init=0.01,
+            alpha=0., beta=1., lmd=0.,
             encoder_units=[1024, 512, 256],
             num_epochs=500, which_fold=1,
             save_path=None, save_copy=None, dataset_path=None,
-            num_fully_connected=0, exp_name=''):
+            num_fully_connected=0, exp_name='', init_args=None):
 
     # Reading dataset
     print("Loading data")
@@ -84,7 +110,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         exp_name += ('-' + str(e))
     exp_name += '_a-' + str(alpha)
     exp_name += '_b-' + str(beta)
-    exp_name += '_g-' + str(gamma)
+    # exp_name += '_g-' + str(gamma)
     exp_name += '_l-' + str(lmd)
     exp_name += '_lr-' + str(learning_rate)
 
@@ -110,7 +136,9 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         encoder = DenseLayer(
                 encoder,
                 num_units=encoder_units[i],
-                # W=Uniform(encoder_net_init) if i < len(encoder_units)-1 else GlorotUniform(),
+                W=convert_initialization(
+                    init_args["encoder"],
+                    nonlinearity="tanh"),
                 nonlinearity=tanh)  # if i < len(encoder_units)-1 else linear)
     params = lasagne.layers.get_all_params(encoder, trainable=True)
     monitor_labels = []
@@ -123,10 +151,15 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         for i in range(len(decoder_units)):
             decoder = DenseLayer(decoder,
                                  num_units=decoder_units[i],
+                                 W=convert_initialization(
+                                        init_args["decoder"],
+                                        nonlinearity="tanh"),
                                  nonlinearity=tanh)
         decoder = DenseLayer(decoder,
                              num_units=n_features,
-                             # W=Uniform(encoder_net_init),
+                             W=convert_initialization(
+                                    init_args["decoder"],
+                                    nonlinearity="sigmoid"),
                              nonlinearity=sigmoid)
         prediction_reconst = lasagne.layers.get_output(decoder)
 
@@ -159,11 +192,17 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
         for i in range(len(predictor_laysize)):
             predictor = DenseLayer(predictor,
                                    num_units=predictor_laysize[i],
-                                   nonlinearity=rectify)
+                                   nonlinearity=rectify,
+                                   W=convert_initialization(
+                                        init_args["predictor"],
+                                        nonlinearity="relu"))
 
         predictor = DenseLayer(predictor,
                                num_units=2,
-                               nonlinearity=sigmoid)
+                               nonlinearity=sigmoid,
+                               W=convert_initialization(
+                                    init_args["predictor"],
+                                    nonlinearity="sigmoid"))
 
         prediction_var = lasagne.layers.get_output(predictor)
 
@@ -355,17 +394,26 @@ def main():
                         type=float,
                         default=.0,
                         help="""Float to indicate weight decay coeff.""")
-    parser.add_argument('--gamma',
-                        '-g',
-                        type=float,
-                        default=.0005,
-                        help="""Float to indicate l1 penalty.""")
-    parser.add_argument('--encoder_net_init',
+    # parser.add_argument('--gamma',
+    #                     '-g',
+    #                     type=float,
+    #                     default=.0005,
+    #                     help="""Float to indicate l1 penalty.""")
+    parser.add_argument('--encoder_init',
                         '-eni',
-                        type=float,
-                        default=0.01,
-                        help="Bounds of uniform initialization for " +
+                        default=("uniform",0.01),
+                        help="Initialization for " +
                              "encoder_net weights")
+    parser.add_argument('--decoder_init',
+                        '-dei',
+                        default=['glorotnormal', 1.0],
+                        help="Initialization for " +
+                             "decoder_net weights")
+    parser.add_argument('--predictor_init',
+                        '-pri',
+                        default=['glorotnormal', 1.0],
+                        help="Initialization for " +
+                             "predictor_net weights")
     parser.add_argument('--encoder_units',
                         default=[300, 100],
                         help='List of encoder hidden units.')
@@ -380,12 +428,12 @@ def main():
                         default=0,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--save_tmp',
-                        default='/Tmp/'+os.environ["USER"]+\
-                            '/feature_selection/',
+                        default='/Tmp/'+os.environ["USER"] +
+                                '/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
-                        default='/data/lisatmp4/'+os.environ["USER"]+\
-                            '/feature_selection/',
+                        default='/data/lisatmp4/'+os.environ["USER"] +
+                                '/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
                         default='/data/lisatmp4/romerosa/datasets/',
@@ -397,10 +445,20 @@ def main():
     parser.add_argument('-exp_name',
                         type=str,
                         default='shuffle_',
-                        help='Experiment name that will be concatenated at the beginning of the generated name')
+                        help='Experiment name that will be concatenated at\
+                            the beginning of the generated name')
 
     args = parser.parse_args()
+
+    import ipdb; ipdb.set_trace()
+
+    init_args = dict([
+                    parse_string_int_tuple(args.encoder_init),
+                    parse_string_int_tuple(args.decoder_init),
+                    parse_string_int_tuple(args.predictor_init)])
+
     print args
+    print "init_args: {}".format(init_args)
 
     execute(args.dataset,
             args.learning_rate,
@@ -408,8 +466,8 @@ def main():
             args.alpha,
             args.beta,
             args.lmd,
-            args.gamma,
-            args.encoder_net_init,
+            # args.gamma,
+            # args.encoder_net_init,
             mlh.parse_int_list_arg(args.encoder_units),
             int(args.num_epochs),
             int(args.which_fold),
@@ -417,7 +475,8 @@ def main():
             args.save_perm,
             args.dataset_path,
             args.num_fully_connected,
-            args.exp_name)
+            args.exp_name,
+            init_args)
 
 
 if __name__ == '__main__':
