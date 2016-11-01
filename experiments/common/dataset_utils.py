@@ -207,8 +207,10 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
         x, y = thousand_genomes.load_data(path)
         x = x.astype("float32")
 
-        if norm:
-            x = (x - x.mean(axis=0)[None, :]) / x.std(axis=0)[None, :]
+        mu_all = x.mean(axis=0)
+        sigma_all = x.std(axis=0)
+        print('Mean:' + str(mu_all.min()) + ' ' + str(mu_all.max()))
+        print('Std:' + str(sigma_all.min()) + ' ' + str(sigma_all.max()))
 
         (x, y) = shuffle((x, y))
 
@@ -229,6 +231,17 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
     # Data used for supervised training
     if not transpose:
         train, valid = split([x, y], label_splits)
+        if norm:
+            mu = train[0].mean(axis=0)
+            sigma = train[0].std(axis=0)
+            print('Mean:' + str(mu.min()) + ' ' + str(mu.max()))
+            print('Std:' + str(sigma.min()) + ' ' + str(sigma.max()))
+            train[0] = (train[0] - mu[None, :]) / sigma[None, :]
+            valid[0] = (valid[0] - mu[None, :]) / sigma[None, :]
+            test[0] = (test[0] - mu[None, :]) / sigma[None, :]
+            print('Min train: ' +str(train[0].min()) + ' max: ' +str(train[0].max()))
+            print('Min valid: ' +str(valid[0].min()) + ' max: ' +str(valid[0].max()))
+            print('Min test: ' +str(test[0].min()) + ' max: ' +str(test[0].max()))
         rvals = [train, valid, test]
     else:
         rvals = []
