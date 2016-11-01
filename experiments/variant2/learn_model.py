@@ -495,7 +495,7 @@ def main():
                             '$SCRATCH'+'/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
-                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/' if not CLUSTER else '/scratch/jvb-000-aa/tisu32/1000_Genome_project',
+                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/' if not CLUSTER else '/scratch/jvb-000-aa/tisu32/1000_Genome_project/',
                         help='Path to dataset')
     parser.add_argument('-resume',
                         type=bool,
