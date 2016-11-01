@@ -431,3 +431,17 @@ def freezeParameters(net, single=True):
                 layer.params[p].remove('trainable')
             except KeyError:
                 pass
+
+
+def rectify_minus2(x):
+    """Rectify activation function :math:`\\varphi(x) = \\max(0, x)`
+    Parameters
+    ----------
+    x : float32
+        The activation (the summed, weighted input of a neuron).
+    Returns
+    -------
+    float32
+        The output of the rectify function applied to the activation.
+    """
+    return theano.tensor.nnet.relu(x+2)-2
