@@ -10,14 +10,18 @@ import time
 
 def pca(dataset, n_comp_list, save_path, method="pca", which_fold=0):
 
+    dataset_path = '/data/lisatmp4/romerosa/datasets/'
+    embedding_source = '/data/lisatmp4/romerosa/datasets/1000_Genome_project/unsupervised_hist_3x26_fold'
+    embedding_source += str(which_fold) + '.npy'
+    print embedding_source
     # Load the dataset
     print("Loading data")
     x_train, y_train, x_valid, y_valid, x_test, y_test, \
         _, _ = mlh.load_data(
             dataset, dataset_path, embedding_source,
-            which_fold=which_fold, keep_labels=keep_labels,
-            missing_labels_val=missing_labels_val,
-            embedding_input=embedding_input, norm=False)
+            which_fold=which_fold, keep_labels=1.0,
+            missing_labels_val=-1.0,
+            embedding_input='raw', norm=False)
 
     unsupervised = np.concatenate((x_train, x_valid), axis=0)
 
