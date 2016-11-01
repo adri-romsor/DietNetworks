@@ -475,13 +475,13 @@ def main():
                         default='raw',
                         help='The kind of input we will use for the feat. emb. nets')
     parser.add_argument('--save_tmp',
-                        default='/Tmp/'+ os.environ["USER"]+'/feature_selection/',
+                        default='$SCRATCH'+'/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
-                        default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/',
+                        default='$SCRATCH'+'/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
-                        default='/data/lisatmp4/romerosa/datasets/',
+                        default='$SCRATCH',
                         help='Path to dataset')
     parser.add_argument('-resume',
                         type=bool,

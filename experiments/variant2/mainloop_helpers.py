@@ -3,9 +3,11 @@ import numpy as np
 import os
 import random
 
+import sys
+print (sys.path)
+
 from feature_selection.experiments.common import dataset_utils as du
 from feature_selection.experiments.common import imdb
-
 
 # Function to load data
 def load_data(dataset, dataset_path, embedding_source,

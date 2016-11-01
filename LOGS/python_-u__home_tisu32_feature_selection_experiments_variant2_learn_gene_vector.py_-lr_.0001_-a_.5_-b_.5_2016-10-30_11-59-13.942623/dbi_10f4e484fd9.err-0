@@ -1,0 +1,56 @@
+Using gpu device 0: Tesla K20m (CNMeM is enabled with initial size: 95.0% of memory, cuDNN 5005)
+/home/tisu32/.local/lib/python2.7/site-packages/gensim/utils.py:1015: UserWarning: Pattern library is not installed, lemmatization won't be available.
+  warnings.warn("Pattern library is not installed, lemmatization won't be available.")
+Traceback (most recent call last):
+  File "/home/tisu32/feature_selection/experiments/variant2/learn_gene_vector.py", line 362, in <module>
+    main()
+  File "/home/tisu32/feature_selection/experiments/variant2/learn_gene_vector.py", line 358, in main
+    args.dataset_path)
+  File "/home/tisu32/feature_selection/experiments/variant2/learn_gene_vector.py", line 210, in execute
+    loss_epoch += train_fn(x, y, target_reconst_val)
+  File "/home/tisu32/.local/lib/python2.7/site-packages/theano/compile/function_module.py", line 879, in __call__
+    storage_map=getattr(self.fn, 'storage_map', None))
+  File "/home/tisu32/.local/lib/python2.7/site-packages/theano/gof/link.py", line 325, in raise_with_op
+    reraise(exc_type, exc_value, exc_trace)
+  File "/home/tisu32/.local/lib/python2.7/site-packages/theano/compile/function_module.py", line 866, in __call__
+    self.fn() if output_subset is None else\
+MemoryError: Error allocating 504552000 bytes of device memory (CNMEM_STATUS_OUT_OF_MEMORY).
+Apply node that caused the error: GpuElemwise{Composite{(i0 * sqr(i1))},no_inplace}(CudaNdarrayConstant{[[ 0.10000002]]}, GpuElemwise{Composite{((i0 * (i1 * i2)) + i3)}}[(0, 3)].0)
+Toposort index: 266
+Inputs types: [CudaNdarrayType(float32, (True, True)), CudaNdarrayType(float32, matrix)]
+Inputs shapes: [(1, 1), (630690, 200)]
+Inputs strides: [(0, 0), (200, 1)]
+Inputs values: [CudaNdarray([[ 0.10000002]]), 'not shown']
+Outputs clients: [[GpuElemwise{Composite{((i0 * i1) + i2)}}[(0, 1)](CudaNdarrayConstant{[[ 0.89999998]]}, <CudaNdarrayType(float32, matrix)>, GpuElemwise{Composite{(i0 * sqr(i1))},no_inplace}.0), GpuElemwise{Add}[(0, 0)](GpuElemwise{Mul}[(0, 1)].0, GpuElemwise{Composite{(i0 * sqr(i1))},no_inplace}.0), GpuElemwise{Composite{((i0 * i1) + i2)}}[(0, 1)](CudaNdarrayConstant{[[ 0.89999998]]}, <CudaNdarrayType(float32, matrix)>, GpuElemwise{Composite{(i0 * sqr(i1))},no_inplace}.0), GpuElemwise{Composite{(i0 - ((i1 * i2) / sqrt((i3 + i4 + i5))))}}[(0, 0)](W, GpuDimShuffle{x,x}.0, GpuElemwise{Composite{((i0 * (i1 * i2)) + i3)}}[(0, 3)].0, CudaNdarrayConstant{[[  9.99999997e-07]]}, GpuElemwise{Mul}[(0, 1)].0, GpuElemwise{Composite{(i0 * sqr(i1))},no_inplace}.0)]]
+
+HINT: Re-running with most Theano optimization disabled could give you a back-trace of when this node was created. This can be done with by setting the Theano flag 'optimizer=fast_compile'. If that does not work, Theano optimizations can be disabled with 'optimizer=None'.
+HINT: Use the Theano flag 'exception_verbosity=high' for a debugprint and storage map footprint of this apply node.
+
+If you suspect this is an IPython bug, please report it at:
+    https://github.com/ipython/ipython/issues
+or send an email to the mailing list at ipython-dev@scipy.org
+
+You can print a more detailed traceback right now with "%tb", or use "%debug"
+to interactively debug it.
+
+Extra-detailed tracebacks for bug-reporting purposes can be enabled via:
+    %config Application.verbose_crash=True
+
+
+==============NVSMI LOG==============
+
+Timestamp                           : Sun Oct 30 12:03:58 2016
+Driver Version                      : 352.79
+
+Attached GPUs                       : 8
+GPU 0000:05:00.0
+    Accounting Mode                 : Enabled
+    Accounting Mode Buffer Size     : 1920
+    Accounted Processes
+        Process ID                  : 39846
+            GPU Utilization         : 0 %
+            Memory Utilization      : 0 %
+            Max memory usage        : 4638 MiB
+            Time                    : 270316 ms
+            Is Running              : 0
+
