@@ -204,11 +204,8 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
                       path="/data/lisatmp4/romerosa/datasets/1000_Genome_project/" ):
 
     # user = os.getenv("USER")
-<<<<<<< HEAD
+    print path
     # path = "/data/lisatmp4/romerosa/datasets/1000_Genome_project/"  # % user
-    path = "/scratch/jvb-000-aa/tisu32/1000_Genome_project/"
-=======
->>>>>>> cc1d03082899dd79758cb622bd5a928bf39fbe50
 
     if nolabels == 'raw' or not transpose:
         # Load raw data either for supervised or unsupervised part

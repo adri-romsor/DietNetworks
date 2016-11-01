@@ -64,7 +64,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         embedding_name = embedding_source.replace("_", "").split(".")[0]
         exp_name += embedding_name.rsplit('/', 1)[::-1][0] + '_'
 
-    exp_name += '_new_'
+    exp_name += 'final_'
 
     exp_name += mlh.define_exp_name(keep_labels, alpha, beta, gamma, lmd,
                                     n_hidden_u, n_hidden_t_enc, n_hidden_t_dec,
@@ -495,7 +495,7 @@ def main():
                             '$SCRATCH'+'/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
-                        default='/data/lisatmp4/romerosa/datasets/' if not CLUSTER else '/scratch/jvb-000-aa/tisu32/',
+                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/' if not CLUSTER else '/scratch/jvb-000-aa/tisu32/1000_Genome_project',
                         help='Path to dataset')
     parser.add_argument('-resume',
                         type=bool,
