@@ -19,7 +19,7 @@ _EPSILON = 10e-8
 def build_feat_emb_nets(embedding_source, n_feats, n_samples_unsup,
                         input_var_unsup, n_hidden_u, n_hidden_t_enc,
                         n_hidden_t_dec, gamma, encoder_net_init,
-                        decoder_net_init, save_path):
+                        decoder_net_init, save_path, random_proj=False):
 
     nets = []
     embeddings = []
@@ -29,7 +29,8 @@ def build_feat_emb_nets(embedding_source, n_feats, n_samples_unsup,
         for i, out in enumerate(n_hidden_u):
             encoder_net = DenseLayer(encoder_net, num_units=out,
                                      nonlinearity=rectify)
-            # freezeParameters(encoder_net)
+            if random_proj:
+                freezeParameters(encoder_net)
             # encoder_net = DropoutLayer(encoder_net)
             # encoder_net = BatchNormLayer(encoder_net)
         feat_emb = lasagne.layers.get_output(encoder_net)
@@ -155,7 +156,7 @@ def build_reconst_net(hidden_rep, embedding, n_feats, gamma):
     # Reconstruct the input using dec_feat_emb
     if gamma > 0:
         reconst_net = DenseLayer(hidden_rep, num_units=n_feats,
-                                 W=embedding.T, nonlinearity=linear)
+                                 W=embedding.T, nonlinearity=rectify)
     else:
         reconst_net = None
 
