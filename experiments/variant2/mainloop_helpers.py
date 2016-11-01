@@ -70,7 +70,7 @@ def load_data(dataset, dataset_path, embedding_source,
                                     feature_splits=[.8],
                                     fold=which_fold,
                                     nolabels=embedding_input,
-                                    norm=norm, path=datase_path)
+                                    norm=norm, path=dataset_path)
     else:
         print("Unknown dataset")
         return
