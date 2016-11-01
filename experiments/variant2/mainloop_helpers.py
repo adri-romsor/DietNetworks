@@ -68,7 +68,7 @@ def load_data(dataset, dataset_path, embedding_source,
                                     feature_splits=[.8],
                                     fold=which_fold,
                                     nolabels=embedding_input,
-                                    norm=norm)
+                                    norm=norm, path=datase_path)
     else:
         print("Unknown dataset")
         return
