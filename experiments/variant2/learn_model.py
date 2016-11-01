@@ -17,6 +17,8 @@ import model_helpers as mh
 
 print ("config floatX: {}".format(config.floatX))
 
+import getpass
+CLUSTER = getpass.getuser() in ["tisu32"]
 
 # Main program
 def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
@@ -300,7 +302,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                                           [discrim_net]))
             np.savez(save_path + "/errors_supervised_best.npz",
                      zip(*train_monitored), zip(*valid_monitored))
-            
+
             # Monitor on the test set now because sometimes the saving doesn't
             # go well and there isn't a model to load at the end of training
             if y_test is not None:
@@ -485,13 +487,15 @@ def main():
                         default='raw',
                         help='The kind of input we will use for the feat. emb. nets')
     parser.add_argument('--save_tmp',
-                        default='$SCRATCH'+'/feature_selection/',
+                        default= '/Tmp/'+ os.environ["USER"]+'/feature_selection/' if not CLUSTER else
+                            '$SCRATCH'+'/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
-                        default='$SCRATCH'+'/feature_selection/',
+                        default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/' if not CLUSTER else
+                            '$SCRATCH'+'/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
-                        default='$SCRATCH',
+                        default='/data/lisatmp4/romerosa/datasets/' if not CLUSTER else '$SCRATCH',
                         help='Path to dataset')
     parser.add_argument('-resume',
                         type=bool,

@@ -21,9 +21,12 @@ import model_helpers as mh
 from mainloop_helpers import parse_string_int_tuple
 
 import random
+import json
 import getpass
 
-import json
+CLUSTER = getpass.getuser() in ["tisu32"]
+
+
 
 # import ipdb
 print ("config floatX: {}".format(config.floatX))
@@ -428,15 +431,15 @@ def main():
                         default=0,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--save_tmp',
-                        default='/Tmp/'+os.environ["USER"] +
-                                '/feature_selection/',
+                        default= '/Tmp/'+ os.environ["USER"]+'/feature_selection/' if not CLUSTER else
+                            '$SCRATCH'+'/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
-                        default='/data/lisatmp4/'+os.environ["USER"] +
-                                '/feature_selection/',
+                        default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/' if not CLUSTER else
+                            '$SCRATCH'+'/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
-                        default='/data/lisatmp4/romerosa/datasets/',
+                        default='/data/lisatmp4/romerosa/datasets/' if not CLUSTER else '$SCRATCH',
                         help='Path to dataset')
     parser.add_argument('--num_fully_connected',
                         type=int,
@@ -452,9 +455,9 @@ def main():
 
     # import ipdb; ipdb.set_trace()
 
-    init_args = {"encoder_init" : parse_string_int_tuple(args.encoder_init),
-                 "decoder_init" : parse_string_int_tuple(args.decoder_init),
-                 "predictor_init" : parse_string_int_tuple(args.predictor_init)}
+    init_args = {"encoder_init":parse_string_int_tuple(args.encoder_init),
+                 "decoder_init":parse_string_int_tuple(args.decoder_init),
+                 "predictor_init":parse_string_int_tuple(args.predictor_init)}
 
     print args
     print "init_args: {}".format(init_args)

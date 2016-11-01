@@ -2,10 +2,6 @@ from __future__ import print_function
 import numpy as np
 import os
 import random
-
-import sys
-print (sys.path)
-
 from feature_selection.experiments.common import dataset_utils as du
 from feature_selection.experiments.common import imdb
 

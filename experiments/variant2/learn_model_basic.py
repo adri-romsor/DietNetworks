@@ -22,6 +22,9 @@ from feature_selection.experiments.common import dataset_utils, imdb
 import mainloop_helpers as mlh
 import model_helpers as mh
 
+import getpass
+CLUSTER = getpass.getuser() in ["tisu32"]
+
 
 # Main program
 def execute(dataset, n_hidden_t_enc, n_hidden_s,
@@ -381,13 +384,15 @@ def main():
                         default='raw',
                         help='The kind of input we will use for the feat. emb. nets')
     parser.add_argument('--save_tmp',
-                        default='/Tmp/'+ os.environ["USER"]+'/feature_selection/',
+                        default= '/Tmp/'+ os.environ["USER"]+'/feature_selection/' if not CLUSTER else
+                            '$SCRATCH'+'/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
-                        default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/',
+                        default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/' if not CLUSTER else
+                            '$SCRATCH'+'/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
-                        default='/data/lisatmp4/romerosa/datasets/',
+                        default='/data/lisatmp4/romerosa/datasets/' if not CLUSTER else '$SCRATCH',
                         help='Path to dataset')
     parser.add_argument('-resume',
                         type=bool,

@@ -1,0 +1,2763 @@
+Using gpu device 5: Tesla K80 (CNMeM is enabled with initial size: 95.0% of memory, cuDNN 5103)
+Printing args
+Namespace(dataset='1000_genomes', dataset_path='/data/lisatmp4/romerosa/datasets/', disc_nonlinearity='softmax', early_stop_criterion='accuracy', embedding_input='raw', gamma=10.0, keep_labels=1.0, learning_rate=0.0001, learning_rate_annealing=0.99, lmd=0.0, n_hidden_s=[100], n_hidden_t_enc=[100], num_epochs=1000, prec_recall_cutoff=0, resume=False, save_perm='/data/lisatmp4/sylvaint/feature_selection/', save_tmp='/Tmp/sylvaint/feature_selection/', which_fold=1)
+Loading data
+Number of features :  315345
+Glorot init :  6.34024948882e-06
+Experiment: basic_our_model1.0_raw_lr-0.0001_anneal-0.99_accuracy_Ri10.0_hu_tenc-100_tdec_hs-100_fold1
+Building model
+Building and compiling training functions
+Number of params: 8
+Starting training...
+Epoch 0 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		1.000926
+  train loss. sup.:		3.639899
+  train total loss:		13.649158
+  train accuracy:		4.150391
+--------------------valid monit.--------------------
+  valid reconst. loss:		1.003345
+  valid loss. sup.:		3.571830
+  valid total loss:		13.605284
+  valid accuracy:		5.156250
+Epoch 1 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.994997
+  train loss. sup.:		3.958087
+  train total loss:		13.908055
+  train accuracy:		26.269531
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.995182
+  valid loss. sup.:		4.470654
+  valid total loss:		14.422472
+  valid accuracy:		19.687500
+  epoch time:			15.392s 
+
+Epoch 2 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.969419
+  train loss. sup.:		4.137581
+  train total loss:		13.831771
+  train accuracy:		33.251953
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.967911
+  valid loss. sup.:		5.210269
+  valid total loss:		14.889380
+  valid accuracy:		21.562500
+  epoch time:			18.138s 
+
+Epoch 3 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.952511
+  train loss. sup.:		3.102971
+  train total loss:		12.628079
+  train accuracy:		48.876953
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.948851
+  valid loss. sup.:		3.945957
+  valid total loss:		13.434468
+  valid accuracy:		36.406250
+  epoch time:			23.035s 
+
+Epoch 4 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.952655
+  train loss. sup.:		2.837565
+  train total loss:		12.364119
+  train accuracy:		59.960938
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.947871
+  valid loss. sup.:		3.853390
+  valid total loss:		13.332098
+  valid accuracy:		48.281250
+  epoch time:			25.412s 
+
+Epoch 5 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.954946
+  train loss. sup.:		2.611045
+  train total loss:		12.160503
+  train accuracy:		60.791016
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.949410
+  valid loss. sup.:		3.724347
+  valid total loss:		13.218448
+  valid accuracy:		40.156250
+  epoch time:			23.386s 
+
+Epoch 6 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.955865
+  train loss. sup.:		2.008637
+  train total loss:		11.567286
+  train accuracy:		73.632812
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.949164
+  valid loss. sup.:		3.226728
+  valid total loss:		12.718372
+  valid accuracy:		55.781250
+  epoch time:			24.995s 
+
+Epoch 7 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.954598
+  train loss. sup.:		2.108713
+  train total loss:		11.654690
+  train accuracy:		74.804688
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.946540
+  valid loss. sup.:		3.441501
+  valid total loss:		12.906900
+  valid accuracy:		59.218750
+  epoch time:			21.835s 
+
+Epoch 8 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.957081
+  train loss. sup.:		1.413416
+  train total loss:		10.984227
+  train accuracy:		74.316406
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.949022
+  valid loss. sup.:		2.867200
+  valid total loss:		12.357416
+  valid accuracy:		54.062500
+  epoch time:			19.354s 
+
+Epoch 9 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.959256
+  train loss. sup.:		1.285187
+  train total loss:		10.877748
+  train accuracy:		81.542969
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.950056
+  valid loss. sup.:		2.736121
+  valid total loss:		12.236678
+  valid accuracy:		62.187500
+  epoch time:			33.072s 
+
+Epoch 10 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.958521
+  train loss. sup.:		1.138833
+  train total loss:		10.724043
+  train accuracy:		85.009766
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.949306
+  valid loss. sup.:		2.389842
+  valid total loss:		11.882899
+  valid accuracy:		65.937500
+  epoch time:			24.305s 
+
+Epoch 11 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.960079
+  train loss. sup.:		0.984142
+  train total loss:		10.584938
+  train accuracy:		86.962891
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.951509
+  valid loss. sup.:		2.215405
+  valid total loss:		11.730494
+  valid accuracy:		63.125000
+  epoch time:			23.612s 
+
+Epoch 12 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.959493
+  train loss. sup.:		0.383297
+  train total loss:		9.978224
+  train accuracy:		93.066406
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.949845
+  valid loss. sup.:		1.432058
+  valid total loss:		10.930505
+  valid accuracy:		69.687500
+  epoch time:			23.819s 
+
+Epoch 13 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.957690
+  train loss. sup.:		0.332615
+  train total loss:		9.909517
+  train accuracy:		94.384766
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.947454
+  valid loss. sup.:		1.428460
+  valid total loss:		10.903003
+  valid accuracy:		71.250000
+  epoch time:			20.156s 
+
+Epoch 14 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.960579
+  train loss. sup.:		0.260119
+  train total loss:		9.865911
+  train accuracy:		96.044922
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.951697
+  valid loss. sup.:		1.231593
+  valid total loss:		10.748560
+  valid accuracy:		78.906250
+  epoch time:			25.364s 
+
+Epoch 15 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.960022
+  train loss. sup.:		0.236009
+  train total loss:		9.836226
+  train accuracy:		96.484375
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.950650
+  valid loss. sup.:		1.285226
+  valid total loss:		10.791724
+  valid accuracy:		79.218750
+  epoch time:			19.943s 
+
+Epoch 16 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.957276
+  train loss. sup.:		0.134991
+  train total loss:		9.707746
+  train accuracy:		98.583984
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.946810
+  valid loss. sup.:		1.143062
+  valid total loss:		10.611165
+  valid accuracy:		77.343750
+  epoch time:			19.909s 
+
+Epoch 17 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.956189
+  train loss. sup.:		0.118141
+  train total loss:		9.680030
+  train accuracy:		98.144531
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.945526
+  valid loss. sup.:		1.068590
+  valid total loss:		10.523845
+  valid accuracy:		83.906250
+  epoch time:			18.787s 
+
+Epoch 18 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.957811
+  train loss. sup.:		0.099714
+  train total loss:		9.677823
+  train accuracy:		98.535156
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.947861
+  valid loss. sup.:		1.293072
+  valid total loss:		10.771680
+  valid accuracy:		77.500000
+  epoch time:			17.180s 
+
+Epoch 19 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.954803
+  train loss. sup.:		0.070817
+  train total loss:		9.618843
+  train accuracy:		98.925781
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.944563
+  valid loss. sup.:		0.969135
+  valid total loss:		10.414762
+  valid accuracy:		80.000000
+  epoch time:			16.224s 
+
+Epoch 20 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.953806
+  train loss. sup.:		0.059269
+  train total loss:		9.597324
+  train accuracy:		99.072266
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.943616
+  valid loss. sup.:		0.872378
+  valid total loss:		10.308540
+  valid accuracy:		78.437500
+  epoch time:			19.001s 
+
+Epoch 21 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.953383
+  train loss. sup.:		0.054267
+  train total loss:		9.588099
+  train accuracy:		99.365234
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.944166
+  valid loss. sup.:		0.682870
+  valid total loss:		10.124526
+  valid accuracy:		84.062500
+  epoch time:			21.159s 
+
+Epoch 22 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.951037
+  train loss. sup.:		0.057988
+  train total loss:		9.568354
+  train accuracy:		99.121094
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.941645
+  valid loss. sup.:		1.261585
+  valid total loss:		10.678037
+  valid accuracy:		75.468750
+  epoch time:			20.380s 
+
+Epoch 23 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.948583
+  train loss. sup.:		0.032735
+  train total loss:		9.518571
+  train accuracy:		99.560547
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.939192
+  valid loss. sup.:		0.784898
+  valid total loss:		10.176823
+  valid accuracy:		83.750000
+  epoch time:			31.902s 
+
+Epoch 24 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.949126
+  train loss. sup.:		0.028850
+  train total loss:		9.520113
+  train accuracy:		99.560547
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.941303
+  valid loss. sup.:		0.827124
+  valid total loss:		10.240159
+  valid accuracy:		82.500000
+  epoch time:			23.394s 
+
+Epoch 25 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.947836
+  train loss. sup.:		0.023583
+  train total loss:		9.501947
+  train accuracy:		99.560547
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.940249
+  valid loss. sup.:		0.794815
+  valid total loss:		10.197302
+  valid accuracy:		81.406250
+  epoch time:			20.676s 
+
+Epoch 26 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.945585
+  train loss. sup.:		0.012984
+  train total loss:		9.468832
+  train accuracy:		99.902344
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.938591
+  valid loss. sup.:		0.637759
+  valid total loss:		10.023668
+  valid accuracy:		84.062500
+  epoch time:			20.264s 
+
+Epoch 27 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.946331
+  train loss. sup.:		0.010714
+  train total loss:		9.474026
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.940983
+  valid loss. sup.:		0.723360
+  valid total loss:		10.133188
+  valid accuracy:		82.812500
+  epoch time:			16.250s 
+
+Epoch 28 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.943248
+  train loss. sup.:		0.009940
+  train total loss:		9.442424
+  train accuracy:		99.902344
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.937674
+  valid loss. sup.:		0.913053
+  valid total loss:		10.289788
+  valid accuracy:		83.125000
+  epoch time:			15.502s 
+
+Epoch 29 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.940674
+  train loss. sup.:		0.009210
+  train total loss:		9.415953
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.934959
+  valid loss. sup.:		0.631358
+  valid total loss:		9.980944
+  valid accuracy:		86.093750
+  epoch time:			22.617s 
+
+Epoch 30 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.936836
+  train loss. sup.:		0.010517
+  train total loss:		9.378877
+  train accuracy:		99.853516
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.930728
+  valid loss. sup.:		0.922297
+  valid total loss:		10.229581
+  valid accuracy:		83.281250
+  epoch time:			18.050s 
+
+Epoch 31 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.939217
+  train loss. sup.:		0.011151
+  train total loss:		9.403320
+  train accuracy:		99.902344
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.935265
+  valid loss. sup.:		0.841977
+  valid total loss:		10.194632
+  valid accuracy:		82.656250
+  epoch time:			17.757s 
+
+Epoch 32 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.932275
+  train loss. sup.:		0.009364
+  train total loss:		9.332111
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.927092
+  valid loss. sup.:		0.616109
+  valid total loss:		9.887031
+  valid accuracy:		82.187500
+  epoch time:			19.317s 
+
+Epoch 33 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.930812
+  train loss. sup.:		0.008338
+  train total loss:		9.316459
+  train accuracy:		99.951172
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.925657
+  valid loss. sup.:		0.666649
+  valid total loss:		9.923223
+  valid accuracy:		83.906250
+  epoch time:			20.867s 
+
+Epoch 34 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.928827
+  train loss. sup.:		0.008853
+  train total loss:		9.297125
+  train accuracy:		99.853516
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.924564
+  valid loss. sup.:		0.741079
+  valid total loss:		9.986723
+  valid accuracy:		84.843750
+  epoch time:			21.195s 
+
+Epoch 35 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.924536
+  train loss. sup.:		0.004101
+  train total loss:		9.249465
+  train accuracy:		99.951172
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.920448
+  valid loss. sup.:		0.594524
+  valid total loss:		9.799004
+  valid accuracy:		85.000000
+  epoch time:			23.969s 
+
+Epoch 36 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.925373
+  train loss. sup.:		0.004722
+  train total loss:		9.258455
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.922572
+  valid loss. sup.:		0.497009
+  valid total loss:		9.722730
+  valid accuracy:		86.093750
+  epoch time:			21.735s 
+
+Epoch 37 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.923360
+  train loss. sup.:		0.003751
+  train total loss:		9.237355
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.920732
+  valid loss. sup.:		0.542284
+  valid total loss:		9.749603
+  valid accuracy:		88.750000
+  epoch time:			17.303s 
+
+Epoch 38 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.920120
+  train loss. sup.:		0.003475
+  train total loss:		9.204676
+  train accuracy:		99.951172
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.917473
+  valid loss. sup.:		0.737189
+  valid total loss:		9.911917
+  valid accuracy:		83.593750
+  epoch time:			19.696s 
+
+Epoch 39 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.918492
+  train loss. sup.:		0.003456
+  train total loss:		9.188372
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.916459
+  valid loss. sup.:		0.651512
+  valid total loss:		9.816099
+  valid accuracy:		86.093750
+  epoch time:			29.685s 
+
+Epoch 40 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.915144
+  train loss. sup.:		0.003759
+  train total loss:		9.155197
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.912836
+  valid loss. sup.:		0.682619
+  valid total loss:		9.810982
+  valid accuracy:		84.375000
+  epoch time:			18.715s 
+
+Epoch 41 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.914773
+  train loss. sup.:		0.002400
+  train total loss:		9.150131
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.913380
+  valid loss. sup.:		0.624733
+  valid total loss:		9.758535
+  valid accuracy:		83.750000
+  epoch time:			21.168s 
+
+Epoch 42 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.910746
+  train loss. sup.:		0.001944
+  train total loss:		9.109401
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.909161
+  valid loss. sup.:		0.650409
+  valid total loss:		9.742018
+  valid accuracy:		84.218750
+  epoch time:			16.890s 
+
+Epoch 43 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.910443
+  train loss. sup.:		0.002546
+  train total loss:		9.106976
+  train accuracy:		99.951172
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.909837
+  valid loss. sup.:		0.644271
+  valid total loss:		9.742641
+  valid accuracy:		81.875000
+  epoch time:			19.072s 
+
+Epoch 44 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.906459
+  train loss. sup.:		0.001685
+  train total loss:		9.066278
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.905854
+  valid loss. sup.:		0.691583
+  valid total loss:		9.750119
+  valid accuracy:		84.687500
+  epoch time:			18.435s 
+
+Epoch 45 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.907347
+  train loss. sup.:		0.001575
+  train total loss:		9.075046
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.908251
+  valid loss. sup.:		0.494382
+  valid total loss:		9.576887
+  valid accuracy:		85.468750
+  epoch time:			22.321s 
+
+Epoch 46 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.901775
+  train loss. sup.:		0.001410
+  train total loss:		9.019164
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.901234
+  valid loss. sup.:		0.653015
+  valid total loss:		9.665355
+  valid accuracy:		82.187500
+  epoch time:			23.950s 
+
+Epoch 47 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.900971
+  train loss. sup.:		0.001772
+  train total loss:		9.011479
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.901274
+  valid loss. sup.:		0.582322
+  valid total loss:		9.595066
+  valid accuracy:		86.718750
+  epoch time:			23.061s 
+
+Epoch 48 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.898970
+  train loss. sup.:		0.001391
+  train total loss:		8.991097
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.899821
+  valid loss. sup.:		0.586054
+  valid total loss:		9.584270
+  valid accuracy:		84.687500
+  epoch time:			27.827s 
+
+Epoch 49 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.897329
+  train loss. sup.:		0.001561
+  train total loss:		8.974854
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.897729
+  valid loss. sup.:		0.775929
+  valid total loss:		9.753222
+  valid accuracy:		82.500000
+  epoch time:			26.908s 
+
+Epoch 50 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.895539
+  train loss. sup.:		0.000860
+  train total loss:		8.956253
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.896703
+  valid loss. sup.:		0.464019
+  valid total loss:		9.431047
+  valid accuracy:		85.937500
+  epoch time:			22.313s 
+
+Epoch 51 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.894293
+  train loss. sup.:		0.000960
+  train total loss:		8.943891
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.895634
+  valid loss. sup.:		0.711407
+  valid total loss:		9.667743
+  valid accuracy:		84.531250
+  epoch time:			20.145s 
+
+Epoch 52 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.892437
+  train loss. sup.:		0.000714
+  train total loss:		8.925078
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.894017
+  valid loss. sup.:		0.666751
+  valid total loss:		9.606923
+  valid accuracy:		87.031250
+  epoch time:			16.522s 
+
+Epoch 53 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.891508
+  train loss. sup.:		0.000659
+  train total loss:		8.915739
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.893886
+  valid loss. sup.:		0.563682
+  valid total loss:		9.502538
+  valid accuracy:		84.687500
+  epoch time:			30.279s 
+
+Epoch 54 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.888876
+  train loss. sup.:		0.000426
+  train total loss:		8.889191
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.890538
+  valid loss. sup.:		0.623327
+  valid total loss:		9.528707
+  valid accuracy:		84.843750
+  epoch time:			19.197s 
+
+Epoch 55 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.889447
+  train loss. sup.:		0.000599
+  train total loss:		8.895070
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.893075
+  valid loss. sup.:		0.316893
+  valid total loss:		9.247644
+  valid accuracy:		89.062500
+  epoch time:			20.889s 
+
+Epoch 56 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.887242
+  train loss. sup.:		0.000560
+  train total loss:		8.872978
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.890293
+  valid loss. sup.:		0.608476
+  valid total loss:		9.511406
+  valid accuracy:		83.906250
+  epoch time:			17.453s 
+
+Epoch 57 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.886834
+  train loss. sup.:		0.000850
+  train total loss:		8.869191
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.890621
+  valid loss. sup.:		0.528816
+  valid total loss:		9.435024
+  valid accuracy:		86.562500
+  epoch time:			19.686s 
+
+Epoch 58 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.885708
+  train loss. sup.:		0.000743
+  train total loss:		8.857823
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.890250
+  valid loss. sup.:		0.470227
+  valid total loss:		9.372731
+  valid accuracy:		87.031250
+  epoch time:			22.348s 
+
+Epoch 59 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.886204
+  train loss. sup.:		0.000604
+  train total loss:		8.862643
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.890878
+  valid loss. sup.:		0.528125
+  valid total loss:		9.436901
+  valid accuracy:		86.093750
+  epoch time:			23.816s 
+
+Epoch 60 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.884707
+  train loss. sup.:		0.000326
+  train total loss:		8.847400
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.889634
+  valid loss. sup.:		0.598923
+  valid total loss:		9.495264
+  valid accuracy:		87.031250
+  epoch time:			20.841s 
+
+Epoch 61 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.881501
+  train loss. sup.:		0.000571
+  train total loss:		8.815578
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.886291
+  valid loss. sup.:		0.550451
+  valid total loss:		9.413363
+  valid accuracy:		86.406250
+  epoch time:			18.578s 
+
+Epoch 62 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.879842
+  train loss. sup.:		0.000405
+  train total loss:		8.798828
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.884505
+  valid loss. sup.:		0.645004
+  valid total loss:		9.490049
+  valid accuracy:		83.906250
+  epoch time:			25.507s 
+
+Epoch 63 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.880680
+  train loss. sup.:		0.000521
+  train total loss:		8.807321
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.886320
+  valid loss. sup.:		0.596368
+  valid total loss:		9.459570
+  valid accuracy:		85.781250
+  epoch time:			20.984s 
+
+Epoch 64 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.879519
+  train loss. sup.:		0.000346
+  train total loss:		8.795534
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.884999
+  valid loss. sup.:		0.464014
+  valid total loss:		9.314005
+  valid accuracy:		87.968750
+  epoch time:			17.180s 
+
+Epoch 65 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.878400
+  train loss. sup.:		0.000302
+  train total loss:		8.784297
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.883689
+  valid loss. sup.:		0.642507
+  valid total loss:		9.479396
+  valid accuracy:		82.812500
+  epoch time:			21.343s 
+
+Epoch 66 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.879134
+  train loss. sup.:		0.000740
+  train total loss:		8.792078
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.884973
+  valid loss. sup.:		0.576223
+  valid total loss:		9.425950
+  valid accuracy:		88.281250
+  epoch time:			16.585s 
+
+Epoch 67 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.877864
+  train loss. sup.:		0.000600
+  train total loss:		8.779240
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.883937
+  valid loss. sup.:		0.436015
+  valid total loss:		9.275389
+  valid accuracy:		89.218750
+  epoch time:			17.220s 
+
+Epoch 68 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.877814
+  train loss. sup.:		0.000533
+  train total loss:		8.778671
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.885179
+  valid loss. sup.:		0.555659
+  valid total loss:		9.407446
+  valid accuracy:		84.843750
+  epoch time:			17.197s 
+
+Epoch 69 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.874488
+  train loss. sup.:		0.000440
+  train total loss:		8.745324
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.880510
+  valid loss. sup.:		0.517251
+  valid total loss:		9.322351
+  valid accuracy:		85.781250
+  epoch time:			32.983s 
+
+Epoch 70 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.874193
+  train loss. sup.:		0.000372
+  train total loss:		8.742306
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.880230
+  valid loss. sup.:		0.535753
+  valid total loss:		9.338050
+  valid accuracy:		83.906250
+  epoch time:			25.667s 
+
+Epoch 71 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.872587
+  train loss. sup.:		0.000223
+  train total loss:		8.726096
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.878328
+  valid loss. sup.:		0.477499
+  valid total loss:		9.260776
+  valid accuracy:		87.343750
+  epoch time:			19.861s 
+
+Epoch 72 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.871190
+  train loss. sup.:		0.000255
+  train total loss:		8.712156
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.877566
+  valid loss. sup.:		0.860889
+  valid total loss:		9.636545
+  valid accuracy:		82.656250
+  epoch time:			18.080s 
+
+Epoch 73 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.873607
+  train loss. sup.:		0.000478
+  train total loss:		8.736549
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.881657
+  valid loss. sup.:		0.447443
+  valid total loss:		9.264015
+  valid accuracy:		87.031250
+  epoch time:			16.985s 
+
+Epoch 74 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.873139
+  train loss. sup.:		0.000259
+  train total loss:		8.731650
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.880813
+  valid loss. sup.:		0.454800
+  valid total loss:		9.262930
+  valid accuracy:		86.718750
+  epoch time:			23.132s 
+
+Epoch 75 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.870288
+  train loss. sup.:		0.000454
+  train total loss:		8.703338
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.877581
+  valid loss. sup.:		0.501337
+  valid total loss:		9.277149
+  valid accuracy:		87.500000
+  epoch time:			18.481s 
+
+Epoch 76 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.869171
+  train loss. sup.:		0.000454
+  train total loss:		8.692160
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.876330
+  valid loss. sup.:		0.469353
+  valid total loss:		9.232656
+  valid accuracy:		87.031250
+  epoch time:			18.904s 
+
+Epoch 77 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.870210
+  train loss. sup.:		0.000492
+  train total loss:		8.702591
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.878146
+  valid loss. sup.:		0.659374
+  valid total loss:		9.440832
+  valid accuracy:		85.312500
+  epoch time:			26.661s 
+
+Epoch 78 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.870068
+  train loss. sup.:		0.000425
+  train total loss:		8.701101
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.877933
+  valid loss. sup.:		0.455085
+  valid total loss:		9.234412
+  valid accuracy:		89.375000
+  epoch time:			23.405s 
+
+Epoch 79 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.869870
+  train loss. sup.:		0.000534
+  train total loss:		8.699229
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.878386
+  valid loss. sup.:		0.582853
+  valid total loss:		9.366713
+  valid accuracy:		89.218750
+  epoch time:			22.660s 
+
+Epoch 80 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.870096
+  train loss. sup.:		0.000435
+  train total loss:		8.701399
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.878783
+  valid loss. sup.:		0.487066
+  valid total loss:		9.274899
+  valid accuracy:		86.406250
+  epoch time:			25.762s 
+
+Epoch 81 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.869064
+  train loss. sup.:		0.000330
+  train total loss:		8.690973
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.878029
+  valid loss. sup.:		0.367777
+  valid total loss:		9.148064
+  valid accuracy:		89.687500
+  epoch time:			28.653s 
+
+Epoch 82 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.866970
+  train loss. sup.:		0.000328
+  train total loss:		8.670024
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.874956
+  valid loss. sup.:		0.596465
+  valid total loss:		9.346024
+  valid accuracy:		85.000000
+  epoch time:			26.426s 
+
+Epoch 83 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.866803
+  train loss. sup.:		0.000319
+  train total loss:		8.668354
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.874943
+  valid loss. sup.:		0.594694
+  valid total loss:		9.344126
+  valid accuracy:		83.437500
+  epoch time:			31.815s 
+
+Epoch 84 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.866841
+  train loss. sup.:		0.000290
+  train total loss:		8.668695
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.875698
+  valid loss. sup.:		0.523311
+  valid total loss:		9.280291
+  valid accuracy:		85.468750
+  epoch time:			24.568s 
+
+Epoch 85 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.866362
+  train loss. sup.:		0.000319
+  train total loss:		8.663939
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.875130
+  valid loss. sup.:		0.540235
+  valid total loss:		9.291539
+  valid accuracy:		84.843750
+  epoch time:			17.314s 
+
+Epoch 86 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.866949
+  train loss. sup.:		0.000369
+  train total loss:		8.669855
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.876451
+  valid loss. sup.:		0.345301
+  valid total loss:		9.109808
+  valid accuracy:		89.062500
+  epoch time:			18.460s 
+
+Epoch 87 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.865228
+  train loss. sup.:		0.000253
+  train total loss:		8.652537
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.873804
+  valid loss. sup.:		0.459694
+  valid total loss:		9.197735
+  valid accuracy:		86.406250
+  epoch time:			20.045s 
+
+Epoch 88 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.866311
+  train loss. sup.:		0.000264
+  train total loss:		8.663370
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.876121
+  valid loss. sup.:		0.554777
+  valid total loss:		9.315990
+  valid accuracy:		86.250000
+  epoch time:			16.749s 
+
+Epoch 89 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.865723
+  train loss. sup.:		0.000221
+  train total loss:		8.657451
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.875748
+  valid loss. sup.:		0.674433
+  valid total loss:		9.431910
+  valid accuracy:		85.312500
+  epoch time:			17.571s 
+
+Epoch 90 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.863937
+  train loss. sup.:		0.000226
+  train total loss:		8.639597
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.873356
+  valid loss. sup.:		0.559819
+  valid total loss:		9.293375
+  valid accuracy:		85.000000
+  epoch time:			16.801s 
+
+Epoch 91 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.863520
+  train loss. sup.:		0.000279
+  train total loss:		8.635481
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.873100
+  valid loss. sup.:		0.517509
+  valid total loss:		9.248507
+  valid accuracy:		86.093750
+  epoch time:			19.717s 
+
+Epoch 92 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.863323
+  train loss. sup.:		0.000348
+  train total loss:		8.633575
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.873736
+  valid loss. sup.:		0.493164
+  valid total loss:		9.230522
+  valid accuracy:		87.343750
+  epoch time:			24.351s 
+
+Epoch 93 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.863434
+  train loss. sup.:		0.000419
+  train total loss:		8.634761
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.874251
+  valid loss. sup.:		0.551809
+  valid total loss:		9.294322
+  valid accuracy:		85.937500
+  epoch time:			22.017s 
+
+Epoch 94 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.862890
+  train loss. sup.:		0.000359
+  train total loss:		8.629263
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.873066
+  valid loss. sup.:		0.507952
+  valid total loss:		9.238611
+  valid accuracy:		88.281250
+  epoch time:			22.984s 
+
+Epoch 95 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.862623
+  train loss. sup.:		0.000317
+  train total loss:		8.626547
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.872758
+  valid loss. sup.:		0.540639
+  valid total loss:		9.268222
+  valid accuracy:		86.718750
+  epoch time:			21.818s 
+
+Epoch 96 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.861602
+  train loss. sup.:		0.000205
+  train total loss:		8.616229
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.871581
+  valid loss. sup.:		0.473002
+  valid total loss:		9.188813
+  valid accuracy:		87.656250
+  epoch time:			20.234s 
+
+Epoch 97 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.861215
+  train loss. sup.:		0.000191
+  train total loss:		8.612338
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.871056
+  valid loss. sup.:		0.688003
+  valid total loss:		9.398561
+  valid accuracy:		84.375000
+  epoch time:			18.866s 
+
+Epoch 98 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.861112
+  train loss. sup.:		0.000116
+  train total loss:		8.611232
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.871023
+  valid loss. sup.:		0.511170
+  valid total loss:		9.221397
+  valid accuracy:		86.875000
+  epoch time:			33.429s 
+
+Epoch 99 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.860860
+  train loss. sup.:		0.000116
+  train total loss:		8.608720
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.871393
+  valid loss. sup.:		0.399527
+  valid total loss:		9.113461
+  valid accuracy:		88.437500
+  epoch time:			25.246s 
+
+Epoch 100 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.860194
+  train loss. sup.:		0.000064
+  train total loss:		8.602009
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.870531
+  valid loss. sup.:		0.566124
+  valid total loss:		9.271433
+  valid accuracy:		86.718750
+  epoch time:			21.120s 
+
+Epoch 101 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.860130
+  train loss. sup.:		0.000051
+  train total loss:		8.601347
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.870569
+  valid loss. sup.:		0.551579
+  valid total loss:		9.257270
+  valid accuracy:		85.625000
+  epoch time:			18.600s 
+
+Epoch 102 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.860555
+  train loss. sup.:		0.000051
+  train total loss:		8.605605
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.871713
+  valid loss. sup.:		0.458747
+  valid total loss:		9.175879
+  valid accuracy:		85.781250
+  epoch time:			18.954s 
+
+Epoch 103 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.859789
+  train loss. sup.:		0.000062
+  train total loss:		8.597949
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.870649
+  valid loss. sup.:		0.457248
+  valid total loss:		9.163734
+  valid accuracy:		87.187500
+  epoch time:			20.097s 
+
+Epoch 104 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.859310
+  train loss. sup.:		0.000061
+  train total loss:		8.593166
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.870275
+  valid loss. sup.:		0.470011
+  valid total loss:		9.172764
+  valid accuracy:		87.031250
+  epoch time:			23.527s 
+
+Epoch 105 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.859220
+  train loss. sup.:		0.000047
+  train total loss:		8.592248
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.870468
+  valid loss. sup.:		0.514906
+  valid total loss:		9.219584
+  valid accuracy:		89.062500
+  epoch time:			22.636s 
+
+Epoch 106 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.858393
+  train loss. sup.:		0.000036
+  train total loss:		8.583963
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.869521
+  valid loss. sup.:		0.450865
+  valid total loss:		9.146076
+  valid accuracy:		87.812500
+  epoch time:			21.364s 
+
+Epoch 107 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.857993
+  train loss. sup.:		0.000028
+  train total loss:		8.579953
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868987
+  valid loss. sup.:		0.445962
+  valid total loss:		9.135836
+  valid accuracy:		87.968750
+  epoch time:			24.187s 
+
+Epoch 108 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.858105
+  train loss. sup.:		0.000033
+  train total loss:		8.581077
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.869869
+  valid loss. sup.:		0.497035
+  valid total loss:		9.195729
+  valid accuracy:		87.500000
+  epoch time:			22.533s 
+
+Epoch 109 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.857487
+  train loss. sup.:		0.000042
+  train total loss:		8.574910
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868631
+  valid loss. sup.:		0.441770
+  valid total loss:		9.128078
+  valid accuracy:		89.531250
+  epoch time:			20.515s 
+
+Epoch 110 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.857338
+  train loss. sup.:		0.000029
+  train total loss:		8.573411
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868564
+  valid loss. sup.:		0.349425
+  valid total loss:		9.035069
+  valid accuracy:		88.750000
+  epoch time:			15.874s 
+
+Epoch 111 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.857619
+  train loss. sup.:		0.000032
+  train total loss:		8.576223
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868944
+  valid loss. sup.:		0.417765
+  valid total loss:		9.107208
+  valid accuracy:		87.656250
+  epoch time:			18.350s 
+
+Epoch 112 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.856745
+  train loss. sup.:		0.000022
+  train total loss:		8.567469
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868115
+  valid loss. sup.:		0.441079
+  valid total loss:		9.122226
+  valid accuracy:		87.031250
+  epoch time:			32.728s 
+
+Epoch 113 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.856859
+  train loss. sup.:		0.000024
+  train total loss:		8.568614
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868621
+  valid loss. sup.:		0.338053
+  valid total loss:		9.024261
+  valid accuracy:		89.375000
+  epoch time:			25.138s 
+
+Epoch 114 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.856181
+  train loss. sup.:		0.000022
+  train total loss:		8.561831
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868139
+  valid loss. sup.:		0.481498
+  valid total loss:		9.162889
+  valid accuracy:		85.781250
+  epoch time:			19.120s 
+
+Epoch 115 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.855991
+  train loss. sup.:		0.000030
+  train total loss:		8.559940
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.867618
+  valid loss. sup.:		0.440768
+  valid total loss:		9.116945
+  valid accuracy:		87.500000
+  epoch time:			27.774s 
+
+Epoch 116 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.856286
+  train loss. sup.:		0.000059
+  train total loss:		8.562922
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868786
+  valid loss. sup.:		0.375645
+  valid total loss:		9.063504
+  valid accuracy:		90.625000
+  epoch time:			17.549s 
+
+Epoch 117 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.856752
+  train loss. sup.:		0.000031
+  train total loss:		8.567548
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.869671
+  valid loss. sup.:		0.304939
+  valid total loss:		9.001643
+  valid accuracy:		91.093750
+  epoch time:			19.047s 
+
+Epoch 118 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.856260
+  train loss. sup.:		0.000027
+  train total loss:		8.562624
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868934
+  valid loss. sup.:		0.351033
+  valid total loss:		9.040373
+  valid accuracy:		89.375000
+  epoch time:			22.708s 
+
+Epoch 119 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.855550
+  train loss. sup.:		0.000022
+  train total loss:		8.555518
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.867885
+  valid loss. sup.:		0.450192
+  valid total loss:		9.129038
+  valid accuracy:		87.187500
+  epoch time:			29.111s 
+
+Epoch 120 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.856022
+  train loss. sup.:		0.000025
+  train total loss:		8.560246
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868591
+  valid loss. sup.:		0.511583
+  valid total loss:		9.197493
+  valid accuracy:		88.125000
+  epoch time:			23.017s 
+
+Epoch 121 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.855632
+  train loss. sup.:		0.000020
+  train total loss:		8.556341
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868739
+  valid loss. sup.:		0.456408
+  valid total loss:		9.143799
+  valid accuracy:		88.125000
+  epoch time:			22.263s 
+
+Epoch 122 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.855386
+  train loss. sup.:		0.000020
+  train total loss:		8.553878
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868726
+  valid loss. sup.:		0.368924
+  valid total loss:		9.056186
+  valid accuracy:		90.468750
+  epoch time:			18.487s 
+
+Epoch 123 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.855368
+  train loss. sup.:		0.000015
+  train total loss:		8.553694
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868523
+  valid loss. sup.:		0.382532
+  valid total loss:		9.067766
+  valid accuracy:		88.906250
+  epoch time:			16.250s 
+
+Epoch 124 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.854695
+  train loss. sup.:		0.000014
+  train total loss:		8.546965
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.867879
+  valid loss. sup.:		0.423005
+  valid total loss:		9.101797
+  valid accuracy:		88.281250
+  epoch time:			23.602s 
+
+Epoch 125 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.854889
+  train loss. sup.:		0.000010
+  train total loss:		8.548903
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868140
+  valid loss. sup.:		0.428274
+  valid total loss:		9.109670
+  valid accuracy:		87.656250
+  epoch time:			17.287s 
+
+Epoch 126 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.854056
+  train loss. sup.:		0.000007
+  train total loss:		8.540563
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.866718
+  valid loss. sup.:		0.468870
+  valid total loss:		9.136052
+  valid accuracy:		87.343750
+  epoch time:			29.863s 
+
+Epoch 127 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.854108
+  train loss. sup.:		0.000010
+  train total loss:		8.541089
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.867125
+  valid loss. sup.:		0.497130
+  valid total loss:		9.168376
+  valid accuracy:		86.718750
+  epoch time:			15.795s 
+
+Epoch 128 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.854805
+  train loss. sup.:		0.000012
+  train total loss:		8.548058
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868920
+  valid loss. sup.:		0.392617
+  valid total loss:		9.081820
+  valid accuracy:		88.593750
+  epoch time:			21.585s 
+
+Epoch 129 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.854730
+  train loss. sup.:		0.000013
+  train total loss:		8.547315
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868646
+  valid loss. sup.:		0.442887
+  valid total loss:		9.129351
+  valid accuracy:		88.125000
+  epoch time:			22.749s 
+
+Epoch 130 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.853744
+  train loss. sup.:		0.000011
+  train total loss:		8.537447
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.867613
+  valid loss. sup.:		0.439947
+  valid total loss:		9.116079
+  valid accuracy:		88.437500
+  epoch time:			23.898s 
+
+Epoch 131 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.854073
+  train loss. sup.:		0.000017
+  train total loss:		8.540752
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.868213
+  valid loss. sup.:		0.442676
+  valid total loss:		9.124804
+  valid accuracy:		87.343750
+  epoch time:			19.330s 
+
+Epoch 132 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.853545
+  train loss. sup.:		0.000020
+  train total loss:		8.535474
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.867686
+  valid loss. sup.:		0.516554
+  valid total loss:		9.193418
+  valid accuracy:		86.718750
+  epoch time:			19.570s 
+
+Epoch 133 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.853437
+  train loss. sup.:		0.000013
+  train total loss:		8.534378
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.867159
+  valid loss. sup.:		0.427341
+  valid total loss:		9.098937
+  valid accuracy:		87.968750
+  epoch time:			18.690s 
+
+Epoch 134 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.852910
+  train loss. sup.:		0.000012
+  train total loss:		8.529107
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.866793
+  valid loss. sup.:		0.488894
+  valid total loss:		9.156822
+  valid accuracy:		87.500000
+  epoch time:			19.792s 
+
+Epoch 135 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.853182
+  train loss. sup.:		0.000007
+  train total loss:		8.531826
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.867372
+  valid loss. sup.:		0.443030
+  valid total loss:		9.116750
+  valid accuracy:		89.218750
+  epoch time:			16.907s 
+
+Epoch 136 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.852890
+  train loss. sup.:		0.000010
+  train total loss:		8.528910
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.866872
+  valid loss. sup.:		0.441961
+  valid total loss:		9.110684
+  valid accuracy:		89.375000
+  epoch time:			20.241s 
+
+Epoch 137 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.852605
+  train loss. sup.:		0.000011
+  train total loss:		8.526064
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.866714
+  valid loss. sup.:		0.486009
+  valid total loss:		9.153145
+  valid accuracy:		88.125000
+  epoch time:			20.007s 
+
+Epoch 138 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.852584
+  train loss. sup.:		0.000012
+  train total loss:		8.525854
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.867086
+  valid loss. sup.:		0.498251
+  valid total loss:		9.169115
+  valid accuracy:		87.343750
+  epoch time:			19.862s 
+
+Epoch 139 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.852782
+  train loss. sup.:		0.000007
+  train total loss:		8.527823
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.867212
+  valid loss. sup.:		0.504550
+  valid total loss:		9.176672
+  valid accuracy:		87.031250
+  epoch time:			18.175s 
+
+Epoch 140 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.852390
+  train loss. sup.:		0.000012
+  train total loss:		8.523907
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.866802
+  valid loss. sup.:		0.375771
+  valid total loss:		9.043788
+  valid accuracy:		88.281250
+  epoch time:			23.383s 
+
+Epoch 141 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.852069
+  train loss. sup.:		0.000013
+  train total loss:		8.520703
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.866484
+  valid loss. sup.:		0.360740
+  valid total loss:		9.025583
+  valid accuracy:		88.593750
+  epoch time:			19.170s 
+
+Epoch 142 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.852134
+  train loss. sup.:		0.000006
+  train total loss:		8.521350
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.866498
+  valid loss. sup.:		0.551690
+  valid total loss:		9.216665
+  valid accuracy:		86.875000
+  epoch time:			33.371s 
+
+Epoch 143 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.852066
+  train loss. sup.:		0.000007
+  train total loss:		8.520664
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.866721
+  valid loss. sup.:		0.419176
+  valid total loss:		9.086385
+  valid accuracy:		89.062500
+  epoch time:			23.818s 
+
+Epoch 144 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.852004
+  train loss. sup.:		0.000007
+  train total loss:		8.520046
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.867005
+  valid loss. sup.:		0.398511
+  valid total loss:		9.068564
+  valid accuracy:		88.437500
+  epoch time:			22.926s 
+
+Epoch 145 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.851496
+  train loss. sup.:		0.000007
+  train total loss:		8.514961
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.866348
+  valid loss. sup.:		0.370995
+  valid total loss:		9.034478
+  valid accuracy:		89.375000
+  epoch time:			18.442s 
+
+Epoch 146 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.851434
+  train loss. sup.:		0.000008
+  train total loss:		8.514345
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865996
+  valid loss. sup.:		0.412588
+  valid total loss:		9.072550
+  valid accuracy:		89.843750
+  epoch time:			18.306s 
+
+Epoch 147 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.851168
+  train loss. sup.:		0.000009
+  train total loss:		8.511683
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865774
+  valid loss. sup.:		0.411900
+  valid total loss:		9.069638
+  valid accuracy:		89.531250
+  epoch time:			17.100s 
+
+Epoch 148 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.851346
+  train loss. sup.:		0.000007
+  train total loss:		8.513467
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.866008
+  valid loss. sup.:		0.441974
+  valid total loss:		9.102057
+  valid accuracy:		88.906250
+  epoch time:			17.300s 
+
+Epoch 149 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.850927
+  train loss. sup.:		0.000007
+  train total loss:		8.509281
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865662
+  valid loss. sup.:		0.384702
+  valid total loss:		9.041324
+  valid accuracy:		89.062500
+  epoch time:			19.255s 
+
+Epoch 150 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.851025
+  train loss. sup.:		0.000014
+  train total loss:		8.510267
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.866004
+  valid loss. sup.:		0.400707
+  valid total loss:		9.060742
+  valid accuracy:		88.437500
+  epoch time:			18.702s 
+
+Epoch 151 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.850873
+  train loss. sup.:		0.000009
+  train total loss:		8.508740
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865670
+  valid loss. sup.:		0.344885
+  valid total loss:		9.001582
+  valid accuracy:		90.156250
+  epoch time:			24.043s 
+
+Epoch 152 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.850531
+  train loss. sup.:		0.000005
+  train total loss:		8.505314
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865224
+  valid loss. sup.:		0.392675
+  valid total loss:		9.044916
+  valid accuracy:		90.312500
+  epoch time:			24.804s 
+
+Epoch 153 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.850659
+  train loss. sup.:		0.000005
+  train total loss:		8.506599
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865585
+  valid loss. sup.:		0.445122
+  valid total loss:		9.100970
+  valid accuracy:		89.375000
+  epoch time:			23.497s 
+
+Epoch 154 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.850406
+  train loss. sup.:		0.000006
+  train total loss:		8.504063
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865320
+  valid loss. sup.:		0.474240
+  valid total loss:		9.127443
+  valid accuracy:		90.625000
+  epoch time:			23.876s 
+
+Epoch 155 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.850293
+  train loss. sup.:		0.000021
+  train total loss:		8.502953
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865037
+  valid loss. sup.:		0.453136
+  valid total loss:		9.103506
+  valid accuracy:		88.750000
+  epoch time:			27.438s 
+
+Epoch 156 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.850299
+  train loss. sup.:		0.000009
+  train total loss:		8.502995
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865587
+  valid loss. sup.:		0.426156
+  valid total loss:		9.082028
+  valid accuracy:		87.968750
+  epoch time:			33.704s 
+
+Epoch 157 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.850177
+  train loss. sup.:		0.000007
+  train total loss:		8.501777
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865287
+  valid loss. sup.:		0.552818
+  valid total loss:		9.205691
+  valid accuracy:		86.718750
+  epoch time:			22.809s 
+
+Epoch 158 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.850010
+  train loss. sup.:		0.000009
+  train total loss:		8.500107
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865455
+  valid loss. sup.:		0.514161
+  valid total loss:		9.168714
+  valid accuracy:		86.718750
+  epoch time:			21.442s 
+
+Epoch 159 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.849987
+  train loss. sup.:		0.000008
+  train total loss:		8.499883
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865251
+  valid loss. sup.:		0.486195
+  valid total loss:		9.138704
+  valid accuracy:		86.406250
+  epoch time:			21.733s 
+
+Epoch 160 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.849617
+  train loss. sup.:		0.000008
+  train total loss:		8.496178
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865082
+  valid loss. sup.:		0.489828
+  valid total loss:		9.140646
+  valid accuracy:		87.187500
+  epoch time:			16.450s 
+
+Epoch 161 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.849744
+  train loss. sup.:		0.000009
+  train total loss:		8.497452
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865325
+  valid loss. sup.:		0.524283
+  valid total loss:		9.177537
+  valid accuracy:		86.406250
+  epoch time:			19.999s 
+
+Epoch 162 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.849732
+  train loss. sup.:		0.000012
+  train total loss:		8.497330
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865362
+  valid loss. sup.:		0.488152
+  valid total loss:		9.141774
+  valid accuracy:		87.656250
+  epoch time:			22.556s 
+
+Epoch 163 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.849492
+  train loss. sup.:		0.000010
+  train total loss:		8.494928
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865249
+  valid loss. sup.:		0.468176
+  valid total loss:		9.120667
+  valid accuracy:		88.437500
+  epoch time:			20.839s 
+
+Epoch 164 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.849388
+  train loss. sup.:		0.000012
+  train total loss:		8.493890
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865336
+  valid loss. sup.:		0.386966
+  valid total loss:		9.040323
+  valid accuracy:		88.437500
+  epoch time:			17.817s 
+
+Epoch 165 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.849471
+  train loss. sup.:		0.000007
+  train total loss:		8.494719
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865528
+  valid loss. sup.:		0.347029
+  valid total loss:		9.002309
+  valid accuracy:		89.687500
+  epoch time:			16.546s 
+
+Epoch 166 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.849878
+  train loss. sup.:		0.000009
+  train total loss:		8.498784
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.866040
+  valid loss. sup.:		0.379946
+  valid total loss:		9.040350
+  valid accuracy:		90.156250
+  epoch time:			19.520s 
+
+Epoch 167 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.849539
+  train loss. sup.:		0.000007
+  train total loss:		8.495394
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865784
+  valid loss. sup.:		0.416786
+  valid total loss:		9.074627
+  valid accuracy:		88.593750
+  epoch time:			18.152s 
+
+Epoch 168 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.849036
+  train loss. sup.:		0.000006
+  train total loss:		8.490360
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865387
+  valid loss. sup.:		0.365926
+  valid total loss:		9.019798
+  valid accuracy:		88.906250
+  epoch time:			17.670s 
+
+Epoch 169 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.849170
+  train loss. sup.:		0.000006
+  train total loss:		8.491702
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865523
+  valid loss. sup.:		0.355438
+  valid total loss:		9.010671
+  valid accuracy:		89.687500
+  epoch time:			20.680s 
+
+Epoch 170 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.849136
+  train loss. sup.:		0.000005
+  train total loss:		8.491366
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865120
+  valid loss. sup.:		0.436311
+  valid total loss:		9.087513
+  valid accuracy:		89.218750
+  epoch time:			22.595s 
+
+Epoch 171 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.848701
+  train loss. sup.:		0.000005
+  train total loss:		8.487018
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864697
+  valid loss. sup.:		0.377212
+  valid total loss:		9.024186
+  valid accuracy:		89.062500
+  epoch time:			30.857s 
+
+Epoch 172 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.848855
+  train loss. sup.:		0.000005
+  train total loss:		8.488556
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865034
+  valid loss. sup.:		0.440736
+  valid total loss:		9.091081
+  valid accuracy:		87.812500
+  epoch time:			21.138s 
+
+Epoch 173 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.848740
+  train loss. sup.:		0.000007
+  train total loss:		8.487408
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865204
+  valid loss. sup.:		0.484886
+  valid total loss:		9.136924
+  valid accuracy:		87.968750
+  epoch time:			19.275s 
+
+Epoch 174 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.848679
+  train loss. sup.:		0.000004
+  train total loss:		8.486795
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.865182
+  valid loss. sup.:		0.455744
+  valid total loss:		9.107559
+  valid accuracy:		88.437500
+  epoch time:			17.712s 
+
+Epoch 175 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.848297
+  train loss. sup.:		0.000005
+  train total loss:		8.482971
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864704
+  valid loss. sup.:		0.514129
+  valid total loss:		9.161169
+  valid accuracy:		87.500000
+  epoch time:			16.218s 
+
+Epoch 176 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.848108
+  train loss. sup.:		0.000004
+  train total loss:		8.481081
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864395
+  valid loss. sup.:		0.431107
+  valid total loss:		9.075058
+  valid accuracy:		88.281250
+  epoch time:			15.748s 
+
+Epoch 177 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.848244
+  train loss. sup.:		0.000004
+  train total loss:		8.482440
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864572
+  valid loss. sup.:		0.414325
+  valid total loss:		9.060046
+  valid accuracy:		89.062500
+  epoch time:			19.696s 
+
+Epoch 178 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.847926
+  train loss. sup.:		0.000003
+  train total loss:		8.479265
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863639
+  valid loss. sup.:		0.406797
+  valid total loss:		9.043188
+  valid accuracy:		88.281250
+  epoch time:			19.181s 
+
+Epoch 179 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.848019
+  train loss. sup.:		0.000003
+  train total loss:		8.480191
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864184
+  valid loss. sup.:		0.454563
+  valid total loss:		9.096401
+  valid accuracy:		87.812500
+  epoch time:			20.076s 
+
+Epoch 180 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.848107
+  train loss. sup.:		0.000004
+  train total loss:		8.481071
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864350
+  valid loss. sup.:		0.468996
+  valid total loss:		9.112494
+  valid accuracy:		88.437500
+  epoch time:			16.199s 
+
+Epoch 181 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.848206
+  train loss. sup.:		0.000004
+  train total loss:		8.482068
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864927
+  valid loss. sup.:		0.464288
+  valid total loss:		9.113561
+  valid accuracy:		88.437500
+  epoch time:			21.950s 
+
+Epoch 182 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.847841
+  train loss. sup.:		0.000003
+  train total loss:		8.478412
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864370
+  valid loss. sup.:		0.400564
+  valid total loss:		9.044264
+  valid accuracy:		89.218750
+  epoch time:			20.623s 
+
+Epoch 183 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.847817
+  train loss. sup.:		0.000003
+  train total loss:		8.478172
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864658
+  valid loss. sup.:		0.402402
+  valid total loss:		9.048986
+  valid accuracy:		89.218750
+  epoch time:			20.360s 
+
+Epoch 184 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.847639
+  train loss. sup.:		0.000003
+  train total loss:		8.476397
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864425
+  valid loss. sup.:		0.409930
+  valid total loss:		9.054180
+  valid accuracy:		89.531250
+  epoch time:			18.923s 
+
+Epoch 185 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.847508
+  train loss. sup.:		0.000003
+  train total loss:		8.475087
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864160
+  valid loss. sup.:		0.393016
+  valid total loss:		9.034613
+  valid accuracy:		89.375000
+  epoch time:			17.162s 
+
+Epoch 186 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.847456
+  train loss. sup.:		0.000003
+  train total loss:		8.474563
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864124
+  valid loss. sup.:		0.433557
+  valid total loss:		9.074794
+  valid accuracy:		89.062500
+  epoch time:			19.388s 
+
+Epoch 187 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.847237
+  train loss. sup.:		0.000003
+  train total loss:		8.472372
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863885
+  valid loss. sup.:		0.434882
+  valid total loss:		9.073729
+  valid accuracy:		89.687500
+  epoch time:			19.669s 
+
+Epoch 188 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.847335
+  train loss. sup.:		0.000005
+  train total loss:		8.473351
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864264
+  valid loss. sup.:		0.438782
+  valid total loss:		9.081424
+  valid accuracy:		89.218750
+  epoch time:			27.953s 
+
+Epoch 189 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.847470
+  train loss. sup.:		0.000006
+  train total loss:		8.474704
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864545
+  valid loss. sup.:		0.429359
+  valid total loss:		9.074808
+  valid accuracy:		89.062500
+  epoch time:			19.595s 
+
+Epoch 190 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.847443
+  train loss. sup.:		0.000005
+  train total loss:		8.474434
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864378
+  valid loss. sup.:		0.465500
+  valid total loss:		9.109279
+  valid accuracy:		88.750000
+  epoch time:			22.437s 
+
+Epoch 191 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.847312
+  train loss. sup.:		0.000004
+  train total loss:		8.473128
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864495
+  valid loss. sup.:		0.488375
+  valid total loss:		9.133328
+  valid accuracy:		88.281250
+  epoch time:			21.472s 
+
+Epoch 192 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.847077
+  train loss. sup.:		0.000005
+  train total loss:		8.470779
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863983
+  valid loss. sup.:		0.391461
+  valid total loss:		9.031290
+  valid accuracy:		89.218750
+  epoch time:			20.123s 
+
+Epoch 193 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.847113
+  train loss. sup.:		0.000003
+  train total loss:		8.471132
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864334
+  valid loss. sup.:		0.400292
+  valid total loss:		9.043627
+  valid accuracy:		89.218750
+  epoch time:			17.762s 
+
+Epoch 194 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.847042
+  train loss. sup.:		0.000003
+  train total loss:		8.470422
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864289
+  valid loss. sup.:		0.426059
+  valid total loss:		9.068950
+  valid accuracy:		89.062500
+  epoch time:			20.461s 
+
+Epoch 195 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846816
+  train loss. sup.:		0.000002
+  train total loss:		8.468160
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863818
+  valid loss. sup.:		0.426075
+  valid total loss:		9.064253
+  valid accuracy:		88.906250
+  epoch time:			18.574s 
+
+Epoch 196 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846821
+  train loss. sup.:		0.000002
+  train total loss:		8.468206
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863928
+  valid loss. sup.:		0.391313
+  valid total loss:		9.030590
+  valid accuracy:		88.906250
+  epoch time:			19.867s 
+
+Epoch 197 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846640
+  train loss. sup.:		0.000002
+  train total loss:		8.466398
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863766
+  valid loss. sup.:		0.385578
+  valid total loss:		9.023234
+  valid accuracy:		89.062500
+  epoch time:			17.011s 
+
+Epoch 198 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846759
+  train loss. sup.:		0.000002
+  train total loss:		8.467594
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863967
+  valid loss. sup.:		0.386317
+  valid total loss:		9.025981
+  valid accuracy:		89.062500
+  epoch time:			19.673s 
+
+Epoch 199 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846788
+  train loss. sup.:		0.000003
+  train total loss:		8.467878
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863866
+  valid loss. sup.:		0.417682
+  valid total loss:		9.056338
+  valid accuracy:		89.375000
+  epoch time:			17.996s 
+
+Epoch 200 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846785
+  train loss. sup.:		0.000003
+  train total loss:		8.467854
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.864118
+  valid loss. sup.:		0.368666
+  valid total loss:		9.009850
+  valid accuracy:		89.375000
+  epoch time:			18.190s 
+
+Epoch 201 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846565
+  train loss. sup.:		0.000003
+  train total loss:		8.465655
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863655
+  valid loss. sup.:		0.378974
+  valid total loss:		9.015525
+  valid accuracy:		88.906250
+  epoch time:			17.363s 
+
+Epoch 202 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846399
+  train loss. sup.:		0.000004
+  train total loss:		8.463992
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863677
+  valid loss. sup.:		0.412718
+  valid total loss:		9.049487
+  valid accuracy:		89.843750
+  epoch time:			19.968s 
+
+Epoch 203 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846420
+  train loss. sup.:		0.000002
+  train total loss:		8.464203
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863814
+  valid loss. sup.:		0.378845
+  valid total loss:		9.016984
+  valid accuracy:		89.843750
+  epoch time:			17.444s 
+
+Epoch 204 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846251
+  train loss. sup.:		0.000002
+  train total loss:		8.462510
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863551
+  valid loss. sup.:		0.364158
+  valid total loss:		8.999673
+  valid accuracy:		90.781250
+  epoch time:			19.655s 
+
+Epoch 205 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846343
+  train loss. sup.:		0.000002
+  train total loss:		8.463432
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863601
+  valid loss. sup.:		0.394697
+  valid total loss:		9.030706
+  valid accuracy:		89.062500
+  epoch time:			24.554s 
+
+Epoch 206 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846199
+  train loss. sup.:		0.000002
+  train total loss:		8.461990
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863545
+  valid loss. sup.:		0.405385
+  valid total loss:		9.040835
+  valid accuracy:		89.218750
+  epoch time:			23.694s 
+
+Epoch 207 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846192
+  train loss. sup.:		0.000002
+  train total loss:		8.461919
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863413
+  valid loss. sup.:		0.402231
+  valid total loss:		9.036362
+  valid accuracy:		88.437500
+  epoch time:			20.505s 
+
+Epoch 208 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846075
+  train loss. sup.:		0.000002
+  train total loss:		8.460752
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863116
+  valid loss. sup.:		0.434399
+  valid total loss:		9.065557
+  valid accuracy:		88.750000
+  epoch time:			20.673s 
+
+Epoch 209 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846106
+  train loss. sup.:		0.000002
+  train total loss:		8.461059
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863375
+  valid loss. sup.:		0.450816
+  valid total loss:		9.084566
+  valid accuracy:		88.437500
+  epoch time:			29.231s 
+
+Epoch 210 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846036
+  train loss. sup.:		0.000002
+  train total loss:		8.460364
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863452
+  valid loss. sup.:		0.443379
+  valid total loss:		9.077899
+  valid accuracy:		88.125000
+  epoch time:			28.603s 
+
+Epoch 211 of 1000
+--------------------train monit.--------------------
+  train reconst. loss:		0.846020
+  train loss. sup.:		0.000002
+  train total loss:		8.460196
+  train accuracy:		100.000000
+--------------------valid monit.--------------------
+  valid reconst. loss:		0.863377
+  valid loss. sup.:		0.436628
+  valid total loss:		9.070395
+  valid accuracy:		88.906250
