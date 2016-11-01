@@ -12,7 +12,7 @@ from feature_selection.experiments.common import imdb
 # Function to load data
 def load_data(dataset, dataset_path, embedding_source,
               which_fold=0, keep_labels=1., missing_labels_val=1.,
-              embedding_input='raw', transpose=False):
+              embedding_input='raw', transpose=False, norm=True):
 
     # Load data from specified dataset
     splits = [.6, .2]  # this will split the data into [60%, 20%, 20%]
@@ -69,7 +69,8 @@ def load_data(dataset, dataset_path, embedding_source,
                                     label_splits=splits,
                                     feature_splits=[.8],
                                     fold=which_fold,
-                                    nolabels=embedding_input)
+                                    nolabels=embedding_input,
+                                    norm=norm, path=datase_path)
     else:
         print("Unknown dataset")
         return
@@ -265,12 +266,11 @@ def parse_int_list_arg(arg):
 
 
 def parse_string_int_tuple(arg):
-    if isinstance(arg, str):
+    if isinstance(arg, (list, tuple)):
+        return arg
+    elif isinstance(arg, str):
         tmp = arg.strip("()[]").split(",")
-        # import ipdb; ipdb.set_trace()
         assert (len(tmp) == 2)
         return (tmp[0], eval(tmp[1]))
-
-
     else:
         raise NotImplementedError()

@@ -200,19 +200,20 @@ def load_1000_genomes_old(transpose=False, label_splits=None, feature_splits=Non
 
 
 def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
-                      nolabels='raw', fold=0, norm=True):
+                      nolabels='raw', fold=0, norm=True,
+                      path="/data/lisatmp4/romerosa/datasets/1000_Genome_project/" ):
 
     # user = os.getenv("USER")
+<<<<<<< HEAD
     # path = "/data/lisatmp4/romerosa/datasets/1000_Genome_project/"  # % user
     path = "/scratch/jvb-000-aa/tisu32/1000_Genome_project/"
+=======
+>>>>>>> cc1d03082899dd79758cb622bd5a928bf39fbe50
 
     if nolabels == 'raw' or not transpose:
         # Load raw data either for supervised or unsupervised part
         x, y = thousand_genomes.load_data(path)
         x = x.astype("float32")
-
-        if norm:
-            x = (x - x.mean(axis=0)[None, :]) / x.std(axis=0)[None, :]
 
         (x, y) = shuffle((x, y))
 
@@ -233,6 +234,19 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
     # Data used for supervised training
     if not transpose:
         train, valid = split([x, y], label_splits)
+        if norm:
+            mu = x.mean(axis=0)
+            sigma = x.std(axis=0)
+            # mu = train[0].mean(axis=0)
+            # sigma = train[0].std(axis=0)
+            # print('Mean:' + str(mu.min()) + ' ' + str(mu.max()))
+            # print('Std:' + str(sigma.min()) + ' ' + str(sigma.max()))
+            train[0] = (train[0] - mu[None, :]) / sigma[None, :]
+            valid[0] = (valid[0] - mu[None, :]) / sigma[None, :]
+            test[0] = (test[0] - mu[None, :]) / sigma[None, :]
+            # print('Min train: ' +str(train[0].min()) + ' max: ' +str(train[0].max()))
+            # print('Min valid: ' +str(valid[0].min()) + ' max: ' +str(valid[0].max()))
+            # print('Min test: ' +str(test[0].min()) + ' max: ' +str(test[0].max()))
         rvals = [train, valid, test]
     else:
         rvals = []

@@ -452,10 +452,9 @@ def main():
 
     # import ipdb; ipdb.set_trace()
 
-    init_args = dict([
-                    parse_string_int_tuple(args.encoder_init),
-                    parse_string_int_tuple(args.decoder_init),
-                    parse_string_int_tuple(args.predictor_init)])
+    init_args = {"encoder_init" : parse_string_int_tuple(args.encoder_init),
+                 "decoder_init" : parse_string_int_tuple(args.decoder_init),
+                 "predictor_init" : parse_string_int_tuple(args.predictor_init)}
 
     print args
     print "init_args: {}".format(init_args)
