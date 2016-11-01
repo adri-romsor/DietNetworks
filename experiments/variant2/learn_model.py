@@ -300,6 +300,16 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                                           [discrim_net]))
             np.savez(save_path + "/errors_supervised_best.npz",
                      zip(*train_monitored), zip(*valid_monitored))
+            
+            # Monitor on the test set now because sometimes the saving doesn't
+            # go well and there isn't a model to load at the end of training
+            if y_test is not None:
+                test_minibatches = mlh.iterate_minibatches(x_test, y_test,
+                                                           batch_size,
+                                                           shuffle=False)
+
+                test_err = mlh.monitoring(test_minibatches, "test", val_fn,
+                                          monitor_labels, prec_recall_cutoff)
         else:
             patience += 1
             # Save stuff
