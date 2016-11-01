@@ -300,7 +300,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                                           [discrim_net]))
             np.savez(save_path + "/errors_supervised_best.npz",
                      zip(*train_monitored), zip(*valid_monitored))
-            
+
             # Monitor on the test set now because sometimes the saving doesn't
             # go well and there isn't a model to load at the end of training
             if y_test is not None:
@@ -491,7 +491,7 @@ def main():
                         default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
-                        default='/data/lisatmp4/romerosa/datasets/',
+                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/',
                         help='Path to dataset')
     parser.add_argument('-resume',
                         type=bool,
