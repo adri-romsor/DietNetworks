@@ -1,0 +1,13 @@
+python: can't open file '/learn_gene_vector.py': [Errno 2] No such file or directory
+
+==============NVSMI LOG==============
+
+Timestamp                           : Mon Oct 31 19:21:25 2016
+Driver Version                      : 352.79
+
+Attached GPUs                       : 8
+GPU 0000:83:00.0
+    Accounting Mode                 : Enabled
+    Accounting Mode Buffer Size     : 1920
+    Accounted Processes             : None
+

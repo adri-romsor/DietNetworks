@@ -1,9 +1,12 @@
 import numpy
 import os
-
+"""
 from feature_selection.experiments.common import (protein_loader, dorothea,
                                                   reuters, imdb, iric_molecules,
                                                   thousand_genomes)
+"""
+from feature_selection.experiments.common import thousand_genomes
+
 from feature_selection import aggregate_dataset as opensnp
 
 
@@ -202,6 +205,7 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
 
     # user = os.getenv("USER")
     print path
+    # path = "/data/lisatmp4/romerosa/datasets/1000_Genome_project/"  # % user
 
     if nolabels == 'raw' or not transpose:
         # Load raw data either for supervised or unsupervised part

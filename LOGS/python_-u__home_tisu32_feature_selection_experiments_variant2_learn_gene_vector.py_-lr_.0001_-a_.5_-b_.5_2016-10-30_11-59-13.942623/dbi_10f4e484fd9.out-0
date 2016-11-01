@@ -1,0 +1,24 @@
+[DBI] executing on host gpu-k20-06
+MOAB_JOBNAME=dbi_10f4e484fd9
+MOAB_USER=tisu32
+MOAB_TASKMAP=gpu-k20-06:1
+MOAB_CLASS=gpu_1
+MOAB_PROCCOUNT=1
+MOAB_GROUP=jvb-000-01
+MOAB_NODELIST=gpu-k20-06
+MOAB_ACCOUNT=jvb-000-ag
+MOABHOMEDIR=/opt/moab
+MOAB_MACHINE=torque
+MOAB_NODECOUNT=1
+MOAB_JOBID=134043[0]
+MOAB_QOS=24H
+MOAB_PARTITION=colosse
+['/home/tisu32/feature_selection/experiments/variant2', '/home/tisu32/feature_selection/experiments/common', '/home/tisu32/feature_selection/experiments/variant2', '/home/tisu32/feature_selection', '/home/tisu32', '/software6/apps/mercurial/2.7.2/lib64/python2.6/site-packages', '/rap/jvb-000-aa/stack/conda/lib/python27.zip', '/rap/jvb-000-aa/stack/conda/lib/python2.7', '/rap/jvb-000-aa/stack/conda/lib/python2.7/plat-linux2', '/rap/jvb-000-aa/stack/conda/lib/python2.7/lib-tk', '/rap/jvb-000-aa/stack/conda/lib/python2.7/lib-old', '/rap/jvb-000-aa/stack/conda/lib/python2.7/lib-dynload', '/home/tisu32/.local/lib/python2.7/site-packages', '/rap/jvb-000-aa/stack/conda/lib/python2.7/site-packages/Sphinx-1.3.5-py2.7.egg', '/rap/jvb-000-aa/stack/conda/lib/python2.7/site-packages/pydot_ng-1.0.1.dev0-py2.7.egg', '/rap/jvb-000-aa/stack/conda/lib/python2.7/site-packages/setuptools-20.3-py2.7.egg', '/rap/jvb-000-aa/stack/conda/lib/python2.7/site-packages']
+config floatX: float32
+Loading data
+Compiling training function
+training start time: 1477843435.7
+Starting training
+Epoch 1 of 200
+Set compute mode to DEFAULT for GPU 0000:05:00.0.
+All done.

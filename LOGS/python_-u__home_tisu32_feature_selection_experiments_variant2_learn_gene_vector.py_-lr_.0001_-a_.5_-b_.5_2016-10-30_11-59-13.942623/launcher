@@ -1,0 +1,29 @@
+#!/bin/bash -l
+# Bash is needed because we use its "array" data structure
+# the -l flag means it will act like a login shell,
+# and source the .profile, .bashrc, and so on
+
+# List of all tasks to execute
+tasks=(
+"python -u /home/tisu32/feature_selection/experiments/variant2/learn_gene_vector.py -lr .0001 -a .5 -b .5"
+)
+
+# Execute the pre tasks
+echo '[DBI] executing on host' $HOSTNAME
+echo MOAB_JOBNAME=${MOAB_JOBNAME}
+echo MOAB_USER=${MOAB_USER}
+echo MOAB_TASKMAP=${MOAB_TASKMAP}
+echo MOAB_CLASS=${MOAB_CLASS}
+echo MOAB_PROCCOUNT=${MOAB_PROCCOUNT}
+echo MOAB_GROUP=${MOAB_GROUP}
+echo MOAB_NODELIST=${MOAB_NODELIST}
+echo MOAB_ACCOUNT=${MOAB_ACCOUNT}
+echo MOABHOMEDIR=${MOABHOMEDIR}
+echo MOAB_MACHINE=${MOAB_MACHINE}
+echo MOAB_NODECOUNT=${MOAB_NODECOUNT}
+echo MOAB_JOBID=${MOAB_JOBID}
+echo MOAB_QOS=${MOAB_QOS}
+echo MOAB_PARTITION=${MOAB_PARTITION}
+
+# Execute the task
+${tasks[$MOAB_JOBARRAYINDEX]}
