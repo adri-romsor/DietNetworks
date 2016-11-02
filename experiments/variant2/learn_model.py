@@ -156,11 +156,17 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     params = lasagne.layers.get_all_params(
         [discrim_net] + filter(None, nets), trainable=True)
 
-    print('Number of params: '+str(len(params)))
+    params_discrim = lasagne.layers.get_all_params(discrim_net, trainable=True)
+    print('Number of params discrim: '+str(len(params_discrim)))
 
-    params2 = lasagne.layers.get_all_params(
-        [discrim_net] + filter(None, nets), trainable=False)
-    print('Number of params nontrain: '+str(len(params2)))
+    params_to_freeze_in_discrimnet = \
+        lasagne.layers.get_all_params(filter(None, nets), trainable=False)
+    print('Number of params aux: '+str(len(params_to_freeze_in_discrimnet)))
+
+    for p in params_to_freeze_in_discrimnet:
+        params = [el for el in params if el != p]
+
+    print('Number of params to update: '+ str(len(params)))
 
     # Combine losses
     loss = sup_loss + alpha*reconst_losses[0] + beta*reconst_losses[1] + \
