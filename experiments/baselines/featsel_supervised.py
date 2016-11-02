@@ -123,7 +123,10 @@ def execute(samp_embedding_source, num_epochs=500,
     # Load the dataset
     print("Loading data")
     f = np.load(os.path.join(save_path, samp_embedding_source))
-
+    exp_name = samp_embedding_source[:-4]
+    save_path = os.path.join(save_path, exp_name)
+    if not os.path.exists(save_path):
+	os.makedirs(save_path)
     print (f.files)
     x_train = np.array(f['x_train_supervised'], dtype=np.float32)
     y_train = np.array(f['y_train_supervised'])
@@ -191,6 +194,7 @@ def execute(samp_embedding_source, num_epochs=500,
 
     # Finally, launch the training loop.
     print("Starting training...")
+    patience = 0 # early stopping patience 
     # We iterate over epochs:
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data to updates
@@ -207,17 +211,47 @@ def execute(samp_embedding_source, num_epochs=500,
 
         train_minibatches = iterate_minibatches(x_train, y_train, n_batch,
                                                 shuffle=False)
-        monitoring(train_minibatches, "train", val_fn,
-                   monitor_labels)
+        train_monitored = monitoring(train_minibatches, "train", val_fn,
+                   		     monitor_labels)
 
         # Only monitor on the validation set if training in a supervised way
         # otherwise the dimensions will not match.
         valid_minibatches = iterate_minibatches(x_valid, y_valid, n_batch,
                                                 shuffle=False)
-        monitoring(valid_minibatches, "valid", val_fn,
-                   monitor_labels)
+        valid_monitored = monitoring(valid_minibatches, "valid", val_fn,
+                   	             monitor_labels)
 
         print("  total time:\t\t\t{:.3f}s".format(time.time() - start_time))
+
+	# Early stopping
+        if epoch == 0:
+            best_valid = valid_monitored["pred. loss"]
+        elif (valid_monitored["pred. loss"] < best_valid):
+            best_valid = valid_monitored["pred. loss"]
+            patience = 0
+
+            # Save stuff
+            np.savez(os.path.join(save_path, 'model_feat_sel_best.npz'),
+                     *lasagne.layers.get_all_param_values([discrim_net]))
+            np.savez(save_path + "/errors_supervised_best.npz",
+                     zip(*train_monitored), zip(*valid_monitored))
+
+            # Monitor on the test set now because sometimes the saving doesn't
+            # go well and there isn't a model to load at the end of training
+            if y_test is not None:
+		test_minibatches = iterate_minibatches(x_test, y_test, n_batch,
+                                           	       shuffle=False)
+                test_err = monitoring(test_minibatches, "test", val_fn,
+                                          monitor_labels)
+        else:
+            patience += 1
+            # Save stuff
+            np.savez(os.path.join(save_path, 'model_feat_sel_last.npz'),
+                     *lasagne.layers.get_all_param_values([discrim_net]))
+            np.savez(save_path + "/errors_supervised_last.npz",
+                     zip(*train_monitored), zip(*valid_monitored))
+
+
 
     # After training, we compute and print the test error (only if doing
     # supervised training or the dimensions will not match):
