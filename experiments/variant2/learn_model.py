@@ -154,17 +154,16 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Define parameters
     params = lasagne.layers.get_all_params(
-        [discrim_net] + filter(None, nets), trainable=True)
-
-    params_discrim = lasagne.layers.get_all_params(discrim_net, trainable=True)
-    print('Number of params discrim: '+str(len(params_discrim)))
-
-    params_to_freeze_in_discrimnet = \
+        [discrim_net]+filter(None, nets), trainable=True)
+    params_to_freeze= \
         lasagne.layers.get_all_params(filter(None, nets), trainable=False)
-    print('Number of params aux: '+str(len(params_to_freeze_in_discrimnet)))
 
-    for p in params_to_freeze_in_discrimnet:
-        params = [el for el in params if el != p]
+    print('Number of params discrim: '+str(len(params)))
+    print('Number of params to freeze: '+str(len(params_to_freeze)))
+
+    for p in params_to_freeze:
+        new_params = [el for el in params if el != p]
+        params = new_params
 
     print('Number of params to update: '+ str(len(params)))
 
