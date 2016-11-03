@@ -243,7 +243,7 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels,
         print ("  {} precis/recall cutoff:\t{:.6f}".format(which_set, cutoff))
 
     if return_pred:
-        return monitoring_values, predictions
+        return monitoring_values, np.vstack(predictions), np.vstack(targets)
     else:
         return monitoring_values
 

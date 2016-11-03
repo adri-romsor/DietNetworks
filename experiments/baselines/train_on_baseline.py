@@ -41,3 +41,5 @@ if __name__ == '__main__':
     embedding_path = os.path.join(embedding_path, dataset)
 
     main(embedding_path, n_classes, which_method, enc="hard")
+
+    main(embedding_path, n_classes, "pca", enc="hard")
