@@ -577,5 +577,5 @@ if __name__ == '__main__':
     # save_as_hdf5(unsupervised=True, feat_type='tfidf', use_tables=False)
     save_as_hdf5(unsupervised=True, feat_type='tfidf')
     # save_as_hdf5(unsupervised=True, feat_type='BoW')
-    save_as_hdf5(unsupervised=False, feat_type='tfidf')
+    # save_as_hdf5(unsupervised=False, feat_type='tfidf')
     # save_as_hdf5(unsupervised=False, feat_type='BoW')

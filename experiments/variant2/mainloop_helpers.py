@@ -2,15 +2,13 @@ from __future__ import print_function
 import numpy as np
 import os
 import random
-
 from feature_selection.experiments.common import dataset_utils as du
 from feature_selection.experiments.common import imdb
-
 
 # Function to load data
 def load_data(dataset, dataset_path, embedding_source,
               which_fold=0, keep_labels=1., missing_labels_val=1.,
-              embedding_input='raw', transpose=False):
+              embedding_input='raw', transpose=False, norm=True):
 
     # Load data from specified dataset
     splits = [.6, .2]  # this will split the data into [60%, 20%, 20%]
@@ -67,7 +65,8 @@ def load_data(dataset, dataset_path, embedding_source,
                                     label_splits=splits,
                                     feature_splits=[.8],
                                     fold=which_fold,
-                                    nolabels=embedding_input)
+                                    nolabels=embedding_input,
+                                    norm=norm, path=dataset_path)
     else:
         print("Unknown dataset")
         return
@@ -244,7 +243,7 @@ def monitoring(minibatches, which_set, error_fn, monitoring_labels,
         print ("  {} precis/recall cutoff:\t{:.6f}".format(which_set, cutoff))
 
     if return_pred:
-        return monitoring_values, predictions
+        return monitoring_values, np.vstack(predictions), np.vstack(targets)
     else:
         return monitoring_values
 

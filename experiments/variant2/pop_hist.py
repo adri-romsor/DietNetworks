@@ -36,12 +36,27 @@ def plot(dataset, which_set):
 
     x = range(26)
     x5 = [el+.5 for el in x]
-    plt.bar(x, height= y_bin)
-    plt.xticks(x5, labels, rotation='vertical');
+    x10 = [el+.5 for el in x5]
+
+    fig = plt.figure(figsize=(9, 9))
+    # plt.clf()
+    ax = fig.add_subplot(111)
+    # ax.set_aspect(1)
+
+    # fig,ax = plt.subplots()
+    ax.bar(x5, height= y_bin)
+    plt.xticks(x10, labels, rotation='vertical');
+
+    ax.set_xlim(0, 27)
 
     plt.xlabel('Ethnicity')
     plt.ylabel('Number of subjects')
+
+    plt.savefig('eth_histo.png', format='png')
+
     plt.show()
+
+
 
 
 def main():
@@ -50,7 +65,7 @@ def main():
                         default='1000_genomes',
                         help='Dataset')
     parser.add_argument('-which_set',
-                        default='valid',
+                        default='tot',
                         help='which set')
     args = parser.parse_args()
 
