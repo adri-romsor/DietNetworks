@@ -60,7 +60,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     n_targets = y_train.shape[1]
 
     # Set some variables
-    batch_size = 128
+    batch_size = 1
     beta = gamma if (gamma == 0) else beta
 
     # Preparing folder to save stuff

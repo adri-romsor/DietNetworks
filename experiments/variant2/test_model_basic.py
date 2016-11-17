@@ -52,7 +52,7 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
     n_targets = y_train.shape[1]
 
     # Set some variables
-    batch_size = 128
+    batch_size = 1
 
     # Preparing folder to save stuff
     print("Experiment: " + exp_name)
