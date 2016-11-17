@@ -172,7 +172,8 @@ def execute(samp_embedding_source, num_epochs=500,
     #                               learning_rate=lr)
     # updates = lasagne.updates.momentum(loss, params,
     #                                    learning_rate=lr, momentum=0.0)
-    updates[lr] = (lr * 1.0).astype("float32")
+    # updates[lr] = T.max((lr * .99).astype('float32'), 1e-6)
+    # updates[lr] = (lr * 1.0).astype('float32')
 
     train_fn = theano.function([input_var, target_var], loss, updates=updates)
 
@@ -198,7 +199,17 @@ def execute(samp_embedding_source, num_epochs=500,
     max_patience = 100
     nb_step_upd_lr = 20
     prev_train_err_increments = np.asarray([0]*nb_step_upd_lr)
-    idx = 0    
+    idx = 0
+    train_minibatches = iterate_minibatches(x_train, y_train, n_batch,
+                                                shuffle=False)
+    train_monitored = monitoring(train_minibatches, "train", val_fn,
+                                     monitor_labels)
+        # Only monitor on the validation set if training in a supervised way
+        # otherwise the dimensions will not match.
+    valid_minibatches = iterate_minibatches(x_valid, y_valid, n_batch,
+                                                shuffle=False)
+    valid_monitored = monitoring(valid_minibatches, "valid", val_fn,
+                                     monitor_labels)    
     # We iterate over epochs:
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data to updates
@@ -209,10 +220,10 @@ def execute(samp_embedding_source, num_epochs=500,
                                          shuffle=True):
             inputs, targets = batch
             loss = train_fn(inputs, targets.astype("float32"))
-	    if abs(prev_train_err_increments.sum()) < 1e-4:
-                lr.set_value((lr.get_value()*0.6).astype('float32'))
-            prev_train_err_increments[idx] = loss
-            idx =(idx+1)%nb_step_upd_lr
+	    #if abs(prev_train_err_increments.sum()) < 1e-4:
+            #    lr.set_value((lr.get_value()*0.6).astype('float32'))
+            #prev_train_err_increments[idx] = loss
+            #idx =(idx+1)%nb_step_upd_lr
         # if epoch % 25 == 0 :# Monitor progress
         print("Epoch {} of {}".format(epoch + 1, num_epochs))
 
