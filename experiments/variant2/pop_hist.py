@@ -6,7 +6,9 @@ from getpass import getuser
 
 from feature_selection.experiments.common import dataset_utils
 
-def plot(dataset, which_set):
+import model_helpers as mh
+
+def plot(dataset, which_set, continent=True):
 
     if dataset == '1000_genomes':
         data = dataset_utils.load_1000_genomes(transpose=False,
@@ -28,31 +30,52 @@ def plot(dataset, which_set):
 
     y = y.argmax(1)
 
+    if continent:
+        continent_cat = mh.create_1000_genomes_continent_labels()
+        y_cont = np.zeros(y.shape)
+
+        for i,c in enumerate(continent_cat):
+            for el in c:
+                y_cont[y == el] = i
+
+        print y_cont
+        y = y_cont.astype('int32')
+        labels = ['EAS', 'EUR', 'AFR', 'AMR', 'SAS']
+        x = range(5)
+        x5 = [el+.5 for el in x]
+        x10 = [el+.5 for el in x5]
+
+        xlabel = 'Geographical Region'
+        max_x = 6
+        filename = 'cont_histo.png'
+    else:
+        labels = ['ACB', 'ASW', 'BEB', 'CDX', 'CEU', 'CHB', 'CHS', 'CLM', 'ESN',
+                  'FIN', 'GBR', 'GIH', 'GWD', 'IBS', 'ITU', 'JPT', 'KHV', 'LWK',
+                  'MSL', 'MXL', 'PEL', 'PJL', 'PUR', 'STU', 'TSI', 'YRI']
+        x = range(26)
+        x5 = [el+.5 for el in x]
+        x10 = [el+.5 for el in x5]
+
+        xlabel = 'Ethnicity'
+        max_x = 27
+
+        filename = 'eth_histo.png'
+
     y_bin = np.bincount(y)
 
-    labels = ['ACB', 'ASW', 'BEB', 'CDX', 'CEU', 'CHB', 'CHS', 'CLM', 'ESN',
-              'FIN', 'GBR', 'GIH', 'GWD', 'IBS', 'ITU', 'JPT', 'KHV', 'LWK',
-              'MSL', 'MXL', 'PEL', 'PJL', 'PUR', 'STU', 'TSI', 'YRI']
-
-    x = range(26)
-    x5 = [el+.5 for el in x]
-    x10 = [el+.5 for el in x5]
-
-    fig = plt.figure(figsize=(9, 9))
-    # plt.clf()
+    fig = plt.figure(figsize=(12, 12))
     ax = fig.add_subplot(111)
-    # ax.set_aspect(1)
 
-    # fig,ax = plt.subplots()
     ax.bar(x5, height= y_bin)
-    plt.xticks(x10, labels, rotation='vertical');
+    plt.xticks(x10, labels, rotation='vertical', fontsize=24);
 
-    ax.set_xlim(0, 27)
+    ax.set_xlim(0, max_x)
 
-    plt.xlabel('Ethnicity')
-    plt.ylabel('Number of subjects')
+    plt.xlabel(xlabel, fontsize=32)
+    plt.ylabel('Number of subjects', fontsize=32)
+    plt.tight_layout()
 
-    plt.savefig('eth_histo.png', format='png')
+    plt.savefig(filename, format='png')
 
     plt.show()
 
