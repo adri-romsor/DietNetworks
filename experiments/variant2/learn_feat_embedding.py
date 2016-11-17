@@ -18,7 +18,7 @@ import theano
 import theano.tensor as T
 
 from epls import EPLS, tensor_fun_EPLS
-from feature_selection.experiments.common import dataset_utils, imdb
+from feature_selection.experiments.common import dataset_utils
 
 import mainloop_helpers as mlh
 import model_helpers as mh

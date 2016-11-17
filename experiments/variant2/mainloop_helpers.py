@@ -3,7 +3,6 @@ import numpy as np
 import os
 import random
 from feature_selection.experiments.common import dataset_utils as du
-from feature_selection.experiments.common import imdb
 
 # Function to load data
 def load_data(dataset, dataset_path, embedding_source,
@@ -12,51 +11,7 @@ def load_data(dataset, dataset_path, embedding_source,
 
     # Load data from specified dataset
     splits = [.6, .2]  # this will split the data into [60%, 20%, 20%]
-    if dataset == 'protein_binding':
-        data = du.load_protein_binding(transpose=False, splits=splits)
-    elif dataset == 'dorothea':
-        data = du.load_dorothea(transpose=False, splits=None)
-    elif dataset == 'opensnp':
-        data = du.load_opensnp(transpose=False, splits=splits)
-    elif dataset == 'reuters':
-        data = du.load_reuters(transpose=False, splits=splits)
-    elif dataset == 'iric_molecule':
-        data = du.load_iric_molecules(
-            transpose=False, splits=splits)
-    elif dataset == 'imdb':
-        dataset_path = os.path.join(dataset_path, "imdb")
-        feat_type = "tfidf"
-        unsupervised = False
-
-        print ("Loading imdb")
-        if unsupervised:
-            file_name = os.path.join(
-                dataset_path,
-                'unsupervised_IMDB_' + feat_type + '_table_split80.hdf5')
-        else:
-            file_name = os.path.join(
-                dataset_path,
-                'supervised_IMDB_' + feat_type + '_table_split80.hdf5')
-
-        # This is in order to copy dataset if it doesn't exist
-        print (file_name)
-        print (os.path.isfile(file_name))
-
-        if not os.path.isfile(file_name):
-            print ("Saving dataset to path")
-            imdb.save_as_hdf5(
-                path=dataset_path,
-                unsupervised=unsupervised,
-                feat_type=feat_type,
-                use_tables=False)
-            print ("Done saving dataset")
-        # use feat_type='tfidf' to load tfidf features
-        data = imdb.read_from_hdf5(
-            path=dataset_path, unsupervised=unsupervised, feat_type=feat_type)
-    elif dataset == 'dragonn':
-        from feature_selection.experiments.common import dragonn_data
-        data = dragonn_data.load_data(500, 100, 100)
-    elif dataset == '1000_genomes':
+    if dataset == '1000_genomes':
         # This will split the training data into 75% train, 25%
         # this corresponds to the split 60/20 of the whole data,
         # test is considered elsewhere as an extra 20% of the whole data
@@ -71,32 +26,17 @@ def load_data(dataset, dataset_path, embedding_source,
         print("Unknown dataset")
         return
 
-    if dataset == 'imdb':
-        x_train = data.root.train_features
-        y_train = data.root.train_labels[:][:, None].astype("float32")
-        x_valid = data.root.val_features
-        y_valid = data.root.val_labels[:][:, None].astype("float32")
-        x_test = data.root.test_features
-        y_test = data.root.test_labels[:][:, None].astype("float32")
-        x_nolabel = None
+    if not transpose:
+        (x_train, y_train), (x_valid, y_valid), (x_test, y_test),\
+            x_nolabel = data
     else:
-        if not transpose:
-            (x_train, y_train), (x_valid, y_valid), (x_test, y_test),\
-                x_nolabel = data
-        else:
-            return data
+        return data
 
     if not embedding_source:
         if x_nolabel is None:
-            if dataset == 'imdb':
-                x_unsup = x_train[:5000].transpose()
-            else:
-                x_unsup = x_train.transpose()
+            x_unsup = x_train.transpose()
         else:
-            if dataset != '1000_genomes':
-                x_unsup = np.vstack((x_train, x_nolabel)).transpose()
-            else:
-                x_unsup = x_nolabel
+            x_unsup = x_nolabel
     else:
         x_unsup = None
 

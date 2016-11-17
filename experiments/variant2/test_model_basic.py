@@ -17,7 +17,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 
-from feature_selection.experiments.common import dataset_utils, imdb
+from feature_selection.experiments.common import dataset_utils
 
 import mainloop_helpers as mlh
 import model_helpers as mh
