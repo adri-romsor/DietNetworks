@@ -212,7 +212,7 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
         x, y = thousand_genomes.load_data(path)
         x = x.astype("float32")
 
-        (x, y) = shuffle((x, y))
+        (x, y) = shuffle((x, y))  # seed is fixed, shuffle is always the same
 
         # Prepare training and validation sets
         assert len(label_splits) == 1  # train/valid split
