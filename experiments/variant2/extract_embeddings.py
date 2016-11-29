@@ -166,7 +166,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             print(file_name)
             np.savez(file_name,
                      representation=el,
-                     label=y_test.argmax(1))
+                     label=y.argmax(1))
 
 
 def main():
