@@ -279,11 +279,6 @@ def execute(samp_embedding_source, num_epochs=500,
             nlayers = len(lasagne.layers.get_all_params([discrim_net]))
             lasagne.layers.set_all_param_values([discrim_net],
                                                 param_values[:nlayers])
-	    # Save stuff
-            np.savez(os.path.join(save_path, 'model_feat_sel_last.npz'),
-                     *lasagne.layers.get_all_param_values([discrim_net]))
-            np.savez(save_path + "/errors_supervised_last.npz",
-                     zip(*train_monitored), zip(*valid_monitored))
 	    # stop
 	    break
 
