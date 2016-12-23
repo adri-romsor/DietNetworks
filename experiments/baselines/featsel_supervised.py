@@ -152,6 +152,7 @@ def execute(samp_embedding_source, num_epochs=500,
 
     # Build model
     discrim_net = InputLayer((n_batch, n_feats), input_var)
+    # discrim_net = DenseLayer(discrim_net, 100)
     discrim_net = DenseLayer(
         discrim_net, num_units=n_classes,
         nonlinearity=(softmax if n_classes > 1 else sigmoid))
