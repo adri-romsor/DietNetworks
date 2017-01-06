@@ -2,7 +2,7 @@
 
 This repo contains the code to reproduce the experiments of the paper [DietNetworks: Thin parameters for fat genomics](https://arxiv.org/abs/1611.09340).
 
-# Experiments
+### Experiments
 
 **Diet Networks with per class histograms (fold 0):**
 
