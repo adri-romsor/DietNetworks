@@ -312,7 +312,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             # go well and there isn't a model to load at the end of training
             if y_test is not None:
                 test_minibatches = mlh.iterate_minibatches(x_test, y_test,
-                                                           batch_size,
+                                                           138,
                                                            shuffle=False)
 
                 test_err = mlh.monitoring(test_minibatches, "test", val_fn,
@@ -361,14 +361,14 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             # Test set results
             if y_test is not None:
                 test_minibatches = mlh.iterate_minibatches(x_test, y_test,
-                                                           batch_size,
+                                                           138,
                                                            shuffle=False)
 
                 test_err = mlh.monitoring(test_minibatches, "test", val_fn,
                                           monitor_labels, prec_recall_cutoff)
             else:
                 for minibatch in mlh.iterate_testbatches(x_test,
-                                                         batch_size,
+                                                         138,
                                                          shuffle=False):
                     test_predictions = []
                     test_predictions += [predict(minibatch)]
@@ -489,7 +489,7 @@ def main():
                         help='What monitored variable to use for early-stopping')
     parser.add_argument('-embedding_input',
                         type=str,
-                        default='raw',
+                        default='histo3x28',
                         help='The kind of input we will use for the feat. emb. nets')
     parser.add_argument('--save_tmp',
                         default= '/Tmp/'+ os.environ["USER"]+'/feature_selection/' if not CLUSTER else
