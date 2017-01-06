@@ -1,17 +1,17 @@
-## DietNetworks: Thin parameters for Fat Genomics
+# DietNetworks: Thin parameters for Fat Genomics
 
 This repo contains the code to reproduce the experiments of the paper [DietNetworks: Thin parameters for fat genomics](https://arxiv.org/abs/1611.09340).
 
-### Experiments
+## Experiments
 
-**Diet Networks with per class histograms (fold 0):**
+### Diet Networks with per class histograms (fold 0)
 
 cd experiments/variant2
 
 THEANO_FLAGS='device=gpu' python learn_model.py --embedding_source=/path/to/per_class_histograms/fold0.npy --which_fold=0 -exp_name='dietnets_' -embedding_input='histo3x26' 
 
 
-**Parameters in experiments/variant2/learn_model.py:**
+### Parameters in experiments/variant2/learn_model.py:**
 - dataset: Str. Dataset name. (default: '1000_genomes').
 - n_hidden_u: List. Considering the Emb. of Fig. 1 (b)/(c) an MLP -> number of hidden units of each layer of the MLP. The parameters of the embedding are shared among auxiliary networks in Fig. 1 (b) and (c). **Set to [100] for DietNetworks experiments, ignored when a particuler embedding is required.**
 - n_hidden_t: List. Number of hidden units of the MLP depicted in Fig. 1 (b)/(c). Both MLP have the same structure (number of layers, number of hidden units per layer) but do not share parameters. **Set to [100] for DietNetworks experiments.**
