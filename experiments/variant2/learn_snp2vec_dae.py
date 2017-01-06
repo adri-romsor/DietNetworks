@@ -334,7 +334,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
                 for j in range(block_size):
                     single_feat_batch[j, i+j] = 0
                 
-            np.save("/Tmp/carriepl/feature_selection/all_embeddings_fold%i.npy" % which_fold,
+            np.save("/Tmp/carriepl/feature_selection/all_embeddings_fold%i_noise%f.npy" % (which_fold, noise),
                     all_embeddings)
 
             # Training set results
@@ -386,7 +386,7 @@ def main():
                         help="""Float to indicate weight decay coeff.""")
     parser.add_argument('--noise',
                         type=float,
-                        default=.0,
+                        default=.25,
                         help="Float to indicate fraction of inputs to blackout.")
     # parser.add_argument('--gamma',
     #                     '-g',
@@ -430,7 +430,7 @@ def main():
                                 '/feature_selection/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
-                        default='/data/lisatmp4/romerosa/datasets/',
+                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/',
                         help='Path to dataset')
     parser.add_argument('--num_fully_connected',
                         type=int,
