@@ -15,7 +15,7 @@ This repo contains the code to reproduce the experiments of the paper [DietNetwo
 
 cd experiments/variant2
 
-THEANO_FLAGS='device=gpu' python learn_model.py --embedding_source=/path/to/per_class_histograms/fold0.npy --which_fold=0 -exp_name='dietnets_' -embedding_input='histo3x26' 
+THEANO_FLAGS='device=gpu' python learn_model.py --embedding_source=/path/to/per_class_histograms/fold0.npy --which_fold=0 -exp_name='dietnets_' -embedding_input='histo3x26' --learning_rate=0.0001 -eni=0.01 -dni=0.01 -l=0
 
 
 ### Parameters in experiments/variant2/learn_model.py
