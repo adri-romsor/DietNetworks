@@ -2,6 +2,11 @@
 
 This repo contains the code to reproduce the experiments of the paper [DietNetworks: Thin parameters for fat genomics](https://arxiv.org/abs/1611.09340).
 
+## Before you start
+
+- Download and install Theano and Lasagne.
+- Download the 1000 Genomes dataset as described in appendix B of the paper.
+
 ## Experiments
 
 ### Diet Networks with per class histograms (fold 0)
