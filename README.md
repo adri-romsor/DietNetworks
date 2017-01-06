@@ -7,6 +7,8 @@ This repo contains the code to reproduce the experiments of the paper [DietNetwo
 - Download and install Theano and Lasagne.
 - Download the 1000 Genomes dataset as described in appendix B of the paper.
 
+## Generate the pre-computed embeddings if necessary
+
 ## Experiments
 
 ### Diet Networks with per class histograms (fold 0)
