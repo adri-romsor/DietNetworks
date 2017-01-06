@@ -6,4 +6,6 @@ This repo contains the code to reproduce the experiments of the paper [DietNetwo
 
 **Diet Networks with per class histograms (fold 0):**
 
-THEANO_FLAGS='device=gpu' python /experiments/variant2/learn_model.py --embedding_source=/path/to/per_class_histograms/fold0.npy --which_fold=0 -exp_name='dietnets_' -embedding_input='histo3x26' 
+cd experiments/variant2
+
+THEANO_FLAGS='device=gpu' python learn_model.py --embedding_source=/path/to/per_class_histograms/fold0.npy --which_fold=0 -exp_name='dietnets_' -embedding_input='histo3x26' 
