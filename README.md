@@ -9,7 +9,7 @@ This repo contains the code to reproduce the experiments of the paper [DietNetwo
 
 ## Generate the pre-computed embeddings if necessary
 
-## Experiments
+## Run Experiments
 
 ### Diet Networks with per class histograms (fold 0)
 
