@@ -1,3 +1,5 @@
+UNDER CONSTRUCTION
+
 # DietNetworks: Thin parameters for Fat Genomics
 
 This repo contains the code to reproduce the experiments of the paper [DietNetworks: Thin parameters for fat genomics](https://arxiv.org/abs/1611.09340).
