@@ -18,7 +18,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 
-from feature_selection.experiments.common import dataset_utils
+from DietNetworks.experiments.common import dataset_utils
 
 import matplotlib.pyplot as plt
 
@@ -31,8 +31,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             embedding_source=None, alpha=1, beta=1, gamma=1, encoder_net_init=0.1,
             which_fold=0, embedding_input='raw',  exp_name='', representation='features',
             which_set='test',
-            model_path='/Tmp/romerosa/feature_selection/newmodel/',
-            save_path='/Tmp/romerosa/feature_selection/',
+            model_path='/Tmp/romerosa/DietNetworks/newmodel/',
+            save_path='/Tmp/romerosa/DietNetworks/',
             dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/'):
 
     print(save_path)
@@ -234,10 +234,10 @@ def main():
                         default='test',
                         help='features or subjects')
     parser.add_argument('--model_path',
-                        default='/data/lisatmp4/erraqaba/feature_selection/',
+                        default='/data/lisatmp4/erraqaba/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--save_path',
-                        default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/',
+                        default='/data/lisatmp4/'+ os.environ["USER"]+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
                         default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/',

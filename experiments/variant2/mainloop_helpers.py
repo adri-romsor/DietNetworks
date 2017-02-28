@@ -2,7 +2,7 @@ from __future__ import print_function
 import numpy as np
 import os
 import random
-from feature_selection.experiments.common import dataset_utils as du
+from DietNetworks.experiments.common import dataset_utils as du
 
 # Function to load data
 def load_data(dataset, dataset_path, embedding_source,

@@ -143,9 +143,9 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
                 num_units=encoder_units[i],
                 W=HeNormal('relu'),
                 nonlinearity=rectify)  # if i < len(encoder_units)-1 else linear)
-        
+
     embedding = lasagne.layers.get_output(encoder)
-    
+
     params = lasagne.layers.get_all_params(encoder, trainable=True)
     monitor_labels = ["embedding min", "embedding max"]
     val_outputs = [embedding.min(), embedding.max()]
@@ -177,7 +177,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
 
         #loss_reconst = mh.dice_coef_loss(
         #    target_reconst, prediction_reconst).mean()
-        
+
         accuracy = T.eq(T.gt(prediction_reconst, 0.5), target_reconst).mean()
 
         params += lasagne.layers.get_all_params(decoder, trainable=True)
@@ -220,7 +220,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
 
         loss_pred = mh.dice_coef_loss(
             target_var, prediction_var).mean()
-        
+
         accuracy = T.eq(T.gt(prediction_var, 0.5), target_var).mean()
 
         params += lasagne.layers.get_all_params(predictor, trainable=True)
@@ -439,12 +439,12 @@ def main():
                         default=0,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--save_tmp',
-                        default= '/Tmp/'+ os.environ["USER"]+'/feature_selection/' if not CLUSTER else
-                            '$SCRATCH'+'/feature_selection/',
+                        default= '/Tmp/'+ os.environ["USER"]+'/DietNetworks/' if not CLUSTER else
+                            '$SCRATCH'+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
-                        default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/' if not CLUSTER else
-                            '$SCRATCH'+'/feature_selection/',
+                        default='/data/lisatmp4/'+ os.environ["USER"]+'/DietNetworks/' if not CLUSTER else
+                            '$SCRATCH'+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
                         default='/data/lisatmp4/romerosa/datasets/' if not CLUSTER else '$SCRATCH',

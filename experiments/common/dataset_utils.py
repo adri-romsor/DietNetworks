@@ -1,13 +1,13 @@
 import numpy
 import os
 """
-from feature_selection.experiments.common import (protein_loader, dorothea,
+from DietNetworks.experiments.common import (protein_loader, dorothea,
                                                   reuters, imdb, iric_molecules,
                                                   thousand_genomes)
 """
-from feature_selection.experiments.common import thousand_genomes
+from DietNetworks.experiments.common import thousand_genomes
 
-from feature_selection import aggregate_dataset as opensnp
+from DietNetworks import aggregate_dataset as opensnp
 
 
 def shuffle(data_sources, seed=23):

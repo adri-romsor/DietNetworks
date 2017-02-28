@@ -50,13 +50,13 @@ def data_generator(dataset, batch_size, shuffle=False, noise=0.5):
 
         # Keep a copy of the original inputs to act as a reconstruction target
         reconstruction_targets = inputs.copy()
-        
+
         nb_SNPs = nb_feats / 2
         snp_mask = np.random.binomial(1, 1-noise,
                                       (n_in_batch, nb_SNPs)).astype("uint8")
         inputs[:, ::2] *= snp_mask
         inputs[:, 1::2] *= snp_mask
-        
+
         yield inputs, reconstruction_targets
 
 
@@ -95,11 +95,11 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
                                 missing_labels_val=-1.0,
                                 embedding_input='raw', transpose=False)
         import pdb; pdb.set_trace()
-        
+
         x_train = np.zeros((x_unsup[0].shape[0], x_unsup[0].shape[1]*2), dtype="int8")
         x_train[:,::2] = (x_unsup[0] == 2)
         x_train[:,1::2] = (x_unsup[0] >= 1)
-        
+
         x_valid = np.zeros((x_unsup[2].shape[0], x_unsup[2].shape[1]*2), dtype="int8")
         x_valid[:,::2] = (x_unsup[2] == 2)
         x_valid[:,1::2] = (x_unsup[2] >= 1)
@@ -110,7 +110,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
                                 embedding_input='bin', transpose=True)
         x_train = x_unsup[0][0]
         x_valid = x_unsup[1][0]
-    
+
     print(x_train.shape, x_valid.shape)
 
     n_features = x_train.shape[1]
@@ -147,10 +147,10 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
                 num_units=encoder_units[i],
                 W=Uniform(0.00001),
                 nonlinearity=leaky_rectify)  # if i < len(encoder_units)-1 else linear)
-        
+
     embedding = lasagne.layers.get_output(encoder)
     get_embedding_fn = theano.function([input_var], embedding)
-    
+
     params = lasagne.layers.get_all_params(encoder, trainable=True)
     monitor_labels = ["embedding min", "embedding mean", "embedding max"]
     val_outputs = [embedding.min(), embedding.mean(), embedding.max()]
@@ -181,7 +181,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
 
     #loss_reconst = mh.dice_coef_loss(
     #    target_reconst, prediction_reconst).mean()
-        
+
     accuracy = T.eq(T.gt(prediction_reconst, 0.5), target_reconst).mean()
 
     params += lasagne.layers.get_all_params(decoder, trainable=True)
@@ -293,7 +293,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
                     param_values = [f['arr_%d' % i]
                                     for i in range(len(f.files))]
                     lasagne.layers.set_all_param_values(nets, param_values)
-                    
+
             # Use the saved model to generate the feature embedding
             # Here the feature embedding is the different in the hidden
             # representation between having that feature on and having it off
@@ -301,10 +301,10 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
             embedding_size = encoder_units[-1]
             null_input = np.zeros((1, n_features), dtype="float32")
             null_embedding = get_embedding_fn(null_input)[0]
-            
+
             all_embeddings = np.zeros((n_features,
                                        embedding_size), dtype="float32")
-            
+
             """
             single_feat_input = null_input.copy()
             for i in range(n_features):
@@ -315,26 +315,26 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
                 all_embeddings[i] = (get_embedding_fn(single_feat_input)[0] -
                                      null_embedding)
                 single_feat_input[:,i] = 0
-                
+
             result1 = all_embeddings[:1000].copy()
             """
-            
+
             block_size = 10
             single_feat_batch = np.zeros((block_size, n_features), dtype="float32")
             for i in range(0, n_features, block_size):
                 if i % 10000 == 0:
                     print(i, n_features)
-                
+
                 for j in range(block_size):
                     single_feat_batch[j, i+j] = 1
-                    
+
                 all_embeddings[i:i+10] = (get_embedding_fn(single_feat_batch) -
                                           null_embedding)
-                    
+
                 for j in range(block_size):
                     single_feat_batch[j, i+j] = 0
-                
-            np.save("/Tmp/carriepl/feature_selection/all_embeddings_fold%i_noise%f.npy" % (which_fold, noise),
+
+            np.save("/Tmp/carriepl/DietNetworks/all_embeddings_fold%i_noise%f.npy" % (which_fold, noise),
                     all_embeddings)
 
             # Training set results
@@ -423,11 +423,11 @@ def main():
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--save_tmp',
                         default='/Tmp/'+os.environ["USER"] +
-                                '/feature_selection/',
+                                '/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
                         default='/data/lisatmp4/'+os.environ["USER"] +
-                                '/feature_selection/',
+                                '/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
                         default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/',

@@ -54,7 +54,7 @@ def main():
                         default='loss',
                         help='Metric (acc or loss)')
     parser.add_argument('-path',
-                        default='/data/lisatmp4/romerosa/feature_selection/',
+                        default='/data/lisatmp4/romerosa/DietNetworks/',
                         help='Path to errors file')
     parser.add_argument('-models',
                         type=str,

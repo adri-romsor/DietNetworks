@@ -17,7 +17,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 
-from feature_selection.experiments.common import dataset_utils
+from DietNetworks.experiments.common import dataset_utils
 
 import mainloop_helpers as mlh
 import model_helpers as mh
@@ -32,8 +32,8 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
             gamma=1, lmd=0., disc_nonlinearity="sigmoid", keep_labels=1.0,
             prec_recall_cutoff=True, missing_labels_val=-1.0,  which_fold=1,
             early_stop_criterion='loss', embedding_input='raw',
-            save_path='/Tmp/romerosa/feature_selection/',
-            save_copy='/Tmp/romerosa/feature_selection/',
+            save_path='/Tmp/romerosa/DietNetworks/',
+            save_copy='/Tmp/romerosa/DietNetworks/',
             dataset_path='/Tmp/carriepl/datasets/', resume=False, exp_name=None):
 
     # Load the dataset
@@ -276,12 +276,12 @@ def main():
                         default='raw',
                         help='The kind of input we will use for the feat. emb. nets')
     parser.add_argument('--save_tmp',
-                        default= '/Tmp/'+ os.environ["USER"]+'/feature_selection/' if not CLUSTER else
-                            '$SCRATCH'+'/feature_selection/',
+                        default= '/Tmp/'+ os.environ["USER"]+'/DietNetworks/' if not CLUSTER else
+                            '$SCRATCH'+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
-                        default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/' if not CLUSTER else
-                            '$SCRATCH'+'/feature_selection/',
+                        default='/data/lisatmp4/'+ os.environ["USER"]+'/DietNetworks/' if not CLUSTER else
+                            '$SCRATCH'+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
                         default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/' if not CLUSTER else '/scratch/jvb-000-aa/tisu32/',

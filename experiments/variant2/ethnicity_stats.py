@@ -6,7 +6,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-from feature_selection.experiments.common import dataset_utils
+from DietNetworks.experiments.common import dataset_utils
 
 
 def execute(dataset,

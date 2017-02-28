@@ -4,7 +4,7 @@ import numpy as np
 import argparse
 from getpass import getuser
 
-from feature_selection.experiments.common import dataset_utils
+from DietNetworks.experiments.common import dataset_utils
 
 import model_helpers as mh
 

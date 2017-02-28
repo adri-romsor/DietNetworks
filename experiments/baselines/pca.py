@@ -1,7 +1,7 @@
 from sklearn.decomposition import RandomizedPCA, TruncatedSVD, PCA
 from aggregate_dataset import load_data23andme_baselines
-from feature_selection.experiments.common import dataset_utils, imdb
-from feature_selection.experiments.variant2 import mainloop_helpers as mlh
+from DietNetworks.experiments.common import dataset_utils, imdb
+from DietNetworks.experiments.variant2 import mainloop_helpers as mlh
 
 import argparse
 import os
@@ -65,7 +65,7 @@ if __name__ == '__main__':
                         help='dataset')
     parser.add_argument('-save_path',
                         '-sp',
-                        default='/data/lisatmp4/romerosa/feature_selection/pca_final/',
+                        default='/data/lisatmp4/romerosa/DietNetworks/pca_final/',
                         help='number of components for embedding')
 
     args = parser.parse_args()

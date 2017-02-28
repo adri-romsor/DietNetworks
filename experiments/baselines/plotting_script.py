@@ -54,7 +54,7 @@ def main(results_path, which_method="pca", enc='triangle', n_comps=None):
 
 if __name__ == '__main__':
     results_path = \
-        "/data/lisatmp4/romerosa/feature_selection/1000_genomes/results/"
+        "/data/lisatmp4/romerosa/DietNetworks/1000_genomes/results/"
 
     which_method = 'kmeans'
 

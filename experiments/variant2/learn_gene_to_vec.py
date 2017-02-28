@@ -328,10 +328,10 @@ def main():
                         default=0,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--save_tmp',
-                        default='$SCRATCH'+'/feature_selection/',
+                        default='$SCRATCH'+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
-                        default='$SCRATCH'+'/feature_selection/',
+                        default='$SCRATCH'+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
                         default='$SCRATCH',

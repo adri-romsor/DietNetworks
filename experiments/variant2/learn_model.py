@@ -28,8 +28,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             encoder_net_init=0.2, decoder_net_init=0.2, keep_labels=1.0,
             prec_recall_cutoff=True, missing_labels_val=-1.0, which_fold=0,
             early_stop_criterion='loss_sup_det', embedding_input='raw',
-            save_path='/Tmp/romerosa/feature_selection/newmodel/',
-            save_copy='/Tmp/romerosa/feature_selection/',
+            save_path='/Tmp/romerosa/DietNetworks/newmodel/',
+            save_copy='/Tmp/romerosa/DietNetworks/',
             dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/',
             resume=False, exp_name='', random_proj=0):
 
@@ -413,9 +413,7 @@ def main():
                         default=[100],
                         help='List of supervised hidden units.')
     parser.add_argument('--embedding_source',
-                        default=None,
-                        # '/data/lisatmp4/romerosa/datasets/1000_Genome_project/unsupervised_hist_3x26_fold1.npy',
-                        # '/data/lisatmp4/romerosa/feature_selection/1000_genomes/kmeans_10_embedding.npy',
+                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/unsupervised_hist_3x26_fold0.npy',
                         help='Source for the feature embedding. Either' +
                              'None or the name of a file from which' +
                              'to load a learned embedding')
@@ -448,7 +446,7 @@ def main():
     parser.add_argument('--gamma',
                         '-g',
                         type=float,
-                        default=0.,
+                        default=10.,
                         help="""reconst_loss coeff. (used for aux net W-dec as well)""")
     parser.add_argument('--lmd',
                         '-l',
@@ -482,22 +480,22 @@ def main():
                              'or not')
     parser.add_argument('--which_fold',
                         type=int,
-                        default=1,
+                        default=0,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--early_stop_criterion',
                         default='accuracy',
                         help='What monitored variable to use for early-stopping')
     parser.add_argument('-embedding_input',
                         type=str,
-                        default='histo3x28',
+                        default='histo3x26',
                         help='The kind of input we will use for the feat. emb. nets')
     parser.add_argument('--save_tmp',
-                        default= '/Tmp/'+ os.environ["USER"]+'/feature_selection/' if not CLUSTER else
-                            '$SCRATCH'+'/feature_selection/',
+                        default= '/Tmp/'+ os.environ["USER"]+'/DietNetworks/' if not CLUSTER else
+                            '$SCRATCH'+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
-                        default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/' if not CLUSTER else
-                            '$SCRATCH'+'/feature_selection/',
+                        default='/data/lisatmp4/'+ os.environ["USER"]+'/DietNetworks/' if not CLUSTER else
+                            '$SCRATCH'+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
                         default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/' if not CLUSTER else '/scratch/jvb-000-aa/tisu32/1000_Genome_project/',
@@ -508,7 +506,7 @@ def main():
                         help='Whether to resume job')
     parser.add_argument('-exp_name',
                         type=str,
-                        default='',
+                        default='dietnets_final_',
                         help='Experiment name that will be concatenated at the beginning of the generated name')
     parser.add_argument('--random_proj',
                         '-rp',

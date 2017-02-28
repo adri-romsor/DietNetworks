@@ -18,7 +18,7 @@ import theano
 import theano.tensor as T
 
 from epls import EPLS, tensor_fun_EPLS
-from feature_selection.experiments.common import dataset_utils
+from DietNetworks.experiments.common import dataset_utils
 
 import mainloop_helpers as mlh
 import model_helpers as mh
@@ -28,9 +28,9 @@ import model_helpers as mh
 def execute(dataset, n_hidden_u, num_epochs=500,
             learning_rate=.001, learning_rate_annealing=1.0, lmd=.0001,
             embedding_input='raw', which_fold=0,
-            save_path='/Tmp/$USER/feature_selection/newmodel/',
-            save_copy='/Tmp/$USER/feature_selection/newmodel/',
-            dataset_path='/Tmp/$USER/feature_selection/newmodel/'):
+            save_path='/Tmp/$USER/DietNetworks/newmodel/',
+            save_copy='/Tmp/$USER/DietNetworks/newmodel/',
+            dataset_path='/Tmp/$USER/DietNetworks/newmodel/'):
 
     # Load the dataset
     print("Loading data")
@@ -319,10 +319,10 @@ def main():
                         default=1,
                         help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--save_tmp',
-                        default='/Tmp/'+ os.environ["USER"]+'/feature_selection/',
+                        default='/Tmp/'+ os.environ["USER"]+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
-                        default='/data/lisatmp4/'+ os.environ["USER"]+'/feature_selection/',
+                        default='/data/lisatmp4/'+ os.environ["USER"]+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
                         default='/data/lisatmp4/romerosa/datasets/',
