@@ -14,7 +14,7 @@ def execute(dataset,
 
     # Load the dataset
     print("Loading data")
-    splits = [0.6, 0.2]  # This will split the data into [60%, 20%, 20%]
+    splits = [0.75]  # This will split the data into [60%, 20%, 20%]
 
     if dataset == '1000_genomes':
         data = dataset_utils.load_1000_genomes(transpose=False,
@@ -44,8 +44,7 @@ def execute(dataset,
 
 
 def main():
-    parser = argparse.ArgumentParser(description="""Implementation of the
-                                     feature selection v2""")
+    parser = argparse.ArgumentParser(description="""Compute ethnicity stats""")
     parser.add_argument('--dataset',
                         default='1000_genomes',
                         help='Dataset.')

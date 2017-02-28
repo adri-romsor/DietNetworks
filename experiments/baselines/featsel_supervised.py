@@ -24,7 +24,7 @@ import theano.tensor as T
 
 from lasagne.nonlinearities import sigmoid, softmax
 
-sys.path.append('/data/lisatmp4/dejoieti/feature_selection')
+sys.path.append('/data/lisatmp4/dejoieti/DietNetworks')
 
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
@@ -103,7 +103,7 @@ def monitoring(minibatches, dataset_name, val_fn, monitoring_labels):
 # Main program
 def execute(samp_embedding_source, num_epochs=500,
             lr_value=1e-5, n_classes=1,
-            save_path='/data/lisatmp4/dejoieti/feature_selection/'):
+            save_path='/data/lisatmp4/dejoieti/DietNetworks/'):
     """
     Execute a supervised learning.
 
@@ -114,10 +114,10 @@ def execute(samp_embedding_source, num_epochs=500,
     :param dataset: the dataset you want to use. genomics by default
     :param feat_embedding_source: if you want to choose a feature embedding,
     you should provide the path of the npz file from save_path
-    ('/data/lisatmp4/dejoieti/feature_selection/')
+    ('/data/lisatmp4/dejoieti/DietNetworks/')
     :param sample_embedding_source: if you want to choose directly an embedding
     of the data, you should provide the path of the npz file from save_path
-    ('/data/lisatmp4/dejoieti/feature_selection/')
+    ('/data/lisatmp4/dejoieti/DietNetworks/')
     """
 
     # Load the dataset
@@ -196,7 +196,7 @@ def execute(samp_embedding_source, num_epochs=500,
 
     # Finally, launch the training loop.
     print("Starting training...")
-    patience = 0 # early stopping patience 
+    patience = 0 # early stopping patience
     max_patience = 100
     nb_step_upd_lr = 20
     prev_train_err_increments = np.asarray([0]*nb_step_upd_lr)
@@ -210,7 +210,7 @@ def execute(samp_embedding_source, num_epochs=500,
     valid_minibatches = iterate_minibatches(x_valid, y_valid, n_batch,
                                                 shuffle=False)
     valid_monitored = monitoring(valid_minibatches, "valid", val_fn,
-                                     monitor_labels)    
+                                     monitor_labels)
     # We iterate over epochs:
     for epoch in range(num_epochs):
         # In each epoch, we do a full pass over the training data to updates
@@ -323,8 +323,7 @@ def execute(samp_embedding_source, num_epochs=500,
 
 def main():
     """Run execute with the accurate arguments."""
-    parser = argparse.ArgumentParser(description="""Implementation of the
-                                     feature selection v2""")
+    parser = argparse.ArgumentParser(description="""Train baseline from embedding.""")
     parser.add_argument('-dataset',
                         default='1000_genomes',
                         help='Dataset.')

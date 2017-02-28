@@ -83,7 +83,7 @@ def plot(dataset, which_set, continent=True):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='plot errors')
+    parser = argparse.ArgumentParser(description='Histograms.')
     parser.add_argument('-dataset',
                         default='1000_genomes',
                         help='Dataset')

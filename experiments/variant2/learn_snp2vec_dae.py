@@ -334,7 +334,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
                 for j in range(block_size):
                     single_feat_batch[j, i+j] = 0
 
-            np.save("/Tmp/carriepl/DietNetworks/all_embeddings_fold%i_noise%f.npy" % (which_fold, noise),
+            np.save("/Tmp/carriepl/DietNetworks/all_embeddings_noise%f_fold%i.npy" % (which_fold, noise),
                     all_embeddings)
 
             # Training set results
@@ -364,8 +364,7 @@ def execute(dataset, learning_rate=0.00001, learning_rate_annealing=1.0,
 
 
 def main():
-    parser = argparse.ArgumentParser(description="""Implementation of the
-                                     feature selection v4""")
+    parser = argparse.ArgumentParser(description="""Train snp2vec embedding.""")
     parser.add_argument('--dataset',
                         default='1000_genomes',
                         help='Dataset.')

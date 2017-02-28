@@ -15,7 +15,7 @@ def plot(dataset,
     if not os.path.exists(file_path):
         raise ValueError('The path to {} does not exist'.format(file_path))
 
-    cm_var = np.load(os.path.join(file_path, 'cm.npz'))
+    cm_var = np.load(os.path.join(file_path, 'cm0.npz'))
     cm = cm_var['arr_0']
 
     labels = ['ACB', 'ASW', 'BEB', 'CDX', 'CEU', 'CHB', 'CHS', 'CLM', 'ESN',
@@ -46,7 +46,7 @@ def plot(dataset,
 
 
 def main():
-    parser = argparse.ArgumentParser(description='plot errors')
+    parser = argparse.ArgumentParser(description='Conf. mat.')
     parser.add_argument('-dataset',
                         default='1000_genomes',
                         help='Dataset')
@@ -58,7 +58,7 @@ def main():
                         help='Path to errors file')
     parser.add_argument('-models',
                         type=str,
-                        default='our_model1.0_sup_good',
+                        default='dietnets_final_histo3x26fold0_our_model1.0_lr-0.0001_anneal-0.99_eni-0.01_dni-0.01_accuracy_Ri10.0_hu-100_tenc-100_tdec-100_hs-100_fold0',
                         help='List of model names.')
     parser.add_argument('-colors',
                         type=list,

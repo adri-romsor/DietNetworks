@@ -27,11 +27,18 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             alpha=1, beta=1, gamma=1, lmd=.0001, disc_nonlinearity="sigmoid",
             encoder_net_init=0.2, decoder_net_init=0.2, keep_labels=1.0,
             prec_recall_cutoff=True, missing_labels_val=-1.0, which_fold=0,
-            early_stop_criterion='loss_sup_det', embedding_input='raw',
+            early_stop_criterion='loss_sup_det',
             save_path='/Tmp/romerosa/DietNetworks/newmodel/',
             save_copy='/Tmp/romerosa/DietNetworks/',
             dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/',
             resume=False, exp_name='', random_proj=0):
+
+    # Prepare embedding information
+    if embedding_source is None:
+        embedding_input = 'raw'
+    else:
+        embedding_input = embedding_source
+        embedding_source = os.path.join(dataset_path, embedding_input + '_fold' + str(which_fold) + '.npy')
 
     # Load the dataset
     print("Loading data")
@@ -64,11 +71,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         embedding_name = embedding_source.replace("_", "").split(".")[0]
         exp_name += embedding_name.rsplit('/', 1)[::-1][0] + '_'
 
-    exp_name += 'final_'
-
     exp_name += mlh.define_exp_name(keep_labels, alpha, beta, gamma, lmd,
                                     n_hidden_u, n_hidden_t_enc, n_hidden_t_dec,
-                                    n_hidden_s, which_fold, embedding_input,
+                                    n_hidden_s, which_fold,
                                     learning_rate, decoder_net_init,
                                     encoder_net_init, early_stop_criterion,
                                     learning_rate_annealing)
@@ -122,7 +127,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Load weights if we are resuming job
     if resume:
         # Load best model
-        with np.load(os.path.join(save_path, 'model_feat_sel_last.npz')) as f:
+        with np.load(os.path.join(save_path, 'dietnet_last.npz')) as f:
             param_values = [f['arr_%d' % i]
                             for i in range(len(f.files))]
         nlayers = len(lasagne.layers.get_all_params(filter(None, nets) +
@@ -302,7 +307,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             patience = 0
 
             # Save stuff
-            np.savez(os.path.join(save_path, 'model_feat_sel_best.npz'),
+            np.savez(os.path.join(save_path, 'dietnet_best.npz'),
                      *lasagne.layers.get_all_param_values(filter(None, nets) +
                                                           [discrim_net]))
             np.savez(save_path + "/errors_supervised_best.npz",
@@ -320,7 +325,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         else:
             patience += 1
             # Save stuff
-            np.savez(os.path.join(save_path, 'model_feat_sel_last.npz'),
+            np.savez(os.path.join(save_path, 'dietnet_last.npz'),
                      *lasagne.layers.get_all_param_values(filter(None, nets) +
                                                           [discrim_net]))
             np.savez(save_path + "/errors_supervised_last.npz",
@@ -330,7 +335,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         if patience == max_patience or epoch == num_epochs-1:
             print("Ending training")
             # Load best model
-            with np.load(os.path.join(save_path, 'model_feat_sel_best.npz')) as f:
+            with np.load(os.path.join(save_path, 'dietnet_best.npz')) as f:
                 param_values = [f['arr_%d' % i]
                                 for i in range(len(f.files))]
             nlayers = len(lasagne.layers.get_all_params(filter(None, nets) +
@@ -395,8 +400,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
 
 def main():
-    parser = argparse.ArgumentParser(description="""Implementation of the
-                                     feature selection v2""")
+    parser = argparse.ArgumentParser(description="""Train Diet Networks""")
     parser.add_argument('--dataset',
                         default='1000_genomes',
                         help='Dataset.')
@@ -413,7 +417,7 @@ def main():
                         default=[100],
                         help='List of supervised hidden units.')
     parser.add_argument('--embedding_source',
-                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/unsupervised_hist_3x26_fold0.npy',
+                        default='histo3x26',
                         help='Source for the feature embedding. Either' +
                              'None or the name of a file from which' +
                              'to load a learned embedding')
@@ -485,10 +489,6 @@ def main():
     parser.add_argument('--early_stop_criterion',
                         default='accuracy',
                         help='What monitored variable to use for early-stopping')
-    parser.add_argument('-embedding_input',
-                        type=str,
-                        default='histo3x26',
-                        help='The kind of input we will use for the feat. emb. nets')
     parser.add_argument('--save_tmp',
                         default= '/Tmp/'+ os.environ["USER"]+'/DietNetworks/' if not CLUSTER else
                             '$SCRATCH'+'/DietNetworks/',
@@ -498,7 +498,7 @@ def main():
                             '$SCRATCH'+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
-                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/' if not CLUSTER else '/scratch/jvb-000-aa/tisu32/1000_Genome_project/',
+                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/',
                         help='Path to dataset')
     parser.add_argument('-resume',
                         type=bool,
@@ -538,7 +538,6 @@ def main():
             args.prec_recall_cutoff != 0, -1,
             args.which_fold,
             args.early_stop_criterion,
-            args.embedding_input,
             args.save_tmp,
             args.save_perm,
             args.dataset_path,

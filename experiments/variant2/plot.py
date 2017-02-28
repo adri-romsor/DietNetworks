@@ -42,7 +42,7 @@ def plot(dataset,
 
 
 def main():
-    parser = argparse.ArgumentParser(description='plot errors')
+    parser = argparse.ArgumentParser(description='Plot errors.')
     parser.add_argument('-dataset',
                         default='1000_genomes',
                         help='Dataset')
@@ -50,18 +50,12 @@ def main():
                         default='acc',
                         help='Metric (acc or loss)')
     parser.add_argument('-path',
-                        default='/data/lisatmp4/romerosa/feature_selection/',
+                        default='/data/lisatmp4/romerosa/DietNetworks/',
                         help='Path to errors file')
     parser.add_argument('-models',
                         type=list,
                         default=[
-    'our_model1.0_raw_lr-5e-05_anneal-1.0_eni-1e-05_dni-1e-05_accuracy_l2-0.0001_hu-100_tenc-100_tdec-100_hs-100_fold1',
-    'our_model1.0_raw_lr-5e-05_anneal-1.0_eni-1e-05_dni-1e-05_accuracy_Ri_l2-0.0001_hu-100_tenc-100_tdec-100_hs-100_fold1',
-    # 'our_model1.0_raw_lr-5e-05_anneal-1.0_eni-1e-05_dni-1e-05_loss. sup._Ri_l2-0.0001_hu-100_tenc-100_tdec-100_hs-100_fold1',
-    # 'our_model1.0_raw_lr-5e-05_anneal-1.0_eni-1e-05_dni-1e-05_loss. sup._l2-0.0001_hu-100_tenc-100_tdec-100_hs-100_fold1',
-    'our_model1.0_raw_lr-5e-05_anneal-1.0_eni-1e-05_dni-1e-05_accuracy_hu-100_tenc-100_tdec-100_hs-100_fold1',
-    'our_model1.0_raw_lr-5e-05_anneal-1.0_eni-1e-05_dni-1e-05_accuracy_Ri_hu-100_tenc-100_tdec-100_hs-100_fold1'
-
+    'dietnets_final_unsupervisedhist3x26fold0_final_our_model1.0_histo3x26_lr-0.0001_anneal-0.99_eni-0.01_dni-0.01_accuracy_Ri10.0_hu-100_tenc-100_tdec-100_hs-100_fold0'
                             ],
                         help='List of model names.')
     parser.add_argument('-colors',

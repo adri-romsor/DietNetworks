@@ -17,7 +17,6 @@ import numpy as np
 import theano
 import theano.tensor as T
 
-from epls import EPLS, tensor_fun_EPLS
 from DietNetworks.experiments.common import dataset_utils
 
 import mainloop_helpers as mlh
@@ -281,8 +280,7 @@ def execute(dataset, n_hidden_u, num_epochs=500,
 
 
 def main():
-    parser = argparse.ArgumentParser(description="""Implementation of the
-                                     feature selection v4""")
+    parser = argparse.ArgumentParser(description="""Learn feature embedding.""")
     parser.add_argument('--dataset',
                         default='1000_genomes',
                         help='Dataset.')
@@ -325,7 +323,7 @@ def main():
                         default='/data/lisatmp4/'+ os.environ["USER"]+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
-                        default='/data/lisatmp4/romerosa/datasets/',
+                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/',
                         help='Path to dataset')
 
 

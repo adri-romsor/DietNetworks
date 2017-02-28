@@ -31,10 +31,9 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
             num_epochs=500, learning_rate=.001, learning_rate_annealing=1.0,
             gamma=1, lmd=0., disc_nonlinearity="sigmoid", keep_labels=1.0,
             prec_recall_cutoff=True, missing_labels_val=-1.0,  which_fold=1,
-            early_stop_criterion='loss', embedding_input='raw',
-            save_path='/Tmp/romerosa/DietNetworks/',
-            save_copy='/Tmp/romerosa/DietNetworks/',
-            dataset_path='/Tmp/carriepl/datasets/', resume=False, exp_name=None):
+            early_stop_criterion='loss', dataset_path='/Tmp/carriepl/datasets/',
+            save_path='/data/lisatmp4/romerosa/DietNetworks/',
+            resume=False, exp_name=None):
 
     # Load the dataset
     print("Loading data")
@@ -43,7 +42,7 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
             dataset, dataset_path, None,
             which_fold=which_fold, keep_labels=keep_labels,
             missing_labels_val=missing_labels_val,
-            embedding_input=embedding_input)
+            embedding_input='raw')
 
     # Extract required information from data
     n_samples, n_feats = x_train.shape
@@ -52,14 +51,22 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
     n_targets = y_train.shape[1]
 
     # Set some variables
-    batch_size = 1
+    batch_size = 138
 
     # Preparing folder to save stuff
+    exp_name = 'basic_' + mlh.define_exp_name(keep_labels, 0, 0, gamma, lmd,
+                                              [], n_hidden_t_enc, [],
+                                              n_hidden_s, which_fold,
+                                              learning_rate, 0,
+                                              0, early_stop_criterion,
+                                              learning_rate_annealing)
+
     print("Experiment: " + exp_name)
     save_path = os.path.join(save_path, dataset, exp_name)
-    save_copy = os.path.join(save_copy, dataset, exp_name)
+    print(save_path)
     if not os.path.exists(save_path):
         os.makedirs(save_path)
+
 
     # Prepare Theano variables for inputs and targets
     input_var_sup = T.matrix('input_sup')
@@ -90,9 +97,17 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
     discrim_net = DenseLayer(discrim_net, num_units=n_targets,
                              nonlinearity=eval(disc_nonlinearity))
 
+    # Load best model
+    with np.load(os.path.join(save_path, 'model_best.npz')) as f:
+        param_values = [f['arr_%d' % i]
+                        for i in range(len(f.files))]
+    lasagne.layers.set_all_param_values(filter(None, nets) +
+                                        [discrim_net],
+                                        param_values)
+
     print("Building and compiling training functions")
 
-    # Build and compile training functions
+    # Build and compile functions
     predictions, predictions_det = mh.define_predictions(nets, start=0)
     prediction_sup, prediction_sup_det = mh.define_predictions([discrim_net])
     prediction_sup = prediction_sup[0]
@@ -100,55 +115,33 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
 
     # Define losses
     # reconstruction losses
-    reconst_losses, reconst_losses_det = mh.define_reconst_losses(
+    _, reconst_losses_det = mh.define_reconst_losses(
         predictions, predictions_det, [input_var_sup])
     # supervised loss
-    sup_loss, sup_loss_det = mh.define_sup_loss(
+    _, sup_loss_det = mh.define_sup_loss(
         disc_nonlinearity, prediction_sup, prediction_sup_det, keep_labels,
         target_var_sup, missing_labels_val)
 
     inputs = [input_var_sup, target_var_sup]
-    params = lasagne.layers.get_all_params([discrim_net] + nets,
-                                           trainable=True)
 
-    print('Number of params: '+str(len(params)))
+    params = lasagne.layers.get_all_params(
+        [discrim_net] + filter(None, nets), trainable=True)
 
     # Combine losses
-    loss = sup_loss + gamma*reconst_losses[0]
     loss_det = sup_loss_det + gamma*reconst_losses_det[0]
 
     l2_penalty = apply_penalty(params, l2)
-    loss = loss + lmd*l2_penalty
     loss_det = loss_det + lmd*l2_penalty
-
-    # Compute network updates
-    updates = lasagne.updates.rmsprop(loss,
-                                      params,
-                                      learning_rate=lr)
-    # updates = lasagne.updates.sgd(loss,
-    #                               params,
-    #                               learning_rate=lr)
-    # updates = lasagne.updates.momentum(loss, params,
-    #                                    learning_rate=lr, momentum=0.0)
-
-    # Apply norm constraints on the weights
-    for k in updates.keys():
-        if updates[k].ndim == 2:
-            updates[k] = lasagne.updates.norm_constraint(updates[k], 1.0)
-
-    # Compile training function
-    train_fn = theano.function(inputs, loss, updates=updates,
-                               on_unused_input='ignore')
 
     # Monitoring Labels
     monitor_labels = ["reconst. loss"]
-    monitor_labels = [i for i, j in zip(monitor_labels, reconst_losses)
+    monitor_labels = [i for i, j in zip(monitor_labels, reconst_losses_det)
                       if j != 0]
     monitor_labels += ["loss. sup.", "total loss"]
 
     # Build and compile test function
     val_outputs = reconst_losses_det
-    val_outputs = [i for i, j in zip(val_outputs, reconst_losses) if j != 0]
+    val_outputs = [i for i, j in zip(val_outputs, reconst_losses_det) if j != 0]
     val_outputs += [sup_loss_det, loss_det]
 
     # Compute accuracy and add it to monitoring list
@@ -167,57 +160,44 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
 
     # Finally, launch the training loop.
     print("Starting testing...")
+    test_minibatches = mlh.iterate_minibatches(x_test, y_test,
+                                               batch_size,
+                                               shuffle=False)
 
-    if not os.path.exists(save_copy + '/model_feat_sel_best.npz'):
-        print("No saved model to be tested and/or generate"
-        " the embedding !")
-    else:
-        with np.load(save_copy + '/model_feat_sel_best.npz',) as f:
-            param_values = [f['arr_%d' % i] for i in range(len(f.files))]
-            lasagne.layers.set_all_param_values(filter(None, nets) +
-                                                [discrim_net],
-                                                param_values)
+    test_err, pred, targets = mlh.monitoring(test_minibatches, "test", val_fn,
+                                             monitor_labels, prec_recall_cutoff,
+                                             return_pred=True)
 
-            test_minibatches = mlh.iterate_minibatches(x_test, y_test,
-                                                       batch_size,
-                                                       shuffle=False)
+    lab = targets.argmax(1)
+    pred_argmax = pred.argmax(1)
 
-            test_err, pred, targets = mlh.monitoring(test_minibatches, "test", val_fn,
-                                                     monitor_labels, prec_recall_cutoff,
-                                                     return_pred=True)
+    continent_cat = mh.create_1000_genomes_continent_labels()
+    lab_cont = np.zeros(lab.shape)
+    pred_cont = np.zeros(pred_argmax.shape)
 
-        lab = targets.argmax(1)
-        pred_argmax = pred.argmax(1)
+    for i,c in enumerate(continent_cat):
+        for el in c:
+            lab_cont[lab == el] = i
+            pred_cont[pred_argmax == el] = i
 
-        continent_cat = mh.create_1000_genomes_continent_labels()
+    cm_e = np.zeros((26, 26))
+    cm_c = np.zeros((5,5))
 
-        lab_cont = np.zeros(lab.shape)
-        pred_cont = np.zeros(pred_argmax.shape)
+    for i in range(26):
+        for j in range(26):
+            cm_e[i, j] = ((pred_argmax == i) * (lab == j)).sum()
 
-        for i,c in enumerate(continent_cat):
-            for el in c:
-                lab_cont[lab == el] = i
-                pred_cont[pred_argmax == el] = i
+    for i in range(5):
+        for j in range(5):
+            cm_c[i, j] = ((pred_cont == i) * (lab_cont == j)).sum()
 
-        cm_e = np.zeros((26, 26))
-        cm_c = np.zeros((5,5))
+    np.savez(os.path.join(save_path, 'cm'+str(which_fold)+'.npz'),
+             cm_e=cm_e, cm_c=cm_c)
 
-        for i in range(26):
-            for j in range(26):
-                cm_e[i, j] = ((pred_argmax == i) * (lab == j)).sum()
-
-        for i in range(5):
-            for j in range(5):
-                cm_c[i, j] = ((pred_cont == i) * (lab_cont == j)).sum()
-
-        np.savez(os.path.join(save_copy, 'cm'+str(which_fold)+'.npz'),
-                 cm_e=cm_e, cm_c=cm_c)
-
-        print(os.path.join(save_copy, 'cm' + str(which_fold) + '.npz'))
+    print(os.path.join(save_path, 'cm' + str(which_fold) + '.npz'))
 
 def main():
-    parser = argparse.ArgumentParser(description="""Implementation of the
-                                     feature selection v2""")
+    parser = argparse.ArgumentParser(description="""Test basic model""")
     parser.add_argument('--dataset',
                         default='1000_genomes',
                         help='Dataset.')
@@ -245,7 +225,7 @@ def main():
     parser.add_argument('--gamma',
                         '-g',
                         type=float,
-                        default=10.,
+                        default=0.,
                         help='reconst_loss coeff.')
     parser.add_argument('--lmd',
                         '-l',
@@ -271,28 +251,19 @@ def main():
     parser.add_argument('--early_stop_criterion',
                         default='accuracy',
                         help='What monitored variable to use for early-stopping')
-    parser.add_argument('-embedding_input',
-                        type=str,
-                        default='raw',
-                        help='The kind of input we will use for the feat. emb. nets')
-    parser.add_argument('--save_tmp',
-                        default= '/Tmp/'+ os.environ["USER"]+'/DietNetworks/' if not CLUSTER else
-                            '$SCRATCH'+'/DietNetworks/',
-                        help='Path to save results.')
-    parser.add_argument('--save_perm',
-                        default='/data/lisatmp4/'+ os.environ["USER"]+'/DietNetworks/' if not CLUSTER else
-                            '$SCRATCH'+'/DietNetworks/',
-                        help='Path to save results.')
     parser.add_argument('--dataset_path',
-                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/' if not CLUSTER else '/scratch/jvb-000-aa/tisu32/',
+                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/',
                         help='Path to dataset')
+    parser.add_argument('--save_path',
+                        default='/data/lisatmp4/romerosa/DietNetworks/',
+                        help='Path to save results.')
     parser.add_argument('-resume',
                         type=bool,
                         default=False,
                         help='Whether to resume job')
     parser.add_argument('-exp_name',
                         type=str,
-                        default='final_unsupervisedhist3x26fold0__new_our_model1.0_raw_lr-0.0001_anneal-0.99_eni-0.01_dni-0.01_accuracy_Ri10.0_hu-100_tenc-100_tdec-100_hs-100_fold0',
+                        default='',
                         help='Experiment name that will be concatenated at the beginning of the generated name')
 
     args = parser.parse_args()
@@ -312,10 +283,8 @@ def main():
             args.prec_recall_cutoff != 0, -1,
             args.which_fold,
             args.early_stop_criterion,
-            args.embedding_input,
-            args.save_tmp,
-            args.save_perm,
             args.dataset_path,
+            args.save_path,
             args.resume,
             args.exp_name)
 

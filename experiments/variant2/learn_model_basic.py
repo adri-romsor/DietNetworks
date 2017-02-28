@@ -31,7 +31,7 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
             num_epochs=500, learning_rate=.001, learning_rate_annealing=1.0,
             gamma=1, lmd=0., disc_nonlinearity="sigmoid", keep_labels=1.0,
             prec_recall_cutoff=True, missing_labels_val=-1.0,  which_fold=1,
-            early_stop_criterion='loss', embedding_input='raw',
+            early_stop_criterion='loss',
             save_path='/Tmp/romerosa/DietNetworks/',
             save_copy='/Tmp/romerosa/DietNetworks/',
             dataset_path='/Tmp/carriepl/datasets/', resume=False):
@@ -43,7 +43,7 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
             dataset, dataset_path, None,
             which_fold=which_fold, keep_labels=keep_labels,
             missing_labels_val=missing_labels_val,
-            embedding_input=embedding_input)
+            embedding_input='raw')
 
     # Extract required information from data
     n_samples, n_feats = x_train.shape
@@ -58,7 +58,7 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
     exp_name = 'basic_' + mlh.define_exp_name(keep_labels, 0, 0, gamma, lmd,
                                               [], n_hidden_t_enc, [],
                                               n_hidden_s, which_fold,
-                                              embedding_input, learning_rate, 0,
+                                              learning_rate, 0,
                                               0, early_stop_criterion,
                                               learning_rate_annealing)
     print("Experiment: " + exp_name)
@@ -245,14 +245,14 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
             patience = 0
 
             # Save stuff
-            np.savez(os.path.join(save_path, 'model_feat_sel_best.npz'),
+            np.savez(os.path.join(save_path, 'model_best.npz'),
                      *lasagne.layers.get_all_param_values(filter(None, nets) +
                                                           [discrim_net]))
             np.savez(save_path + "/errors_supervised_best.npz",
                      zip(*train_monitored), zip(*valid_monitored))
         else:
             patience += 1
-            np.savez(os.path.join(save_path, 'model_feat_sel_last.npz'),
+            np.savez(os.path.join(save_path, 'model_last.npz'),
                      *lasagne.layers.get_all_param_values(filter(None, nets) +
                                                           [discrim_net]))
             np.savez(save_path + "/errors_supervised_last.npz",
@@ -262,11 +262,11 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
         if patience == max_patience or epoch == num_epochs-1:
             print("Ending training")
             # Load best model
-            if not os.path.exists(save_path + '/model_feat_sel_best.npz'):
+            if not os.path.exists(save_path + '/model_best.npz'):
                 print("No saved model to be tested and/or generate"
                       " the embedding !")
             else:
-                with np.load(save_path + '/model_feat_sel_best.npz',) as f:
+                with np.load(save_path + '/model_best.npz',) as f:
                     param_values = [f['arr_%d' % i]
                                     for i in range(len(f.files))]
                     lasagne.layers.set_all_param_values(filter(None, nets) +
@@ -324,8 +324,7 @@ def execute(dataset, n_hidden_t_enc, n_hidden_s,
 
 
 def main():
-    parser = argparse.ArgumentParser(description="""Implementation of the
-                                     feature selection v2""")
+    parser = argparse.ArgumentParser(description="""Train basic model""")
     parser.add_argument('--dataset',
                         default='1000_genomes',
                         help='Dataset.')
@@ -379,20 +378,15 @@ def main():
     parser.add_argument('--early_stop_criterion',
                         default='accuracy',
                         help='What monitored variable to use for early-stopping')
-    parser.add_argument('-embedding_input',
-                        type=str,
-                        default='raw',
-                        help='The kind of input we will use for the feat. emb. nets')
     parser.add_argument('--save_tmp',
                         default= '/Tmp/'+ os.environ["USER"]+'/DietNetworks/' if not CLUSTER else
                             '$SCRATCH'+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--save_perm',
-                        default='/data/lisatmp4/'+ os.environ["USER"]+'/DietNetworks/' if not CLUSTER else
-                            '$SCRATCH'+'/DietNetworks/',
+                        default='/data/lisatmp4/'+ os.environ["USER"]+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
-                        default='/data/lisatmp4/romerosa/datasets/' if not CLUSTER else '/scratch/jvb-000-aa/tisu32/',
+                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/',
                         help='Path to dataset')
     parser.add_argument('-resume',
                         type=bool,
@@ -416,7 +410,6 @@ def main():
             args.prec_recall_cutoff != 0, -1,
             args.which_fold,
             args.early_stop_criterion,
-            args.embedding_input,
             args.save_tmp,
             args.save_perm,
             args.dataset_path,

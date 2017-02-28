@@ -33,7 +33,6 @@ def main(embedding_path, n_classes, which_method="pca", enc='triangle'):
 
 if __name__ == '__main__':
 
-    # embedding_path = "/data/lisatmp4/sylvaint/data/DietNetworks/"
     embedding_path = "/data/lisatmp4/romerosa/DietNetworks/pca_final/"
     dataset = '1000_genomes'
     n_classes = 26

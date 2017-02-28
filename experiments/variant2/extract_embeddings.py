@@ -28,14 +28,23 @@ import model_helpers as mh
 
 # Main program
 def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
-            embedding_source=None, alpha=1, beta=1, gamma=1, encoder_net_init=0.1,
-            which_fold=0, embedding_input='raw',  exp_name='', representation='features',
+            learning_rate, learning_rate_annealing=.99, embedding_source=None,
+            alpha=1, beta=1, gamma=1, lmd=0.0, encoder_net_init=0.1,
+            decoder_net_init=0.1, keep_labels=1.0, which_fold=0,
+            early_stop_criterion='accuracy', exp_name='', representation='features',
             which_set='test',
             model_path='/Tmp/romerosa/DietNetworks/newmodel/',
             save_path='/Tmp/romerosa/DietNetworks/',
             dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/'):
 
     print(save_path)
+
+    # Prepare embedding information
+    if embedding_source is None:
+        embedding_input = 'raw'
+    else:
+        embedding_input = embedding_source
+        embedding_source = os.path.join(dataset_path, embedding_input + '_fold' + str(which_fold) + '.npy')
 
     # Load the dataset
     print("Loading data")
@@ -74,6 +83,14 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         embedding_name = embedding_input
     else:
         embedding_name = embedding_source.replace("_", "").split(".")[0]
+        exp_name += embedding_name.rsplit('/', 1)[::-1][0] + '_'
+
+    exp_name += mlh.define_exp_name(keep_labels, alpha, beta, gamma, lmd,
+                                    n_hidden_u, n_hidden_t_enc, n_hidden_t_dec,
+                                    n_hidden_s, which_fold,
+                                    learning_rate, decoder_net_init,
+                                    encoder_net_init, early_stop_criterion,
+                                    learning_rate_annealing)
 
     print("Experiment: " + exp_name)
     model_path = os.path.join(model_path, dataset, exp_name)
@@ -121,7 +138,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                   else None, n_feats, gamma)]
 
     # Load best model
-    with np.load(os.path.join(model_path, 'model_feat_sel_best.npz')) as f:
+    with np.load(os.path.join(model_path, 'dietnets_best.npz')) as f:
         param_values = [f['arr_%d' % i]
                         for i in range(len(f.files))]
     lasagne.layers.set_all_param_values(filter(None, nets) +
@@ -170,8 +187,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
 
 def main():
-    parser = argparse.ArgumentParser(description="""Implementation of the
-                                     feature selection v2""")
+    parser = argparse.ArgumentParser(description="""Extract embeddings""")
     parser.add_argument('--dataset',
                         default='1000_genomes',
                         help='Dataset.')
@@ -187,8 +203,18 @@ def main():
     parser.add_argument('--n_hidden_s',
                         default=[100],
                         help='List of supervised hidden units.')
+    parser.add_argument('--learning_rate',
+                        '-lr',
+                        type=float,
+                        default=0.0001,
+                        help="""Float to indicate learning rate.""")
+    parser.add_argument('--learning_rate_annealing',
+                        '-lra',
+                        type=float,
+                        default=.99,
+                        help="Float to indicate learning rate annealing rate.")
     parser.add_argument('--embedding_source',
-                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/unsupervised_hist_3x26_fold2.npy',
+                        default='histo3x26',
                         help='Source for the feature embedding. Either' +
                              'None or the name of a file from which' +
                              'to load a learned embedding')
@@ -207,23 +233,37 @@ def main():
                         type=float,
                         default=10.,
                         help="""reconst_loss coeff. (used for aux net W-dec as well)""")
+    parser.add_argument('--lmd',
+                        '-l',
+                        type=float,
+                        default=.0,
+                        help="""Weight decay coeff.""")
     parser.add_argument('--encoder_net_init',
                         '-eni',
                         type=float,
                         default=0.01,
                         help="Bounds of uniform initialization for " +
                              "encoder_net weights")
+    parser.add_argument('--decoder_net_init',
+                        '-dni',
+                        type=float,
+                        default=0.01,
+                        help="Bounds of uniform initialization for " +
+                             "decoder_net weights")
+    parser.add_argument('--keep_labels',
+                        type=float,
+                        default=1.0,
+                        help='Fraction of training labels to keep')
     parser.add_argument('--which_fold',
                         type=int,
-                        default=2,
+                        default=0,
                         help='Which fold to use for cross-validation (0-4)')
-    parser.add_argument('-embedding_input',
-                        type=str,
-                        default='histo3x26',
-                        help='The kind of input we will use for the feat. emb. nets')
+    parser.add_argument('--early_stop_criterion',
+                        default='accuracy',
+                        help='What monitored variable to use for early-stopping')
     parser.add_argument('-exp_name',
                         type=str,
-                        default='final_unsupervisedhist3x26fold2__new_our_model1.0_raw_lr-0.0001_anneal-0.99_eni-0.01_dni-0.01_accuracy_Ri10.0_hu-100_tenc-100_tdec-100_hs-100_fold2',
+                        default='dietnets_final_',
                         help='Experiment name that will be concatenated at the beginning of the generated name')
     parser.add_argument('-representation',
                         type=str,
@@ -234,7 +274,7 @@ def main():
                         default='test',
                         help='features or subjects')
     parser.add_argument('--model_path',
-                        default='/data/lisatmp4/erraqaba/DietNetworks/',
+                        default='/data/lisatmp4/'+os.environ["USER"]+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--save_path',
                         default='/data/lisatmp4/'+ os.environ["USER"]+'/DietNetworks/',
@@ -255,54 +295,21 @@ def main():
                 mlh.parse_int_list_arg(args.n_hidden_t_enc),
                 mlh.parse_int_list_arg(args.n_hidden_t_dec),
                 mlh.parse_int_list_arg(args.n_hidden_s),
-                '/data/lisatmp4/romerosa/datasets/1000_Genome_project/unsupervised_hist_3x26_fold'+str(f)+'.npy',
+                args.learning_rate,
+                args.learning_rate_annealing,
+                args.embedding_source,
                 args.alpha,
                 args.beta,
                 args.gamma,
+                args.lmd,
                 args.encoder_net_init,
+                args.decoder_net_init,
+                args.keep_labels,
                 f,
-                args.embedding_input,
-                'final_unsupervisedhist3x26fold'+str(f)+'__new_our_model1.0_raw_lr-0.0001_anneal-0.99_eni-0.01_dni-0.01_accuracy_Ri10.0_hu-100_tenc-100_tdec-100_hs-100_fold'+str(f),
+                args.early_stop_criterion,
+                args.exp_name,
                 args.representation,
                 'train',
-                args.model_path,
-                args.save_path,
-                args.dataset_path)
-
-        execute(args.dataset,
-                mlh.parse_int_list_arg(args.n_hidden_u),
-                mlh.parse_int_list_arg(args.n_hidden_t_enc),
-                mlh.parse_int_list_arg(args.n_hidden_t_dec),
-                mlh.parse_int_list_arg(args.n_hidden_s),
-                '/data/lisatmp4/romerosa/datasets/1000_Genome_project/unsupervised_hist_3x26_fold'+str(f)+'.npy',
-                args.alpha,
-                args.beta,
-                args.gamma,
-                args.encoder_net_init,
-                f,
-                args.embedding_input,
-                'final_unsupervisedhist3x26fold'+str(f)+'__new_our_model1.0_raw_lr-0.0001_anneal-0.99_eni-0.01_dni-0.01_accuracy_Ri10.0_hu-100_tenc-100_tdec-100_hs-100_fold'+str(f),
-                args.representation,
-                'valid',
-                args.model_path,
-                args.save_path,
-                args.dataset_path)
-
-        execute(args.dataset,
-                mlh.parse_int_list_arg(args.n_hidden_u),
-                mlh.parse_int_list_arg(args.n_hidden_t_enc),
-                mlh.parse_int_list_arg(args.n_hidden_t_dec),
-                mlh.parse_int_list_arg(args.n_hidden_s),
-                '/data/lisatmp4/romerosa/datasets/1000_Genome_project/unsupervised_hist_3x26_fold'+str(f)+'.npy',
-                args.alpha,
-                args.beta,
-                args.gamma,
-                args.encoder_net_init,
-                f,
-                args.embedding_input,
-                'final_unsupervisedhist3x26fold'+str(f)+'__new_our_model1.0_raw_lr-0.0001_anneal-0.99_eni-0.01_dni-0.01_accuracy_Ri10.0_hu-100_tenc-100_tdec-100_hs-100_fold'+str(f),
-                args.representation,
-                'test',
                 args.model_path,
                 args.save_path,
                 args.dataset_path)

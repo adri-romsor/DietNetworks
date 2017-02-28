@@ -1,6 +1,5 @@
 from sklearn.decomposition import RandomizedPCA, TruncatedSVD, PCA
-from aggregate_dataset import load_data23andme_baselines
-from DietNetworks.experiments.common import dataset_utils, imdb
+from DietNetworks.experiments.common import dataset_utils
 from DietNetworks.experiments.variant2 import mainloop_helpers as mlh
 
 import argparse
@@ -8,17 +7,14 @@ import os
 import numpy as np
 import time
 
-def pca(dataset, n_comp_list, save_path, method="pca", which_fold=0):
+def pca(dataset, n_comp_list, save_path, method="pca", which_fold=0,
+        dataset_path = '/data/lisatmp4/romerosa/datasets/1000_Genome_project/'):
 
-    dataset_path = '/data/lisatmp4/romerosa/datasets/'
-    embedding_source = '/data/lisatmp4/romerosa/datasets/1000_Genome_project/unsupervised_hist_3x26_fold'
-    embedding_source += str(which_fold) + '.npy'
-    print embedding_source
     # Load the dataset
     print("Loading data")
     x_train, y_train, x_valid, y_valid, x_test, y_test, \
         _, _ = mlh.load_data(
-            dataset, dataset_path, embedding_source,
+            dataset, dataset_path, None,
             which_fold=which_fold, keep_labels=1.0,
             missing_labels_val=-1.0,
             embedding_input='raw', norm=False)
@@ -65,7 +61,7 @@ if __name__ == '__main__':
                         help='dataset')
     parser.add_argument('-save_path',
                         '-sp',
-                        default='/data/lisatmp4/romerosa/DietNetworks/pca_final/',
+                        default='/data/lisatmp4/romerosa/DietNetworks/pca/',
                         help='number of components for embedding')
 
     args = parser.parse_args()
