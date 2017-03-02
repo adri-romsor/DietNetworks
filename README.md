@@ -16,7 +16,7 @@ By default, this generates the histogram per class embeddings. You will need to 
 
 ## Run Experiments
 
-### Diet Networks with per class histograms (fold 0)
+#### Diet Networks with per class histograms (fold 0)
 
 cd experiments/variant2
 
@@ -29,7 +29,7 @@ Experiments with reconstruction loss:
 THEANO_FLAGS='device=gpu' python learn_model.py --embedding_source=histo3x26 --which_fold=0 -exp_name='dietnets_' --learning_rate=0.0001 -eni=0.01 -dni=0.01 -l=0 -g=10
 
 
-### Parameters in experiments/variant2/learn_model.py
+#### Parameters in experiments/variant2/learn_model.py
 - dataset: Str. Dataset name. (default: '1000_genomes').
 - n_hidden_u: List. Considering the Emb. of Fig. 1 (b)/(c) an MLP -> number of hidden units of each layer of the MLP. The parameters of the embedding are shared among auxiliary networks in Fig. 1 (b) and (c). **Set to [100] for DietNetworks experiments, ignored when a particuler embedding is required.**
 - n_hidden_t: List. Number of hidden units of the MLP depicted in Fig. 1 (b)/(c). Both MLP have the same structure (number of layers, number of hidden units per layer) but do not share parameters. **Set to [100] for DietNetworks experiments.**
