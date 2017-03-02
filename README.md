@@ -1,5 +1,3 @@
-UNDER CONSTRUCTION
-
 # DietNetworks: Thin parameters for Fat Genomics
 
 This repo contains the code to reproduce the experiments of the paper [DietNetworks: Thin parameters for fat genomics](https://arxiv.org/abs/1611.09340).
@@ -10,6 +8,11 @@ This repo contains the code to reproduce the experiments of the paper [DietNetwo
 - Download the 1000 Genomes dataset as described in appendix B of the paper.
 
 ## Generate the pre-computed embeddings if necessary
+
+cd experiments/common
+python utils_helpers.py 
+
+By default, this generates the histogram per class embeddings. You will need to change the path argument.
 
 ## Run Experiments
 
