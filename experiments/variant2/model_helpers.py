@@ -119,7 +119,8 @@ def build_feat_emb_reconst_nets(coeffs, n_feats, n_hidden_u,
 
 
 def build_discrim_net(batch_size, n_feats, input_var_sup, n_hidden_t_enc,
-                      n_hidden_s, embedding, disc_nonlinearity, n_targets):
+                      n_hidden_s, embedding, disc_nonlinearity, n_targets,
+                      batchnorm=False):
     # Supervised network
     discrim_net = InputLayer((batch_size, n_feats), input_var_sup)
     discrim_net = DenseLayer(discrim_net, num_units=n_hidden_t_enc[-1],
@@ -128,6 +129,8 @@ def build_discrim_net(batch_size, n_feats, input_var_sup, n_hidden_t_enc,
 
     # Supervised hidden layers
     for hid in n_hidden_s:
+        if batchnorm:
+            discrim_net = BatchNormLayer(discrim_net)
         discrim_net = DropoutLayer(discrim_net)
         # discrim_net = BatchNormLayer(discrim_net)
         discrim_net = DenseLayer(discrim_net, num_units=hid)
@@ -135,6 +138,8 @@ def build_discrim_net(batch_size, n_feats, input_var_sup, n_hidden_t_enc,
     # Predicting labels
     assert disc_nonlinearity in ["sigmoid", "linear", "rectify",
                                  "softmax", "softmax_hierarchy"]
+    if batchnorm:
+        discrim_net = BatchNormLayer(discrim_net)
     discrim_net = DropoutLayer(discrim_net)
     if disc_nonlinearity != "softmax_hierarchy":
         discrim_net = DenseLayer(discrim_net, num_units=n_targets,

@@ -25,7 +25,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             embedding_source=None,
             num_epochs=500, learning_rate=.001, learning_rate_annealing=1.0,
             alpha=1, beta=1, gamma=1, lmd=.0001, disc_nonlinearity="sigmoid",
-            encoder_net_init=0.2, decoder_net_init=0.2, keep_labels=1.0,
+            encoder_net_init=0.2, decoder_net_init=0.2, optimizer="rmsprop",
+            max_patience=100, batchnorm=0, keep_labels=1.0,
             prec_recall_cutoff=True, missing_labels_val=-1.0, which_fold=0,
             early_stop_criterion='loss_sup_det',
             save_path='/Tmp/romerosa/DietNetworks/newmodel/',
@@ -36,6 +37,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Prepare embedding information
     if embedding_source is None:
         embedding_input = 'raw'
+    elif os.path.exists(embedding_source):
+        embedding_input = embedding_source
     else:
         embedding_input = embedding_source
         embedding_source = os.path.join(dataset_path, embedding_input + '_fold' + str(which_fold) + '.npy')
@@ -117,7 +120,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Supervised network
     discrim_net, hidden_rep = mh.build_discrim_net(
         batch_size, n_feats, input_var_sup, n_hidden_t_enc,
-        n_hidden_s, embeddings[0], disc_nonlinearity, n_targets)
+        n_hidden_s, embeddings[0], disc_nonlinearity, n_targets, batchnorm)
 
     # Reconstruct network
     nets += [mh.build_reconst_net(hidden_rep, embeddings[1] if
@@ -157,11 +160,30 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Define inputs
     inputs = [input_var_sup, target_var_sup]
 
+    """
     # Define parameters
     params = lasagne.layers.get_all_params(
         [discrim_net]+filter(None, nets), trainable=True)
     params_to_freeze= \
         lasagne.layers.get_all_params(filter(None, nets), trainable=False)
+    """
+    
+    # Define parameters
+    params = lasagne.layers.get_all_params(
+        [discrim_net]+filter(None, nets), trainable=True, unwrap_shared=False)
+    params_to_freeze= \
+        lasagne.layers.get_all_params(filter(None, nets), trainable=False,
+                                      unwrap_shared=False)
+    
+    # Remove unshared variables from params and params_to_freeze
+    params = [p for p in params if isinstance(p, theano.compile.sharedvalue.SharedVariable)]
+    params_to_freeze = [p for p in params_to_freeze if isinstance(p, theano.compile.sharedvalue.SharedVariable)]
+    print("Params : ", params)
+    
+    feat_emb_var = lasagne.layers.get_all_params([discrim_net])[0]
+    feat_emb_val = feat_emb_var.get_value()
+    feat_emb_norms = (feat_emb_val ** 2).sum(0) ** 0.5
+    feat_emb_var.set_value(feat_emb_val / feat_emb_norms)
 
     print('Number of params discrim: '+str(len(params)))
     print('Number of params to freeze: '+str(len(params_to_freeze)))
@@ -183,9 +205,15 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     loss_det = loss_det + lmd*l2_penalty
 
     # Compute network updates
-    updates = lasagne.updates.rmsprop(loss,
-                                      params,
-                                      learning_rate=lr)
+    assert optimizer in ["rmsprop", "adam"]
+    if optimizer == "rmsprop":
+        updates = lasagne.updates.rmsprop(loss,
+                                        params,
+                                        learning_rate=lr)
+    elif optimizer == "adam":
+        updates = lasagne.updates.adam(loss,
+                                       params,
+                                       learning_rate=lr)
     # updates = lasagne.updates.sgd(loss,
     #                               params,
     #                               learning_rate=lr)
@@ -238,7 +266,6 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     print("Starting training...")
 
     # Some variables
-    max_patience = 100
     patience = 0
 
     train_monitored = []
@@ -297,12 +324,17 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         except:
             raise ValueError("There is no monitored value by the name of %s" %
                              early_stop_criterion)
+        
+        valid_loss_sup_hist = [v[monitor_labels.index("loss. sup.")] for v in valid_monitored]
+        valid_loss_sup = valid_loss_sup_hist[-1]
 
         # Early stopping
         if epoch == 0:
             best_valid = early_stop_val
-        elif (early_stop_val > best_valid and early_stop_criterion == 'accuracy') or \
-             (early_stop_val < best_valid and early_stop_criterion == 'loss. sup.'):
+        elif ((early_stop_val > best_valid and early_stop_criterion == 'accuracy') or
+              #(early_stop_val >= best_valid and early_stop_criterion == 'accuracy' and
+              # valid_loss_sup == min(valid_loss_sup_hist)) or
+              (early_stop_val < best_valid and early_stop_criterion == 'loss. sup.')):
             best_valid = early_stop_val
             patience = 0
 
@@ -473,6 +505,20 @@ def main():
                         default=0.01,
                         help="Bounds of uniform initialization for " +
                              "decoder_net weights")
+    parser.add_argument('--optimizer',
+                        type=str,
+                        default="rmsprop",
+                        help="Optimizer to use for training (rmsprop or adam)")
+    parser.add_argument('--patience',
+                        type=int,
+                        default=100,
+                        help="Number of epochs without validation improvement" +
+                             "after which to stop training")
+    parser.add_argument('--batchnorm',
+                        '-bn',
+                        type=int,
+                        default=0,
+                        help="Whether to use BatchNorm in the main network")
     parser.add_argument('--keep_labels',
                         type=float,
                         default=1.0,
@@ -534,6 +580,9 @@ def main():
             args.disc_nonlinearity,
             args.encoder_net_init,
             args.decoder_net_init,
+            args.optimizer,
+            args.patience,
+            args.batchnorm,
             args.keep_labels,
             args.prec_recall_cutoff != 0, -1,
             args.which_fold,

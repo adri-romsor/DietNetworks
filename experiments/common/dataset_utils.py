@@ -127,7 +127,10 @@ def load_1000_genomes(transpose=False, label_splits=None, feature_splits=None,
     elif nolabels == 'w2v':
         raise NotImplementedError
     else:
-        raise ValueError('Unknown nolabels method')
+        try:
+            unsupervised_data = numpy.load(nolabels)
+        except:
+            raise ValueError('Could not load specified embedding source')
 
     if transpose:
         assert len(feature_splits) == 1  # train/valid split feature-wise
