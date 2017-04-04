@@ -35,7 +35,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             resume=False, exp_name='', random_proj=0):
 
     # Prepare embedding information
-    if embedding_source is None:
+    if embedding_source is None or embedding_source == "raw":
+        embedding_source = None
         embedding_input = 'raw'
     elif os.path.exists(embedding_source):
         embedding_input = embedding_source
@@ -332,8 +333,8 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         if epoch == 0:
             best_valid = early_stop_val
         elif ((early_stop_val > best_valid and early_stop_criterion == 'accuracy') or
-              #(early_stop_val >= best_valid and early_stop_criterion == 'accuracy' and
-              # valid_loss_sup == min(valid_loss_sup_hist)) or
+              (early_stop_val >= best_valid and early_stop_criterion == 'accuracy' and
+               valid_loss_sup == min(valid_loss_sup_hist)) or
               (early_stop_val < best_valid and early_stop_criterion == 'loss. sup.')):
             best_valid = early_stop_val
             patience = 0
