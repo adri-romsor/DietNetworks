@@ -131,7 +131,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Load weights if we are resuming job
     if resume:
         # Load best model
-        with np.load(os.path.join(save_path, 'dietnet_last.npz')) as f:
+        with np.load(os.path.join(save_copy, 'dietnet_last.npz')) as f:
             param_values = [f['arr_%d' % i]
                             for i in range(len(f.files))]
         nlayers = len(lasagne.layers.get_all_params(filter(None, nets) +
@@ -168,20 +168,22 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     params_to_freeze= \
         lasagne.layers.get_all_params(filter(None, nets), trainable=False)
     """
-    
+
     # Define parameters
     params = lasagne.layers.get_all_params(
         [discrim_net]+filter(None, nets), trainable=True, unwrap_shared=False)
     params_to_freeze= \
         lasagne.layers.get_all_params(filter(None, nets), trainable=False,
                                       unwrap_shared=False)
-    
+
     # Remove unshared variables from params and params_to_freeze
     params = [p for p in params if isinstance(p, theano.compile.sharedvalue.SharedVariable)]
     params_to_freeze = [p for p in params_to_freeze if isinstance(p, theano.compile.sharedvalue.SharedVariable)]
     print("Params : ", params)
-    
-    feat_emb_var = lasagne.layers.get_all_params([discrim_net])[0]
+
+    feat_emb_var = next(p for p in lasagne.layers.get_all_params([discrim_net]) if p.name == 'input_unsup' or p.name == 'feat_emb')
+    # feat_emb_var = lasagne.layers.get_all_params([discrim_net])[0]
+    print(feat_emb_var)
     feat_emb_val = feat_emb_var.get_value()
     feat_emb_norms = (feat_emb_val ** 2).sum(0) ** 0.5
     feat_emb_var.set_value(feat_emb_val / feat_emb_norms)
@@ -325,7 +327,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
         except:
             raise ValueError("There is no monitored value by the name of %s" %
                              early_stop_criterion)
-        
+
         valid_loss_sup_hist = [v[monitor_labels.index("loss. sup.")] for v in valid_monitored]
         valid_loss_sup = valid_loss_sup_hist[-1]
 
@@ -545,7 +547,7 @@ def main():
                             '$SCRATCH'+'/DietNetworks/',
                         help='Path to save results.')
     parser.add_argument('--dataset_path',
-                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/',
+                        default='/data/lisatmp4/romerosa/datasets/1000_Genome_project/data_files/300k/',
                         help='Path to dataset')
     parser.add_argument('-resume',
                         type=bool,
