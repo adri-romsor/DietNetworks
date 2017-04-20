@@ -22,11 +22,12 @@ cd experiments/variant2
 
 Experiments without reconstruction loss:
 
-THEANO_FLAGS='device=gpu' python learn_model.py --embedding_source=histo3x26 --which_fold=0 -exp_name='dietnets_' --learning_rate=0.0001 -eni=0.01 -dni=0.01 -l=0 -g=0
+THEANO_FLAGS='device=gpu' python learn_model.py --which_fold=0 -eni=0.02 -dni=0.02 -ne=3000 --n_hidden_t_enc=[100,100] --n_hidden_t_dec=[100,100] --n_hidden_s=[100] --n_hidden_u=[100] --gamma=0 --learning_rate=0.00003 -lra=.999 --patience=500 --optimizer=adam -bn=1 --embedding_source=histo3x26 -exp_name=dietnet_histo_ -rp=0
+
 
 Experiments with reconstruction loss:
 
-THEANO_FLAGS='device=gpu' python learn_model.py --embedding_source=histo3x26 --which_fold=0 -exp_name='dietnets_' --learning_rate=0.0001 -eni=0.01 -dni=0.01 -l=0 -g=10
+THEANO_FLAGS='device=gpu' python learn_model.py --which_fold=0 -eni=0.02 -dni=0.02 -ne=3000 --n_hidden_t_enc=[100,100] --n_hidden_t_dec=[100,100] --n_hidden_s=[100] --n_hidden_u=[100] --gamma=20 --learning_rate=0.00003 -lra=.999 --patience=500 --optimizer=adam -bn=1 --embedding_source=histo3x26 -exp_name=dietnet_histo_ -rp=0
 
 
 #### Parameters in experiments/variant2/learn_model.py
