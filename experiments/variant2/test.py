@@ -31,7 +31,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             learning_rate, learning_rate_annealing=1.,
             embedding_source=None, alpha=1, beta=1, gamma=1, lmd=0,
             encoder_net_init=0.001, decoder_net_init=0.001, disc_nonlinearity='softmax',
-            keep_labels=1.0, prec_recall_cutoff=True, missing_labels_val=-1.0,
+            batchnorm=0, keep_labels=1.0, prec_recall_cutoff=True, missing_labels_val=-1.0,
             which_fold=0, early_stop_criterion='accuracy',
             save_path='/Tmp/romerosa/DietNetworks/',
             dataset_path='/Tmp/' + os.environ["USER"] + '/datasets/',
@@ -118,7 +118,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
     # Supervised network
     discrim_net, hidden_rep = mh.build_discrim_net(
         batch_size, n_feats, input_var_sup, n_hidden_t_enc,
-        n_hidden_s, embeddings[0], disc_nonlinearity, n_targets)
+        n_hidden_s, embeddings[0], disc_nonlinearity, n_targets, batchnorm)
 
     # Reconstruct network
     nets += [mh.build_reconst_net(hidden_rep, embeddings[1] if
@@ -126,14 +126,14 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                                   else None, n_feats, gamma)]
 
     # Load best model
-    with np.load(os.path.join(save_path, 'dietnets_best.npz')) as f:
+    with np.load(os.path.join(save_path, 'dietnet_best.npz')) as f:
         param_values = [f['arr_%d' % i]
                         for i in range(len(f.files))]
     lasagne.layers.set_all_param_values(filter(None, nets) +
                                         [discrim_net],
                                         param_values)
 
-    print("Building and compiling training functions")
+    print("Building and compiling functions")
 
     # Build functions
     predictions, predictions_det = mh.define_predictions(nets, start=2)
@@ -199,7 +199,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
                              on_unused_input='ignore')
 
 
-    # Finally, launch the training loop.
+    # Finally, launch the test loop.
     print("Starting testing...")
     test_minibatches = mlh.iterate_minibatches(x_test, y_test, batch_size,
                                                shuffle=False)
@@ -249,10 +249,10 @@ def main():
                         default=[100],
                         help='List of unsupervised hidden units.')
     parser.add_argument('--n_hidden_t_enc',
-                        default=[100],
+                        default=[100, 100],
                         help='List of theta transformation hidden units.')
     parser.add_argument('--n_hidden_t_dec',
-                        default=[100],
+                        default=[100, 100],
                         help='List of theta_prime transformation hidden units')
     parser.add_argument('--n_hidden_s',
                         default=[100],
@@ -260,12 +260,12 @@ def main():
     parser.add_argument('--learning_rate',
                         '-lr',
                         type=float,
-                        default=0.0001,
+                        default=0.00003,
                         help="""Float to indicate learning rate.""")
     parser.add_argument('--learning_rate_annealing',
                         '-lra',
                         type=float,
-                        default=.99,
+                        default=.999,
                         help="Float to indicate learning rate annealing rate.")
     parser.add_argument('--embedding_source',
                         default='histo3x26',
@@ -285,7 +285,7 @@ def main():
     parser.add_argument('--gamma',
                         '-g',
                         type=float,
-                        default=10.,
+                        default=20.0,
                         help="""reconst_loss coeff. (used for aux net W-dec as well)""")
     parser.add_argument('--lmd',
                         '-l',
@@ -295,19 +295,24 @@ def main():
     parser.add_argument('--encoder_net_init',
                         '-eni',
                         type=float,
-                        default=0.01,
+                        default=0.02,
                         help="Bounds of uniform initialization for " +
                              "encoder_net weights")
     parser.add_argument('--decoder_net_init',
                         '-dni',
                         type=float,
-                        default=0.01,
+                        default=0.02,
                         help="Bounds of uniform initialization for " +
                              "decoder_net weights")
     parser.add_argument('--disc_nonlinearity',
                         '-nl',
                         default="softmax",
                         help="""Nonlinearity to use in disc_net's last layer""")
+    parser.add_argument('--batchnorm',
+                        '-bn',
+                        type=int,
+                        default=1,
+                        help="Whether to use BatchNorm in the main network")
     parser.add_argument('--keep_labels',
                         type=float,
                         default=1.0,
@@ -317,10 +322,6 @@ def main():
                         default=0,
                         help='Whether to compute the precision-recall cutoff' +
                              'or not')
-    parser.add_argument('--which_fold',
-                        type=int,
-                        default=0,
-                        help='Which fold to use for cross-validation (0-4)')
     parser.add_argument('--early_stop_criterion',
                         default='accuracy',
                         help='What monitored variable to use for early-stopping')
@@ -336,14 +337,14 @@ def main():
                         help='Whether to resume job')
     parser.add_argument('-exp_name',
                         type=str,
-                        default='dietnets_final_',
+                        default='dietnet_histo_new2',
                         help='Experiment name that will be concatenated at the beginning of the generated name')
 
     args = parser.parse_args()
     print ("Printing args")
     print (args)
 
-    for f in range(1):
+    for f in range(5):
 
         execute(args.dataset,
                 mlh.parse_int_list_arg(args.n_hidden_u),
@@ -360,6 +361,7 @@ def main():
                 args.encoder_net_init,
                 args.decoder_net_init,
                 args.disc_nonlinearity,
+                args.batchnorm,
                 args.keep_labels,
                 args.prec_recall_cutoff != 0,
                 -1,
