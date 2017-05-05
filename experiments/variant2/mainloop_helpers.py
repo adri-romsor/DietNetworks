@@ -46,7 +46,7 @@ def load_data(dataset, dataset_path, embedding_source,
         random.seed(23)
         nb_train = len(training_labels)
 
-        indices = range(nb_train)
+        indices = list(range(nb_train))
         random.shuffle(indices)
 
         indices_discard = indices[:int(nb_train * (1 - keep_labels))]

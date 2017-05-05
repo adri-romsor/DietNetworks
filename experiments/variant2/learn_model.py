@@ -171,7 +171,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
     # Define parameters
     params = lasagne.layers.get_all_params(
-        [discrim_net]+filter(None, nets), trainable=True, unwrap_shared=False)
+        [discrim_net]+list(filter(None, nets)), trainable=True, unwrap_shared=False)
     params_to_freeze= \
         lasagne.layers.get_all_params(filter(None, nets), trainable=False,
                                       unwrap_shared=False)
@@ -343,7 +343,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
 
             # Save stuff
             np.savez(os.path.join(save_path, 'dietnet_best.npz'),
-                     *lasagne.layers.get_all_param_values(filter(None, nets) +
+                     *lasagne.layers.get_all_param_values(list(filter(None, nets)) +
                                                           [discrim_net]))
             np.savez(save_path + "/errors_supervised_best.npz",
                      zip(*train_monitored), zip(*valid_monitored))
@@ -361,7 +361,7 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             patience += 1
             # Save stuff
             np.savez(os.path.join(save_path, 'dietnet_last.npz'),
-                     *lasagne.layers.get_all_param_values(filter(None, nets) +
+                     *lasagne.layers.get_all_param_values(list(filter(None, nets)) +
                                                           [discrim_net]))
             np.savez(save_path + "/errors_supervised_last.npz",
                      zip(*train_monitored), zip(*valid_monitored))
@@ -373,9 +373,9 @@ def execute(dataset, n_hidden_u, n_hidden_t_enc, n_hidden_t_dec, n_hidden_s,
             with np.load(os.path.join(save_path, 'dietnet_best.npz')) as f:
                 param_values = [f['arr_%d' % i]
                                 for i in range(len(f.files))]
-            nlayers = len(lasagne.layers.get_all_params(filter(None, nets) +
+            nlayers = len(lasagne.layers.get_all_params(list(filter(None, nets)) +
                                                         [discrim_net]))
-            lasagne.layers.set_all_param_values(filter(None, nets) +
+            lasagne.layers.set_all_param_values(list(filter(None, nets)) +
                                                 [discrim_net],
                                                 param_values[:nlayers])
             if embedding_source is None:

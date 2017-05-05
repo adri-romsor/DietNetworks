@@ -1,6 +1,7 @@
+from __future__ import print_function
 import os
 import numpy as np
-import dataset_utils as du
+from DietNetworks.experiments.common import dataset_utils as du
 
 
 def generate_1000_genomes_hist(transpose=False, label_splits=None,
@@ -16,7 +17,7 @@ def generate_1000_genomes_hist(transpose=False, label_splits=None,
                                                  label_splits=label_splits,
                                                  feature_splits=feature_splits,
                                                  fold=fold,
-                                                 norm=False, nolabels='raw')
+                                                 norm=False, nolabels='raw', path=path)
 
     # Generate no_label: fuse train and valid sets
     nolabel_orig = (np.vstack([train[0], valid[0]])).transpose()
@@ -33,7 +34,7 @@ def generate_1000_genomes_hist(transpose=False, label_splits=None,
         nolabel_x = np.zeros((nolabel_orig.shape[0], 3*26))
         for i in range(nolabel_x.shape[0]):
             if i % 5000 == 0:
-                print "processing snp no: ", i
+                print("processing snp no: ", i)
             for j in range(26):
                 nolabel_x[i, j*3:j*3+3] += \
                     np.bincount(nolabel_orig[i, nolabel_y == j ].astype('int32'), minlength=3)
@@ -114,4 +115,4 @@ if __name__ == '__main__':
     for f in range(5):
         print(str(f))
         generate_1000_genomes_hist(transpose=False, label_splits=[.75],
-                                   feature_splits=[1.], fold=f, perclass=True)
+                                   feature_splits=[1.], fold=f, perclass=True, path='data/')

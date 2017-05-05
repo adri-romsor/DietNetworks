@@ -1,4 +1,7 @@
-import cPickle as pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 import numpy
 import os
 
@@ -23,7 +26,7 @@ def load_data(path="/Tmp/carriepl/Genomics_Datasets/1000_Genome_project/",
         lines = f.readlines()[1:]
     headers = [l.split()[:6] for l in lines]
     
-    nb_features = len(l.split()[6:])
+    nb_features = len(lines[-1].split()[6:])
     genomic_data = numpy.empty((len(lines), nb_features), dtype="int8")
     for idx, line in enumerate(lines):
         if idx % 100 == 0:

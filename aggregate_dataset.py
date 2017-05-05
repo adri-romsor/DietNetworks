@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import numpy as np
 # import pandas as pd
@@ -215,7 +216,7 @@ if __name__ == "__main__":
     split = [.6, .2, .2]
 
     def map_to_float(s):
-        print s
+        print(s)
         if s == '':
             return -1.0
         else:
@@ -300,7 +301,7 @@ if __name__ == "__main__":
             arr_height[user_idx] = -1
         user_dict = data23andme[user_id]
         if user_idx % 10 == 0:
-            print user_idx
+            print(user_idx)
         for feature_id in user_dict.keys():
             feature_value = user_dict[feature_id]
             feature_idx = feature_dict[feature_id]
