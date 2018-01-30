@@ -33,16 +33,16 @@ THEANO_FLAGS='device=gpu' python learn_model.py --which_fold=0 -eni=0.02 -dni=0.
 #### Parameters in experiments/variant2/learn_model.py
 - dataset: Str. Dataset name. (default: '1000_genomes').
 - n_hidden_u: List. Considering the Emb. of Fig. 1 (b)/(c) an MLP -> number of hidden units of each layer of the MLP. The parameters of the embedding are shared among auxiliary networks in Fig. 1 (b) and (c). **Set to [100] for DietNetworks experiments, ignored when a particuler embedding is required.**
-- n_hidden_t: List. Number of hidden units of the MLP depicted in Fig. 1 (b)/(c). Both MLP have the same structure (number of layers, number of hidden units per layer) but do not share parameters. **Set to [100] for DietNetworks experiments.**
+- n_hidden_t_enc/dec: List. Number of hidden units of the MLP depicted in Fig. 1 (b)/(c). Both MLP have the same structure (number of layers, number of hidden units per layer) but do not share parameters. **Set to [100, 100] for DietNetworks experiments.**
 - n_hidden_s: List. Number of hidden units of the second MLP in Fig. 1 (a). **Set to [100] for DietNetworks experiments.**
 - embedding_source: Str. The kind of embedding to be used in the auxiliary networks (histo3x26 for per class histogram, bin for snp2vec, raw for no pre-computed embedding)
-- num_epochs: Int. Maximum number of epochs. **Set to 500 for DietNetworks experiments.**
-- learning_rate: Float. Learning rate. (default: 0.0001)
+- num_epochs: Int. Maximum number of epochs. **Set to 3000 for DietNetworks experiments.**
+- learning_rate: Float. Learning rate. (default: 0.0001) 
 - learning_rate_annealing: Float. Learning rate annealing. (default: 0.99)
 - alpha: Float. **Set to 0 for all experiments.**
 - beta: Float. **Set to 0 for all experiments.**
-- gamma: Float. **Set to 0 if no reconstruction loss, set to 10 otherwise.**
-- lmd: Float. Weight decay. **Set to 0 for all Diet Networks experiments.**
+- gamma: Float. **Set to 0 if no reconstruction loss.**
+- lmd: Float. Weight decay. **Set to 0 for all experiments.**
 - disc_nonlinearity: Str. Nonlinearity to be used at the top layer of Fig. 1 (a). (default: softmax)
 - encoder_net_init/decoder_net_init: Float. Initialization values. (default 0.01)
 - keep_labels: Float. **Set to 1.0 for all experiments.**
